@@ -167,9 +167,14 @@ First stable production release of LoLShorts - automatic League of Legends gamep
 - Multi-language support (Korean, Chinese, Japanese)
 
 ### Planned for v1.2.0 (Q2 2025)
+- **Auto-Edit Workflow** - Complete automated Shorts generation system
+  - Multi-game clip selection with intelligent priority algorithm
+  - Canvas-style background editor (Canva-like) for overlays and text
+  - Duration-based auto-composition (60/120/180 seconds)
+  - Background music integration with volume mixing controls
+  - Template save/load system for reusable designs
 - AI-powered highlight detection improvements
 - Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
-- Background music library integration
 - Auto-caption generation
 
 ### Planned for v2.0.0 (Q3 2025)

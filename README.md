@@ -240,9 +240,14 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - [ ] Multi-language support (Korean, Chinese, Japanese)
 
 ### Version 1.2.0 (Planned)
+- [ ] **Auto-Edit Workflow** - One-click Shorts generation
+  - Multi-game clip selection
+  - Canvas-style background editor (Canva-like)
+  - Duration-based auto-composition (60/120/180s)
+  - Background music integration with volume controls
+  - Intelligent clip selection algorithm
 - [ ] AI-powered highlight detection improvements
 - [ ] Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
-- [ ] Background music library integration
 - [ ] Auto-caption generation
 
 ### Version 2.0.0 (Future)
