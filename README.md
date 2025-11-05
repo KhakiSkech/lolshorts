@@ -241,7 +241,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ### Version 1.2.0 (Planned)
 - [ ] AI-powered highlight detection improvements
-- [ ] Advanced editing features (slow motion, zoom, filters)
+- [ ] Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
 - [ ] Team collaboration features
 - [ ] Background music library integration
 

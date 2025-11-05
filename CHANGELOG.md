@@ -168,7 +168,7 @@ First stable production release of LoLShorts - automatic League of Legends gamep
 
 ### Planned for v1.2.0 (Q2 2025)
 - AI-powered highlight detection improvements
-- Advanced editing features (slow motion, zoom, filters)
+- Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
 - Team collaboration features
 - Background music library integration
 
