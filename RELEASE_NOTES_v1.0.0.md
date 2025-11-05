@@ -240,7 +240,7 @@ Complete documentation is available:
 
 ### Current Limitations
 
-1. **Windows Only**: macOS and Linux support planned for v1.1.0
+1. **Windows Only**: macOS Boot Camp support planned for v1.1.0
 2. **FFmpeg Dependency**: External FFmpeg binary required (bundled with installer)
 3. **English Only**: Multi-language support planned for v1.2.0
 
@@ -286,8 +286,7 @@ For more help, see [Troubleshooting Guide](docs/TROUBLESHOOTING.md) or [open an 
 ## 🗺️ Roadmap
 
 ### Version 1.1.0 (Q1 2025)
-- macOS support
-- Linux support
+- macOS support (Boot Camp)
 - Cloud storage integration (optional)
 - Direct upload to YouTube/Twitch
 - Multi-language support (Korean, Chinese, Japanese)
@@ -299,7 +298,7 @@ For more help, see [Troubleshooting Guide](docs/TROUBLESHOOTING.md) or [open an 
 - Team collaboration features
 
 ### Version 2.0.0 (Q3 2025)
-- Support for other games (Valorant, CS2, Dota 2)
+- Support for other games (Valorant, CS2)
 - Live streaming integration
 - Mobile companion app
 

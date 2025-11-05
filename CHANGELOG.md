@@ -147,7 +147,7 @@ First stable production release of LoLShorts - automatic League of Legends gamep
 
 ### Known Limitations
 
-- Windows only (macOS/Linux support in v1.1.0)
+- Windows only (macOS Boot Camp support planned for v1.1.0)
 - Requires external FFmpeg binary (bundled with installer)
 - English only (multi-language support in v1.2.0)
 
@@ -161,8 +161,7 @@ First stable production release of LoLShorts - automatic League of Legends gamep
 ## [Unreleased]
 
 ### Planned for v1.1.0 (Q1 2025)
-- macOS support
-- Linux support
+- macOS support (Boot Camp)
 - Cloud storage integration
 - Direct upload to YouTube/Twitch
 - Multi-language support (Korean, Chinese, Japanese)
@@ -174,7 +173,7 @@ First stable production release of LoLShorts - automatic League of Legends gamep
 - Team collaboration features
 
 ### Planned for v2.0.0 (Q3 2025)
-- Support for other games (Valorant, CS2, Dota 2)
+- Support for other games (Valorant, CS2)
 - Live streaming integration
 - Mobile companion app
 

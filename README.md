@@ -234,8 +234,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ## 📋 Roadmap
 
 ### Version 1.1.0 (Planned)
-- [ ] macOS support
-- [ ] Linux support
+- [ ] macOS support (Boot Camp)
 - [ ] Cloud storage integration
 - [ ] Direct upload to YouTube/Twitch
 - [ ] Multi-language support (Korean, Chinese, Japanese)
@@ -247,7 +246,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - [ ] Team collaboration features
 
 ### Version 2.0.0 (Future)
-- [ ] Support for other games (Valorant, CS2, Dota 2)
+- [ ] Support for other games (Valorant, CS2)
 - [ ] Live streaming integration
 - [ ] Mobile companion app
 

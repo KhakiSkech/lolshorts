@@ -162,7 +162,7 @@ grep -r "version.*1.0.0" Cargo.toml package.json src-tauri/tauri.conf.json
 ### 🔟 Known Limitations & Future Work
 
 #### Current Limitations
-- ⚠️ **Windows Only**: macOS and Linux support planned
+- ⚠️ **Windows Only**: macOS Boot Camp support planned
 - ⚠️ **FFmpeg Dependency**: External binary required
 - ⚠️ **English Only**: Localization planned for future releases
 
