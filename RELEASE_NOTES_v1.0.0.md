@@ -293,9 +293,9 @@ For more help, see [Troubleshooting Guide](docs/TROUBLESHOOTING.md) or [open an 
 
 ### Version 1.2.0 (Q2 2025)
 - AI-powered highlight detection improvements
-- Automatic commentary generation
 - Advanced editing features (slow motion, zoom, filters)
 - Team collaboration features
+- Background music library integration
 
 ### Version 2.0.0 (Q3 2025)
 - Support for other games (Valorant, CS2)

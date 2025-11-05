@@ -240,10 +240,10 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - [ ] Multi-language support (Korean, Chinese, Japanese)
 
 ### Version 1.2.0 (Planned)
-- [ ] AI-powered highlight detection
-- [ ] Automatic commentary generation
+- [ ] AI-powered highlight detection improvements
 - [ ] Advanced editing features (slow motion, zoom, filters)
 - [ ] Team collaboration features
+- [ ] Background music library integration
 
 ### Version 2.0.0 (Future)
 - [ ] Support for other games (Valorant, CS2)
