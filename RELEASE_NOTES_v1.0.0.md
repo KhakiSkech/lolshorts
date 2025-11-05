@@ -288,7 +288,7 @@ For more help, see [Troubleshooting Guide](docs/TROUBLESHOOTING.md) or [open an 
 ### Version 1.1.0 (Q1 2025)
 - macOS support (Boot Camp)
 - Cloud storage integration (optional)
-- Direct upload to YouTube/Twitch
+- Direct upload to YouTube
 - Multi-language support (Korean, Chinese, Japanese)
 
 ### Version 1.2.0 (Q2 2025)

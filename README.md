@@ -236,7 +236,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ### Version 1.1.0 (Planned)
 - [ ] macOS support (Boot Camp)
 - [ ] Cloud storage integration
-- [ ] Direct upload to YouTube/Twitch
+- [ ] Direct upload to YouTube
 - [ ] Multi-language support (Korean, Chinese, Japanese)
 
 ### Version 1.2.0 (Planned)
