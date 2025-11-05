@@ -163,17 +163,17 @@ First stable production release of LoLShorts - automatic League of Legends gamep
 ### Planned for v1.1.0 (Q1 2025)
 - macOS support (Boot Camp)
 - Cloud storage integration
-- Direct upload to YouTube
+- Direct upload to YouTube/TikTok
 - Multi-language support (Korean, Chinese, Japanese)
 
 ### Planned for v1.2.0 (Q2 2025)
 - AI-powered highlight detection improvements
 - Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
-- Team collaboration features
 - Background music library integration
+- Auto-caption generation
 
 ### Planned for v2.0.0 (Q3 2025)
-- Support for other games (Valorant, CS2)
+- Support for other Riot Games (Valorant, Teamfight Tactics, Legends of Runeterra)
 - Live streaming integration
 - Mobile companion app
 

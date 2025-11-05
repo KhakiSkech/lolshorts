@@ -288,17 +288,17 @@ For more help, see [Troubleshooting Guide](docs/TROUBLESHOOTING.md) or [open an 
 ### Version 1.1.0 (Q1 2025)
 - macOS support (Boot Camp)
 - Cloud storage integration (optional)
-- Direct upload to YouTube
+- Direct upload to YouTube/TikTok
 - Multi-language support (Korean, Chinese, Japanese)
 
 ### Version 1.2.0 (Q2 2025)
 - AI-powered highlight detection improvements
 - Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
-- Team collaboration features
 - Background music library integration
+- Auto-caption generation
 
 ### Version 2.0.0 (Q3 2025)
-- Support for other games (Valorant, CS2)
+- Support for other Riot Games (Valorant, Teamfight Tactics, Legends of Runeterra)
 - Live streaming integration
 - Mobile companion app
 

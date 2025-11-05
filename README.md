@@ -236,17 +236,17 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ### Version 1.1.0 (Planned)
 - [ ] macOS support (Boot Camp)
 - [ ] Cloud storage integration
-- [ ] Direct upload to YouTube
+- [ ] Direct upload to YouTube/TikTok
 - [ ] Multi-language support (Korean, Chinese, Japanese)
 
 ### Version 1.2.0 (Planned)
 - [ ] AI-powered highlight detection improvements
 - [ ] Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
-- [ ] Team collaboration features
 - [ ] Background music library integration
+- [ ] Auto-caption generation
 
 ### Version 2.0.0 (Future)
-- [ ] Support for other games (Valorant, CS2)
+- [ ] Support for other Riot Games (Valorant, Teamfight Tactics, Legends of Runeterra)
 - [ ] Live streaming integration
 - [ ] Mobile companion app
 
