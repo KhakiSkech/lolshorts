@@ -1,0 +1,93 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0",
+  "productName": "LoLShorts",
+  "version": "1.0.0",
+  "identifier": "com.lolshorts.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5181",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "LoLShorts",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "theme": "Dark"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "resources": [
+      "resources/*"
+    ],
+    "externalBin": [
+      "binaries/ffmpeg"
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "allowDowngrades": false,
+      "wix": {
+        "language": ["en-US"],
+        "template": null,
+        "componentRefs": [],
+        "fragmentPaths": [],
+        "bannerPath": null,
+        "dialogImagePath": null,
+        "enableElevatedUpdateTask": true
+      },
+      "nsis": {
+        "displayLanguageSelector": true,
+        "languages": ["English", "Korean"],
+        "installerIcon": null,
+        "template": null,
+        "headerImage": null,
+        "sidebarImage": null,
+        "installMode": "currentUser",
+        "compression": "lzma",
+        "startMenuFolder": "LoLShorts"
+      }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "Copyright © 2025 LoLShorts",
+    "category": "Video",
+    "shortDescription": "League of Legends Auto-Recording and Editing",
+    "longDescription": "Automatically record and edit your League of Legends gameplay into YouTube Shorts format. Features include automatic event detection (pentakills, quadrakills, baron steals), real-time replay buffer, hardware-accelerated encoding, and professional video editing tools. Production-ready with comprehensive error recovery and performance monitoring.",
+    "publisher": "LoLShorts Team",
+    "homepage": "https://lolshorts.com",
+    "licenseFile": "../LICENSE",
+    "fileAssociations": [
+      {
+        "ext": ["lolclip"],
+        "name": "LoLShorts Clip",
+        "role": "Editor"
+      }
+    ]
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    }
+  }
+}

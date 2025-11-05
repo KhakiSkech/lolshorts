@@ -1,0 +1,5 @@
+# LoLShorts Cargo Configuration
+# Build optimization for better runtime performance
+
+[build]
+rustflags = ["-C", "target-cpu=native"]

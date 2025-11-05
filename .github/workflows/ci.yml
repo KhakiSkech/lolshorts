@@ -1,0 +1,230 @@
+name: CI - Build and Test
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Backend tests (Rust)
+  backend-test:
+    name: Backend Tests (Rust)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache Cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-git-
+
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
+
+      - name: Check formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+
+      - name: Run backend tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --all-features
+
+      - name: Run integration tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --test integration --all-features
+
+  # Frontend tests (React/TypeScript)
+  frontend-test:
+    name: Frontend Tests (React)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Check bundle size
+        run: |
+          $bundleSize = (Get-Item dist/assets/*.js | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "Bundle size: $([math]::Round($bundleSize, 2)) MB"
+          if ($bundleSize -gt 5) {
+            Write-Error "Bundle size exceeds 5 MB limit"
+            exit 1
+          }
+
+  # E2E tests with Playwright
+  e2e-test:
+    name: E2E Tests (Playwright)
+    runs-on: windows-latest
+    needs: [backend-test, frontend-test]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Build application
+        run: npm run tauri build -- --debug
+
+      - name: Run E2E tests
+        run: npx playwright test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 30
+
+  # Security audit
+  security-audit:
+    name: Security Audit
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run Rust security audit
+        run: cargo audit --manifest-path src-tauri/Cargo.toml
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run npm security audit
+        run: npm audit --audit-level=moderate
+
+  # Build check (verify full build works)
+  build-check:
+    name: Build Check
+    runs-on: windows-latest
+    needs: [backend-test, frontend-test]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application (release mode)
+        run: cargo tauri build --verbose
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+
+      - name: Verify installers created
+        run: |
+          $msiExists = Test-Path "src-tauri/target/release/bundle/msi/*.msi"
+          $nsisExists = Test-Path "src-tauri/target/release/bundle/nsis/*-setup.exe"
+
+          if (-not $msiExists) {
+            Write-Error "MSI installer not found"
+            exit 1
+          }
+
+          if (-not $nsisExists) {
+            Write-Error "NSIS installer not found"
+            exit 1
+          }
+
+          Write-Host "✅ All installers created successfully"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ github.sha }}
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+          retention-days: 7
+
+  # All checks passed
+  all-checks-passed:
+    name: All Checks Passed
+    runs-on: windows-latest
+    needs: [backend-test, frontend-test, e2e-test, security-audit, build-check]
+    if: success()
+
+    steps:
+      - name: All checks passed
+        run: |
+          Write-Host "✅ All CI checks passed successfully!" -ForegroundColor Green
+          Write-Host "Ready for deployment or release." -ForegroundColor Green

@@ -1,0 +1,62 @@
+# Rust
+/target
+Cargo.lock
+*.rs.bk
+*.pdb
+
+# Node
+node_modules/
+dist/
+*.log
+.npm
+.pnpm-debug.log*
+
+# Tauri
+src-tauri/target/
+src-tauri/WixTools/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+/dist
+/build
+
+# Testing
+coverage/
+.nyc_output/
+
+# Legacy Archive
+LEGACY-ARCHIVE/
+LEGACY-ARCHIVE.tar.gz
+
+# User data (development)
+AppData/
+storage/test/
+*.db
+
+# Logs
+*.log
+logs/
+build.log
+
+# Development Scripts
+compile_and_test.bat
+test_lcu.ps1
+verify_setup.ps1
+token-usage.html
+
+# OS
+Thumbs.db
+.DS_Store
+nul

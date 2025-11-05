@@ -1,0 +1,317 @@
+# LoLShorts Installer Validation Script
+# Tests MSI and NSIS installers on clean Windows environments
+
+param(
+    [Parameter(Mandatory=$false)]
+    [ValidateSet("MSI", "NSIS", "Both")]
+    [string]$InstallerType = "Both",
+
+    [Parameter(Mandatory=$false)]
+    [string]$InstallerPath = "",
+
+    [Parameter(Mandatory=$false)]
+    [switch]$Verbose
+)
+
+$ErrorActionPreference = "Stop"
+
+# Colors for output
+$Green = [ConsoleColor]::Green
+$Red = [ConsoleColor]::Red
+$Yellow = [ConsoleColor]::Yellow
+$Cyan = [ConsoleColor]::Cyan
+
+function Write-ColorOutput {
+    param([string]$Message, [ConsoleColor]$Color = [ConsoleColor]::White)
+    Write-Host $Message -ForegroundColor $Color
+}
+
+function Test-InstallerExists {
+    param([string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        Write-ColorOutput "❌ Installer not found: $Path" $Red
+        return $false
+    }
+
+    $fileInfo = Get-Item $Path
+    $sizeMB = [math]::Round($fileInfo.Length / 1MB, 2)
+    Write-ColorOutput "✅ Installer found: $($fileInfo.Name) ($sizeMB MB)" $Green
+
+    return $true
+}
+
+function Test-InstallerSignature {
+    param([string]$Path)
+
+    Write-ColorOutput "`n🔍 Checking digital signature..." $Cyan
+
+    try {
+        $signature = Get-AuthenticodeSignature -FilePath $Path
+
+        if ($signature.Status -eq "Valid") {
+            Write-ColorOutput "✅ Installer is digitally signed" $Green
+            Write-ColorOutput "   Signer: $($signature.SignerCertificate.Subject)" $Cyan
+            return $true
+        }
+        elseif ($signature.Status -eq "NotSigned") {
+            Write-ColorOutput "⚠️  Installer is NOT signed (OK for development)" $Yellow
+            return $true
+        }
+        else {
+            Write-ColorOutput "❌ Invalid signature: $($signature.StatusMessage)" $Red
+            return $false
+        }
+    }
+    catch {
+        Write-ColorOutput "⚠️  Could not verify signature: $($_.Exception.Message)" $Yellow
+        return $true # Don't fail on signature check errors
+    }
+}
+
+function Test-InstallerMetadata {
+    param([string]$Path)
+
+    Write-ColorOutput "`n🔍 Checking installer metadata..." $Cyan
+
+    try {
+        $fileInfo = Get-Item $Path
+        $versionInfo = $fileInfo.VersionInfo
+
+        if ($versionInfo.ProductName) {
+            Write-ColorOutput "✅ Product Name: $($versionInfo.ProductName)" $Green
+        }
+
+        if ($versionInfo.ProductVersion) {
+            Write-ColorOutput "✅ Product Version: $($versionInfo.ProductVersion)" $Green
+        }
+
+        if ($versionInfo.CompanyName) {
+            Write-ColorOutput "✅ Company: $($versionInfo.CompanyName)" $Green
+        }
+
+        return $true
+    }
+    catch {
+        Write-ColorOutput "⚠️  Could not read metadata: $($_.Exception.Message)" $Yellow
+        return $true
+    }
+}
+
+function Test-FFmpegBundling {
+    param([string]$InstallerPath)
+
+    Write-ColorOutput "`n🔍 Checking FFmpeg bundling..." $Cyan
+
+    # For MSI, check if FFmpeg binaries would be extracted
+    # For NSIS, check archive contents
+
+    # This is a simplified check - in reality, you'd need to extract and verify
+    $installerSize = (Get-Item $InstallerPath).Length / 1MB
+
+    # FFmpeg binaries are ~150MB
+    if ($installerSize -gt 100) {
+        Write-ColorOutput "✅ Installer size suggests FFmpeg is bundled ($([math]::Round($installerSize, 2)) MB)" $Green
+        return $true
+    }
+    else {
+        Write-ColorOutput "⚠️  Installer size may be too small ($([math]::Round($installerSize, 2)) MB)" $Yellow
+        Write-ColorOutput "   Expected: >100 MB with FFmpeg binaries" $Yellow
+        return $false
+    }
+}
+
+function Test-SilentInstall {
+    param([string]$InstallerPath, [string]$Type)
+
+    Write-ColorOutput "`n🔍 Testing silent installation..." $Cyan
+
+    $tempInstallDir = Join-Path $env:TEMP "LoLShorts-Test-$([Guid]::NewGuid())"
+
+    try {
+        if ($Type -eq "MSI") {
+            # Test MSI silent install
+            Write-ColorOutput "Testing MSI silent install to: $tempInstallDir" $Cyan
+
+            $msiArgs = @(
+                "/i", "`"$InstallerPath`"",
+                "/qn",  # Quiet, no UI
+                "/norestart",
+                "INSTALLDIR=`"$tempInstallDir`"",
+                "/l*v", "`"$env:TEMP\lolshorts-install-test.log`""
+            )
+
+            $process = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -PassThru -NoNewWindow
+
+            if ($process.ExitCode -eq 0) {
+                Write-ColorOutput "✅ MSI silent install succeeded" $Green
+
+                # Check if files were installed
+                if (Test-Path $tempInstallDir) {
+                    $fileCount = (Get-ChildItem $tempInstallDir -Recurse -File).Count
+                    Write-ColorOutput "   Installed $fileCount files" $Green
+
+                    # Uninstall
+                    Write-ColorOutput "   Cleaning up test installation..." $Cyan
+                    Start-Process -FilePath "msiexec.exe" -ArgumentList "/x `"$InstallerPath`" /qn" -Wait -NoNewWindow
+                }
+
+                return $true
+            }
+            else {
+                Write-ColorOutput "❌ MSI install failed with exit code: $($process.ExitCode)" $Red
+                Write-ColorOutput "   Check log: $env:TEMP\lolshorts-install-test.log" $Yellow
+                return $false
+            }
+        }
+        elseif ($Type -eq "NSIS") {
+            # Test NSIS silent install
+            Write-ColorOutput "Testing NSIS silent install..." $Cyan
+
+            $nsisArgs = @("/S")  # Silent mode
+
+            $process = Start-Process -FilePath $InstallerPath -ArgumentList $nsisArgs -Wait -PassThru -NoNewWindow
+
+            if ($process.ExitCode -eq 0) {
+                Write-ColorOutput "✅ NSIS silent install succeeded" $Green
+
+                # Check if uninstaller was created
+                $uninstallerPath = "$env:LOCALAPPDATA\Programs\LoLShorts\uninstall.exe"
+                if (Test-Path $uninstallerPath) {
+                    Write-ColorOutput "   Uninstaller created successfully" $Green
+
+                    # Run uninstaller
+                    Write-ColorOutput "   Cleaning up test installation..." $Cyan
+                    Start-Process -FilePath $uninstallerPath -ArgumentList "/S" -Wait -NoNewWindow
+                }
+
+                return $true
+            }
+            else {
+                Write-ColorOutput "❌ NSIS install failed with exit code: $($process.ExitCode)" $Red
+                return $false
+            }
+        }
+    }
+    catch {
+        Write-ColorOutput "❌ Silent install test failed: $($_.Exception.Message)" $Red
+        return $false
+    }
+    finally {
+        # Cleanup temp directory
+        if (Test-Path $tempInstallDir) {
+            Remove-Item $tempInstallDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Test-Prerequisites {
+    Write-ColorOutput "`n🔍 Checking system prerequisites..." $Cyan
+
+    # Check Windows version
+    $osVersion = [System.Environment]::OSVersion.Version
+    if ($osVersion.Major -ge 10) {
+        Write-ColorOutput "✅ Windows 10+ detected ($($osVersion.ToString()))" $Green
+    }
+    else {
+        Write-ColorOutput "⚠️  Windows version $($osVersion.ToString()) may not be supported" $Yellow
+    }
+
+    # Check if running as Administrator
+    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if ($isAdmin) {
+        Write-ColorOutput "✅ Running as Administrator" $Green
+    }
+    else {
+        Write-ColorOutput "⚠️  Not running as Administrator (some tests may be limited)" $Yellow
+    }
+
+    # Check available disk space
+    $drive = (Get-Item $env:TEMP).PSDrive
+    $freeSpaceGB = [math]::Round($drive.Free / 1GB, 2)
+    if ($freeSpaceGB -gt 2) {
+        Write-ColorOutput "✅ Available disk space: $freeSpaceGB GB" $Green
+    }
+    else {
+        Write-ColorOutput "⚠️  Low disk space: $freeSpaceGB GB" $Yellow
+    }
+}
+
+# Main validation logic
+Write-ColorOutput "═══════════════════════════════════════════════" $Cyan
+Write-ColorOutput "  LoLShorts Installer Validation" $Cyan
+Write-ColorOutput "═══════════════════════════════════════════════" $Cyan
+
+Test-Prerequisites
+
+# Determine installer paths
+if ($InstallerPath -eq "") {
+    $projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    $bundleDir = Join-Path $projectRoot "src-tauri\target\release\bundle"
+
+    if ($InstallerType -eq "MSI" -or $InstallerType -eq "Both") {
+        $msiPath = Get-ChildItem -Path (Join-Path $bundleDir "msi") -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+
+        if ($msiPath) {
+            Write-ColorOutput "`n=== MSI Installer Validation ===" $Cyan
+
+            if (Test-InstallerExists $msiPath) {
+                Test-InstallerSignature $msiPath
+                Test-InstallerMetadata $msiPath
+                Test-FFmpegBundling $msiPath
+
+                # Optionally test silent install (requires admin)
+                $testInstall = Read-Host "`nTest silent installation? (y/n)"
+                if ($testInstall -eq "y") {
+                    Test-SilentInstall $msiPath "MSI"
+                }
+            }
+        }
+        else {
+            Write-ColorOutput "`n❌ MSI installer not found in $bundleDir\msi" $Red
+        }
+    }
+
+    if ($InstallerType -eq "NSIS" -or $InstallerType -eq "Both") {
+        $nsisPath = Get-ChildItem -Path (Join-Path $bundleDir "nsis") -Filter "*-setup.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+
+        if ($nsisPath) {
+            Write-ColorOutput "`n=== NSIS Installer Validation ===" $Cyan
+
+            if (Test-InstallerExists $nsisPath) {
+                Test-InstallerSignature $nsisPath
+                Test-InstallerMetadata $nsisPath
+                Test-FFmpegBundling $nsisPath
+
+                # Optionally test silent install
+                $testInstall = Read-Host "`nTest silent installation? (y/n)"
+                if ($testInstall -eq "y") {
+                    Test-SilentInstall $nsisPath "NSIS"
+                }
+            }
+        }
+        else {
+            Write-ColorOutput "`n❌ NSIS installer not found in $bundleDir\nsis" $Red
+        }
+    }
+}
+else {
+    # Use provided installer path
+    if (Test-InstallerExists $InstallerPath) {
+        $extension = [System.IO.Path]::GetExtension($InstallerPath)
+        $type = if ($extension -eq ".msi") { "MSI" } else { "NSIS" }
+
+        Test-InstallerSignature $InstallerPath
+        Test-InstallerMetadata $InstallerPath
+        Test-FFmpegBundling $InstallerPath
+
+        $testInstall = Read-Host "`nTest silent installation? (y/n)"
+        if ($testInstall -eq "y") {
+            Test-SilentInstall $InstallerPath $type
+        }
+    }
+}
+
+Write-ColorOutput "`n═══════════════════════════════════════════════" $Cyan
+Write-ColorOutput "  Validation Complete" $Cyan
+Write-ColorOutput "═══════════════════════════════════════════════" $Cyan

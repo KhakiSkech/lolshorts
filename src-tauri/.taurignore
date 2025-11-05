@@ -1,0 +1,25 @@
+# Ignore database files
+*.db
+*.db-shm
+*.db-wal
+
+# Ignore target directory
+/target/
+
+# Ignore temporary files
+*.tmp
+*.swp
+*.swo
+*~
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.iml
+
+# Ignore backup files
+*.bak
+*.backup
+
+# Ignore log files
+*.log

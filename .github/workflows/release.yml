@@ -1,0 +1,316 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags (e.g., v0.1.0, v1.2.3)
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Create GitHub Release
+  create-release:
+    name: Create Release
+    runs-on: windows-latest
+
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          $version = "${{ github.ref }}".Replace("refs/tags/v", "")
+          Write-Output "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Release version: $version"
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: LoLShorts ${{ steps.get_version.outputs.version }}
+          body: |
+            ## LoLShorts ${{ steps.get_version.outputs.version }}
+
+            ### 🎮 What's New
+
+            **Release highlights will be added here**
+
+            ### 📦 Downloads
+
+            - **Windows Installer (MSI)**: Recommended for most users
+            - **Windows Installer (NSIS)**: Alternative installer format
+            - **Portable Version**: Coming soon
+
+            ### 📝 Installation
+
+            1. Download the MSI or NSIS installer
+            2. Run the installer
+            3. Follow the installation wizard
+            4. Launch LoLShorts from the Start Menu
+
+            ### ⚠️ Important Notes
+
+            - Requires Windows 10+ (64-bit)
+            - FFmpeg is bundled (no separate installation needed)
+            - League of Legends must be installed
+            - First launch may take a few seconds
+
+            ### 🔒 Legal
+
+            - See [Terms of Service](https://github.com/LoLShorts/lolshorts/blob/main/TERMS_OF_SERVICE.md)
+            - See [Privacy Policy](https://github.com/LoLShorts/lolshorts/blob/main/PRIVACY_POLICY.md)
+            - See [Riot Compliance](https://github.com/LoLShorts/lolshorts/blob/main/RIOT_COMPLIANCE.md)
+
+            ### 📞 Support
+
+            - [Documentation](https://docs.lolshorts.com)
+            - [Discord Community](https://discord.gg/lolshorts)
+            - [Report Issues](https://github.com/LoLShorts/lolshorts/issues)
+
+            ---
+
+            **Full Changelog**: https://github.com/LoLShorts/lolshorts/compare/${{ github.ref }}
+          draft: false
+          prerelease: false
+
+  # Build and upload Windows installers
+  build-windows:
+    name: Build Windows Installers
+    runs-on: windows-latest
+    needs: create-release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install WiX Toolset
+        run: |
+          choco install wixtoolset -y
+          $env:PATH += ";C:\Program Files (x86)\WiX Toolset v3.14\bin"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare FFmpeg binaries
+        run: |
+          cd src-tauri/build_scripts
+          .\prepare_ffmpeg.ps1
+
+      - name: Build application (Release)
+        run: cargo tauri build --verbose
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+
+      - name: Verify build artifacts
+        run: |
+          Write-Host "Checking for build artifacts..."
+
+          $msiPath = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1
+          $nsisPath = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*-setup.exe" | Select-Object -First 1
+
+          if (-not $msiPath) {
+            Write-Error "MSI installer not found"
+            exit 1
+          }
+
+          if (-not $nsisPath) {
+            Write-Error "NSIS installer not found"
+            exit 1
+          }
+
+          Write-Host "✅ MSI: $($msiPath.FullName)"
+          Write-Host "✅ NSIS: $($nsisPath.FullName)"
+
+      - name: Get installer paths
+        id: get_paths
+        run: |
+          $msiPath = (Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1).FullName
+          $nsisPath = (Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*-setup.exe" | Select-Object -First 1).FullName
+
+          Write-Output "msi_path=$msiPath" >> $env:GITHUB_OUTPUT
+          Write-Output "nsis_path=$nsisPath" >> $env:GITHUB_OUTPUT
+
+          $msiName = Split-Path $msiPath -Leaf
+          $nsisName = Split-Path $nsisPath -Leaf
+
+          Write-Output "msi_name=$msiName" >> $env:GITHUB_OUTPUT
+          Write-Output "nsis_name=$nsisName" >> $env:GITHUB_OUTPUT
+
+      - name: Upload MSI installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.get_paths.outputs.msi_path }}
+          asset_name: ${{ steps.get_paths.outputs.msi_name }}
+          asset_content_type: application/x-msi
+
+      - name: Upload NSIS installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.get_paths.outputs.nsis_path }}
+          asset_name: ${{ steps.get_paths.outputs.nsis_name }}
+          asset_content_type: application/x-msdownload
+
+      - name: Generate checksums
+        id: checksums
+        run: |
+          $msiPath = "${{ steps.get_paths.outputs.msi_path }}"
+          $nsisPath = "${{ steps.get_paths.outputs.nsis_path }}"
+
+          $msiHash = (Get-FileHash $msiPath -Algorithm SHA256).Hash
+          $nsisHash = (Get-FileHash $nsisPath -Algorithm SHA256).Hash
+
+          $checksumFile = "checksums.txt"
+
+          @"
+          SHA256 Checksums for LoLShorts ${{ needs.create-release.outputs.release_version }}
+
+          $($msiHash)  $(Split-Path $msiPath -Leaf)
+          $($nsisHash)  $(Split-Path $nsisPath -Leaf)
+          "@ | Out-File -FilePath $checksumFile -Encoding UTF8
+
+          Write-Output "checksum_file=$checksumFile" >> $env:GITHUB_OUTPUT
+
+      - name: Upload checksums
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.checksums.outputs.checksum_file }}
+          asset_name: checksums.txt
+          asset_content_type: text/plain
+
+  # Update Tauri auto-updater manifest
+  update-manifest:
+    name: Update Auto-Updater Manifest
+    runs-on: windows-latest
+    needs: [create-release, build-windows]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate updater manifest
+        run: |
+          $version = "${{ needs.create-release.outputs.release_version }}"
+
+          $manifest = @{
+              version = $version
+              notes = "See release notes at https://github.com/LoLShorts/lolshorts/releases/tag/v$version"
+              pub_date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+              platforms = @{
+                  "windows-x86_64" = @{
+                      signature = ""
+                      url = "https://github.com/LoLShorts/lolshorts/releases/download/v$version/LoLShorts_${version}_x64-setup.exe"
+                  }
+              }
+          } | ConvertTo-Json -Depth 10
+
+          $manifest | Out-File -FilePath "updater-manifest.json" -Encoding UTF8
+
+          Write-Host "Generated updater manifest:"
+          Get-Content "updater-manifest.json"
+
+      # Upload manifest to release or update server
+      # This step would typically upload to your update server
+      # For now, we'll just create it as an artifact
+
+      - name: Upload manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-manifest
+          path: updater-manifest.json
+
+  # Post-release validation
+  validate-release:
+    name: Validate Release
+    runs-on: windows-latest
+    needs: [create-release, build-windows]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: installers-${{ github.sha }}
+          path: ./release-artifacts
+
+      - name: Validate installers
+        run: |
+          Write-Host "Validating release installers..."
+
+          $msi = Get-ChildItem -Path "./release-artifacts" -Filter "*.msi" -Recurse | Select-Object -First 1
+          $nsis = Get-ChildItem -Path "./release-artifacts" -Filter "*-setup.exe" -Recurse | Select-Object -First 1
+
+          if (-not $msi) {
+            Write-Error "MSI installer not found in artifacts"
+            exit 1
+          }
+
+          if (-not $nsis) {
+            Write-Error "NSIS installer not found in artifacts"
+            exit 1
+          }
+
+          # Check file sizes (should be >100MB with FFmpeg)
+          $msiSize = $msi.Length / 1MB
+          $nsisSize = $nsis.Length / 1MB
+
+          if ($msiSize -lt 100) {
+            Write-Warning "MSI size is smaller than expected: $([math]::Round($msiSize, 2)) MB"
+          }
+          else {
+            Write-Host "✅ MSI size: $([math]::Round($msiSize, 2)) MB" -ForegroundColor Green
+          }
+
+          if ($nsisSize -lt 100) {
+            Write-Warning "NSIS size is smaller than expected: $([math]::Round($nsisSize, 2)) MB"
+          }
+          else {
+            Write-Host "✅ NSIS size: $([math]::Round($nsisSize, 2)) MB" -ForegroundColor Green
+          }
+
+          Write-Host "✅ Release validation complete" -ForegroundColor Green
+
+  # Notification (optional)
+  notify-release:
+    name: Notify Release
+    runs-on: windows-latest
+    needs: [create-release, build-windows, validate-release]
+    if: success()
+
+    steps:
+      - name: Release completed
+        run: |
+          Write-Host "🎉 Release ${{ needs.create-release.outputs.release_version }} completed successfully!" -ForegroundColor Green
+          Write-Host "Download: https://github.com/LoLShorts/lolshorts/releases/tag/v${{ needs.create-release.outputs.release_version }}"

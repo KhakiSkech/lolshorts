@@ -1,0 +1,6 @@
+# Ignore FFmpeg binaries (too large for git, downloaded during build)
+*.exe
+*.dll
+
+# Keep this directory structure
+!.gitignore
