@@ -233,27 +233,47 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## 📋 Roadmap
 
-### Version 1.1.0 (Planned)
-- [ ] macOS support (Boot Camp)
-- [ ] Cloud storage integration
-- [ ] Direct upload to YouTube/TikTok
+### Version 1.1.0 (Planned - Q1 2025)
+- [ ] Cloud storage integration (Google Drive, Dropbox)
 - [ ] Multi-language support (Korean, Chinese, Japanese)
+- [ ] Performance optimizations
+- [ ] Bug fixes and stability improvements
 
-### Version 1.2.0 (Planned)
-- [ ] **Auto-Edit Workflow** - One-click Shorts generation
-  - Multi-game clip selection
-  - Canvas-style background editor (Canva-like)
-  - Duration-based auto-composition (60/120/180s)
-  - Background music integration with volume controls
-  - Intelligent clip selection algorithm
+### Version 1.2.0 (Planned - Q2 2025) 🎯 **PRIORITY**
+**Complete Video Creation & Publishing Suite**
+
+#### Auto-Edit Workflow
+- [ ] Multi-game clip selection with intelligent priority algorithm
+- [ ] Canvas-style background editor (Canva-like) for overlays and text
+- [ ] Duration-based auto-composition (60/120/180 seconds)
+- [ ] Background music integration with volume mixing controls
+- [ ] Template save/load system for reusable designs
+- [ ] One-click Shorts generation
+
+#### YouTube Upload Integration
+- [ ] OAuth2 authentication with Google account
+- [ ] Direct upload to YouTube Shorts
+- [ ] AI-powered metadata generation (titles, descriptions, tags)
+- [ ] Thumbnail selection and upload
+- [ ] Upload progress tracking with speed/ETA
+- [ ] Upload history and management
+
+#### Additional Features
 - [ ] AI-powered highlight detection improvements
 - [ ] Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
 - [ ] Auto-caption generation
 
-### Version 2.0.0 (Future)
+### Version 1.3.0 (Planned - Q3 2025)
+- [ ] **macOS support** (Boot Camp required for League of Legends)
+- [ ] TikTok upload integration
+- [ ] Multi-account support (multiple YouTube channels)
+- [ ] Scheduled uploads
+
+### Version 2.0.0 (Future - Q4 2025)
 - [ ] Support for other Riot Games (Valorant, Teamfight Tactics, Legends of Runeterra)
 - [ ] Live streaming integration
 - [ ] Mobile companion app
+- [ ] Cloud-based video rendering
 
 ---
 

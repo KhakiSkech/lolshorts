@@ -161,26 +161,46 @@ First stable production release of LoLShorts - automatic League of Legends gamep
 ## [Unreleased]
 
 ### Planned for v1.1.0 (Q1 2025)
-- macOS support (Boot Camp)
-- Cloud storage integration
-- Direct upload to YouTube/TikTok
+- Cloud storage integration (Google Drive, Dropbox)
 - Multi-language support (Korean, Chinese, Japanese)
+- Performance optimizations
+- Bug fixes and stability improvements
 
-### Planned for v1.2.0 (Q2 2025)
-- **Auto-Edit Workflow** - Complete automated Shorts generation system
-  - Multi-game clip selection with intelligent priority algorithm
-  - Canvas-style background editor (Canva-like) for overlays and text
-  - Duration-based auto-composition (60/120/180 seconds)
-  - Background music integration with volume mixing controls
-  - Template save/load system for reusable designs
+### Planned for v1.2.0 (Q2 2025) 🎯 **PRIORITY**
+**Complete Video Creation & Publishing Suite**
+
+#### Auto-Edit Workflow
+- Multi-game clip selection with intelligent priority algorithm
+- Canvas-style background editor (Canva-like) for overlays and text
+- Duration-based auto-composition (60/120/180 seconds)
+- Background music integration with volume mixing controls
+- Template save/load system for reusable designs
+- One-click Shorts generation
+
+#### YouTube Upload Integration
+- OAuth2 authentication with Google account
+- Direct upload to YouTube Shorts
+- AI-powered metadata generation (titles, descriptions, tags)
+- Thumbnail selection and upload
+- Upload progress tracking with speed/ETA
+- Upload history and management
+
+#### Additional Features
 - AI-powered highlight detection improvements
 - Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
 - Auto-caption generation
 
-### Planned for v2.0.0 (Q3 2025)
+### Planned for v1.3.0 (Q3 2025)
+- **macOS support** (Boot Camp required for League of Legends)
+- TikTok upload integration
+- Multi-account support (multiple YouTube channels)
+- Scheduled uploads
+
+### Planned for v2.0.0 (Q4 2025)
 - Support for other Riot Games (Valorant, Teamfight Tactics, Legends of Runeterra)
 - Live streaming integration
 - Mobile companion app
+- Cloud-based video rendering
 
 ---
 
