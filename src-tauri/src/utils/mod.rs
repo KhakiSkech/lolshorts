@@ -5,3 +5,4 @@ pub mod metrics;
 pub mod logging;
 pub mod cleanup;
 pub mod commands;
+pub mod security;

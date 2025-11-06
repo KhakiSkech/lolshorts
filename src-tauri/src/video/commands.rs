@@ -1,6 +1,7 @@
 use crate::auth::middleware::{require_auth, require_tier};
 use crate::auth::SubscriptionTier;
 use crate::storage::models::ClipMetadata;
+use crate::utils::security;
 use crate::video::{AutoEditConfig, AutoEditProgress, AutoEditResult, VideoProcessor};
 use crate::AppState;
 use std::path::PathBuf;
@@ -14,9 +15,12 @@ pub async fn get_clips(
     // Require authentication
     require_auth(&state.auth).map_err(|e| e.to_string())?;
 
+    // Validate game_id (prevent SQL injection)
+    let validated_game_id = security::validate_game_id(&game_id).map_err(|e| e.to_string())?;
+
     state
         .storage
-        .load_clip_metadata(&game_id)
+        .load_clip_metadata(&validated_game_id)
         .map_err(|e| e.to_string())
 }
 
@@ -31,14 +35,21 @@ pub async fn extract_clip(
 ) -> Result<String, String> {
     // Require PRO tier for manual clip extraction
     require_tier(&state.auth, SubscriptionTier::Pro).map_err(|e| e.to_string())?;
+
+    // Security validation
+    let validated_input = security::validate_video_input_path(&input_path).map_err(|e| e.to_string())?;
+    let validated_output = security::validate_video_output_path(&output_path).map_err(|e| e.to_string())?;
+    let validated_start_time = security::validate_time_offset(start_time).map_err(|e| e.to_string())?;
+    let validated_duration = security::validate_duration(duration).map_err(|e| e.to_string())?;
+
     let processor = VideoProcessor::new();
 
     let result_path = processor
         .extract_clip(
-            PathBuf::from(&input_path),
-            PathBuf::from(&output_path),
-            start_time,
-            duration,
+            validated_input,
+            validated_output,
+            validated_start_time,
+            validated_duration,
         )
         .await
         .map_err(|e| e.to_string())?;
@@ -55,14 +66,21 @@ pub async fn compose_shorts(
 ) -> Result<String, String> {
     // Require PRO tier for YouTube Shorts composition
     require_tier(&state.auth, SubscriptionTier::Pro).map_err(|e| e.to_string())?;
-    let processor = VideoProcessor::new();
 
-    // Convert String paths to PathBuf
-    let paths: Vec<PathBuf> = clip_paths.iter().map(PathBuf::from).collect();
+    // Security validation
+    let validated_clips: Result<Vec<PathBuf>, String> = clip_paths
+        .iter()
+        .map(|p| security::validate_video_input_path(p).map_err(|e| e.to_string()))
+        .collect();
+    let validated_clips = validated_clips?;
+
+    let validated_output = security::validate_video_output_path(&output_path).map_err(|e| e.to_string())?;
+
+    let processor = VideoProcessor::new();
 
     // Standard YouTube Shorts resolution: 1080x1920 (9:16)
     let result_path = processor
-        .compose_shorts(&paths, PathBuf::from(&output_path), 1080, 1920)
+        .compose_shorts(&validated_clips, validated_output, 1080, 1920)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -79,13 +97,19 @@ pub async fn generate_thumbnail(
 ) -> Result<String, String> {
     // Require PRO tier for thumbnail generation
     require_tier(&state.auth, SubscriptionTier::Pro).map_err(|e| e.to_string())?;
+
+    // Security validation
+    let validated_input = security::validate_video_input_path(&input_path).map_err(|e| e.to_string())?;
+    let validated_output = security::validate_thumbnail_path(&output_path).map_err(|e| e.to_string())?;
+    let validated_time_offset = security::validate_time_offset(time_offset).map_err(|e| e.to_string())?;
+
     let processor = VideoProcessor::new();
 
     let result_path = processor
         .generate_thumbnail(
-            PathBuf::from(&input_path),
-            PathBuf::from(&output_path),
-            time_offset,
+            validated_input,
+            validated_output,
+            validated_time_offset,
         )
         .await
         .map_err(|e| e.to_string())?;
@@ -101,10 +125,14 @@ pub async fn get_video_duration(
 ) -> Result<f64, String> {
     // Require authentication
     require_auth(&state.auth).map_err(|e| e.to_string())?;
+
+    // Security validation
+    let validated_input = security::validate_video_input_path(&input_path).map_err(|e| e.to_string())?;
+
     let processor = VideoProcessor::new();
 
     let duration = processor
-        .get_duration(PathBuf::from(&input_path))
+        .get_duration(validated_input)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -121,19 +149,21 @@ pub async fn delete_clip(
     // Require authentication
     require_auth(&state.auth).map_err(|e| e.to_string())?;
 
-    let path = PathBuf::from(&clip_file_path);
+    // Security validation
+    let validated_path = security::validate_video_input_path(&clip_file_path).map_err(|e| e.to_string())?;
+    let validated_game_id = security::validate_game_id(&game_id).map_err(|e| e.to_string())?;
 
     // Delete the video file
-    if path.exists() {
-        std::fs::remove_file(&path).map_err(|e| e.to_string())?;
-        tracing::info!("Deleted clip file: {:?}", path);
+    if validated_path.exists() {
+        std::fs::remove_file(&validated_path).map_err(|e| e.to_string())?;
+        tracing::info!("Deleted clip file: {:?}", validated_path);
     }
 
     // Delete from JSON storage
-    state.storage.delete_clip_metadata(&game_id, &clip_file_path)
+    state.storage.delete_clip_metadata(&validated_game_id, &clip_file_path)
         .map_err(|e| format!("Failed to delete clip metadata: {}", e))?;
 
-    tracing::info!("Successfully deleted clip and metadata: {:?}", path);
+    tracing::info!("Successfully deleted clip and metadata: {:?}", validated_path);
     Ok(())
 }
 
@@ -213,9 +243,12 @@ pub async fn load_canvas_template(
     // Require authentication
     require_auth(&state.auth).map_err(|e| e.to_string())?;
 
+    // Security validation
+    let validated_template_id = security::validate_template_id(&template_id).map_err(|e| e.to_string())?;
+
     let template = state
         .storage
-        .load_canvas_template(&template_id)
+        .load_canvas_template(&validated_template_id)
         .map_err(|e| format!("Failed to load canvas template: {}", e))?;
 
     Ok(template)
@@ -246,9 +279,12 @@ pub async fn delete_canvas_template(
     // Require authentication
     require_auth(&state.auth).map_err(|e| e.to_string())?;
 
+    // Security validation
+    let validated_template_id = security::validate_template_id(&template_id).map_err(|e| e.to_string())?;
+
     state
         .storage
-        .delete_canvas_template(&template_id)
+        .delete_canvas_template(&validated_template_id)
         .map_err(|e| format!("Failed to delete canvas template: {}", e))?;
 
     Ok(())
