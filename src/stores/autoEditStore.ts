@@ -10,6 +10,7 @@ import {
   GameSelection,
   DurationOption,
   AutoEditStep,
+  VideoError,
 } from '@/types/autoEdit';
 
 interface AutoEditStore {
@@ -48,11 +49,11 @@ interface AutoEditStore {
   jobId: string | null;
   progress: AutoEditProgress | null;
   result: AutoEditResult | null;
-  error: string | null;
+  error: VideoError | null;
   setJobId: (id: string | null) => void;
   setProgress: (progress: AutoEditProgress | null) => void;
   setResult: (result: AutoEditResult | null) => void;
-  setError: (error: string | null) => void;
+  setError: (error: VideoError | null) => void;
 
   // Actions
   buildConfig: () => AutoEditConfig;

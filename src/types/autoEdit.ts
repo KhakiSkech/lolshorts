@@ -136,3 +136,14 @@ export interface CanvasEditorState {
 }
 
 export type AutoEditStep = 'configure' | 'preview' | 'generating' | 'complete';
+
+// ========================================================================
+// Error Handling Types
+// ========================================================================
+
+export interface VideoError {
+  message: string;                  // User-friendly error message
+  error_type: string;               // Error category (e.g., "FileNotFound", "FfmpegNotFound")
+  recovery_suggestions: string[];   // Actionable steps for recovery
+  technical_details?: string;       // Optional technical information
+}

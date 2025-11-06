@@ -24,11 +24,16 @@ import {
   Palette,
   Music,
   Sparkles,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  XCircle,
 } from 'lucide-react';
 import { DurationOption, GameSelection } from '@/types/autoEdit';
 
 export function AutoEditPanel() {
   const [localLoading, setLocalLoading] = useState(false);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
   const {
     currentStep,
@@ -84,6 +89,13 @@ export function AutoEditPanel() {
 
     loadGames();
   }, [getAllGames, setAvailableGames]);
+
+  // Reset technical details visibility when error changes
+  useEffect(() => {
+    if (error) {
+      setShowTechnicalDetails(false);
+    }
+  }, [error]);
 
   // Start generation
   const handleStartGeneration = useCallback(async () => {
@@ -490,11 +502,87 @@ export function AutoEditPanel() {
         )}
 
         {error && (
-          <div className="max-w-2xl mx-auto">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+          <div className="max-w-2xl mx-auto" data-testid="error-section">
+            <Card className="border-destructive">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <XCircle className="w-5 h-5" />
+                  Video Generation Failed
+                </CardTitle>
+                <CardDescription className="text-base" data-testid="error-message">
+                  {error.message}
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {/* Recovery Suggestions */}
+                <div data-testid="error-recovery-suggestions">
+                  <Label className="text-sm font-medium mb-2 block">
+                    Try these solutions:
+                  </Label>
+                  <ul className="space-y-2">
+                    {error.recovery_suggestions.map((suggestion, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm">
+                        <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                        <span>{suggestion}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Technical Details (expandable) */}
+                {error.technical_details && (
+                  <div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+                      className="w-full justify-between"
+                    >
+                      <span className="text-sm font-medium">Technical Details</span>
+                      {showTechnicalDetails ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </Button>
+
+                    {showTechnicalDetails && (
+                      <Alert className="mt-2">
+                        <AlertDescription className="text-xs font-mono whitespace-pre-wrap">
+                          {error.technical_details}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+
+                <Separator />
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleStartGeneration}
+                    variant="default"
+                    className="flex-1"
+                    data-testid="retry-button"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Retry Generation
+                  </Button>
+
+                  <Button
+                    onClick={handleStartNew}
+                    variant="outline"
+                    className="flex-1"
+                    data-testid="reset-button"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Start Over
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

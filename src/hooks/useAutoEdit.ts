@@ -6,8 +6,76 @@ import {
   AutoEditConfig,
   AutoEditProgress,
   AutoEditResult,
+  VideoError,
 } from '@/types/autoEdit';
 import { useAutoEditStore } from '@/stores/autoEditStore';
+
+/**
+ * Parse backend error string into structured VideoError
+ */
+function parseVideoError(errorString: string): VideoError {
+  // Try to extract error type and recovery suggestions from the error message
+  const lines = errorString.split('\n').map(line => line.trim()).filter(Boolean);
+
+  // First line is the error message
+  const message = lines[0] || errorString;
+
+  // Try to determine error type from message
+  let error_type = 'ProcessingError';
+  const recovery_suggestions: string[] = [];
+  let technical_details: string | undefined;
+
+  // Parse error type patterns
+  if (message.includes('not found')) {
+    error_type = message.includes('FFmpeg') ? 'FfmpegNotFound' : 'FileNotFound';
+  } else if (message.includes('disk space')) {
+    error_type = 'InsufficientDiskSpace';
+  } else if (message.includes('corrupted') || message.includes('invalid')) {
+    error_type = 'CorruptedVideo';
+  } else if (message.includes('No clips found')) {
+    error_type = 'NoClipsFound';
+  } else if (message.includes('Not enough clips')) {
+    error_type = 'InsufficientClips';
+  } else if (message.includes('canvas')) {
+    error_type = 'CanvasApplicationError';
+  } else if (message.includes('Audio mixing')) {
+    error_type = 'AudioMixingError';
+  } else if (message.includes('merge') || message.includes('concatenat')) {
+    error_type = 'ConcatenationError';
+  }
+
+  // Extract recovery suggestions (lines starting with "Try:", "-", or bullets)
+  let inRecoverySuggestions = false;
+  for (const line of lines.slice(1)) {
+    if (line.startsWith('Try:') || line.startsWith('Make sure') || line.startsWith('Check that')) {
+      inRecoverySuggestions = true;
+      continue;
+    }
+
+    if (inRecoverySuggestions || line.startsWith('-') || line.startsWith('•')) {
+      const suggestion = line.replace(/^[-•]\s*/, '').trim();
+      if (suggestion) {
+        recovery_suggestions.push(suggestion);
+      }
+    } else if (line.startsWith('Technical details:')) {
+      technical_details = line.replace('Technical details:', '').trim();
+    }
+  }
+
+  // Default recovery suggestions if none found
+  if (recovery_suggestions.length === 0) {
+    recovery_suggestions.push('Try again with different settings');
+    recovery_suggestions.push('Check the logs for more details');
+    recovery_suggestions.push('Contact support if the issue persists');
+  }
+
+  return {
+    message,
+    error_type,
+    recovery_suggestions,
+    technical_details,
+  };
+}
 
 export function useAutoEdit() {
   const [isLoading, setIsLoading] = useState(false);
@@ -44,8 +112,9 @@ export function useAutoEdit() {
       return result;
     } catch (err) {
       const errorMsg = err as string;
+      const parsedError = parseVideoError(errorMsg);
       setError(errorMsg);
-      setStoreError(errorMsg);
+      setStoreError(parsedError);
       throw err;
     } finally {
       setIsLoading(false);
