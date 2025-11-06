@@ -1,5 +1,6 @@
 pub mod auto_composer;
 pub mod commands;
+pub mod performance;
 pub mod processor;
 pub mod thumbnail;
 

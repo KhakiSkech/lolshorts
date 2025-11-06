@@ -112,7 +112,9 @@ impl VideoProcessor {
         let output = output_path.as_ref();
 
         if clip_paths.is_empty() {
-            anyhow::bail!("No clips provided for composition");
+            return Err(VideoError::ProcessingError {
+                message: "No clips provided for composition".to_string(),
+            });
         }
 
         info!(
