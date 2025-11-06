@@ -1,7 +1,7 @@
 use crate::auth::middleware::{require_auth, require_tier};
 use crate::auth::SubscriptionTier;
 use crate::storage::models::ClipMetadata;
-use crate::video::VideoProcessor;
+use crate::video::{AutoEditConfig, AutoEditProgress, AutoEditResult, VideoProcessor};
 use crate::AppState;
 use std::path::PathBuf;
 use tauri::State;
@@ -135,4 +135,50 @@ pub async fn delete_clip(
 
     tracing::info!("Successfully deleted clip and metadata: {:?}", path);
     Ok(())
+}
+
+/// Start auto-edit composition for YouTube Shorts (PRO feature)
+///
+/// This is the main entry point for automated Shorts generation.
+/// It will intelligently select clips, apply canvas overlays, mix audio,
+/// and produce a final 60/120/180 second video ready for upload.
+#[tauri::command]
+pub async fn start_auto_edit(
+    state: State<'_, AppState>,
+    config: AutoEditConfig,
+) -> Result<AutoEditResult, String> {
+    // Require PRO tier for auto-edit feature
+    require_tier(&state.auth, SubscriptionTier::Pro).map_err(|e| e.to_string())?;
+
+    // Generate unique job ID
+    let job_id = format!("auto_edit_{}", chrono::Local::now().format("%Y%m%d_%H%M%S"));
+
+    tracing::info!("Starting auto-edit job: {} with target duration: {}s", job_id, config.target_duration);
+
+    // Start auto-composition
+    let result = state.auto_composer
+        .compose(config, job_id.clone())
+        .await
+        .map_err(|e| {
+            tracing::error!("Auto-edit failed for job {}: {}", job_id, e);
+            format!("Auto-edit failed: {}", e)
+        })?;
+
+    tracing::info!("Auto-edit completed successfully: {:?}", result.output_path);
+    Ok(result)
+}
+
+/// Get progress of an auto-edit job
+///
+/// Returns current status, progress percentage, and estimated completion time.
+/// Frontend should poll this endpoint every 1-2 seconds to update UI.
+#[tauri::command]
+pub async fn get_auto_edit_progress(
+    state: State<'_, AppState>,
+) -> Result<Option<AutoEditProgress>, String> {
+    // Require authentication
+    require_auth(&state.auth).map_err(|e| e.to_string())?;
+
+    let progress = state.auto_composer.get_progress().await;
+    Ok(progress)
 }

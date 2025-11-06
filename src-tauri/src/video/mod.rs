@@ -1,7 +1,12 @@
+pub mod auto_composer;
 pub mod commands;
 pub mod processor;
 pub mod thumbnail;
 
+pub use auto_composer::{
+    AudioLevels, AutoComposer, AutoEditConfig, AutoEditProgress, AutoEditResult, AutoEditStatus,
+    BackgroundLayer, BackgroundMusic, CanvasElement, CanvasTemplate, Position,
+};
 pub use processor::VideoProcessor;
 
 use serde::{Deserialize, Serialize};

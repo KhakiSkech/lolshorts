@@ -29,6 +29,7 @@ pub struct AppState {
     pub hotkey_manager: Arc<hotkey::HotkeyManager>,
     pub metrics_collector: Arc<utils::metrics::MetricsCollector>,
     pub cleanup_manager: Arc<utils::cleanup::CleanupManager>,
+    pub auto_composer: Arc<video::AutoComposer>,
 }
 
 #[tokio::main]
@@ -122,6 +123,12 @@ async fn main() {
 
     tracing::info!("Cleanup Manager initialized");
 
+    // Initialize Auto Composer for auto-edit functionality
+    let video_processor = Arc::new(video::VideoProcessor::new());
+    let auto_composer = Arc::new(video::AutoComposer::new(video_processor));
+
+    tracing::info!("Auto Composer initialized");
+
     let app_state = AppState {
         storage,
         auth,
@@ -132,6 +139,7 @@ async fn main() {
         hotkey_manager: Arc::clone(&hotkey_manager),
         metrics_collector: Arc::clone(&metrics_collector),
         cleanup_manager: Arc::clone(&cleanup_manager),
+        auto_composer,
     };
 
     // Start hotkey system with callbacks
@@ -263,6 +271,9 @@ async fn main() {
             video::commands::generate_thumbnail,
             video::commands::get_video_duration,
             video::commands::delete_clip,
+            // Auto-edit commands
+            video::commands::start_auto_edit,
+            video::commands::get_auto_edit_progress,
             // LCU commands
             lcu::commands::connect_lcu,
             lcu::commands::check_lcu_status,
