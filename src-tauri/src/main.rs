@@ -125,7 +125,10 @@ async fn main() {
 
     // Initialize Auto Composer for auto-edit functionality
     let video_processor = Arc::new(video::VideoProcessor::new());
-    let auto_composer = Arc::new(video::AutoComposer::new(video_processor));
+    let auto_composer = Arc::new(video::AutoComposer::new(
+        video_processor,
+        Arc::clone(&storage),
+    ));
 
     tracing::info!("Auto Composer initialized");
 

@@ -6,6 +6,7 @@ use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
 use super::{ClipInfo, VideoProcessor};
+use crate::storage::Storage;
 
 /// Configuration for auto-edit composition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -156,14 +157,16 @@ pub enum AutoEditStatus {
 /// Auto-composer for creating YouTube Shorts
 pub struct AutoComposer {
     video_processor: Arc<VideoProcessor>,
+    storage: Arc<Storage>,
     progress: Arc<RwLock<Option<AutoEditProgress>>>,
 }
 
 impl AutoComposer {
     /// Create a new AutoComposer
-    pub fn new(video_processor: Arc<VideoProcessor>) -> Self {
+    pub fn new(video_processor: Arc<VideoProcessor>, storage: Arc<Storage>) -> Self {
         Self {
             video_processor,
+            storage,
             progress: Arc::new(RwLock::new(None)),
         }
     }
@@ -428,13 +431,67 @@ impl AutoComposer {
     }
 
     /// Load clips from database for given game IDs
-    ///
-    /// This is a placeholder - actual implementation should query the database
-    async fn load_clips_from_games(&self, _game_ids: &[String]) -> Result<Vec<ClipInfo>> {
-        // TODO: Implement database query to load clips
-        // For now, return empty vec
-        warn!("Database query not yet implemented, returning empty clips");
-        Ok(Vec::new())
+    async fn load_clips_from_games(&self, game_ids: &[String]) -> Result<Vec<ClipInfo>> {
+        let mut all_clips = Vec::new();
+        let mut clip_id_counter = 0i64;
+
+        for game_id in game_ids {
+            // Load clips for this game
+            let storage_clips = self
+                .storage
+                .load_clip_metadata(game_id)
+                .context(format!("Failed to load clips for game {}", game_id))?;
+
+            info!(
+                "Loaded {} clips from game {}",
+                storage_clips.len(),
+                game_id
+            );
+
+            // Convert ClipMetadata to ClipInfo
+            for clip in storage_clips {
+                // Convert EventType to string
+                let event_type = match &clip.event_type {
+                    crate::storage::models::EventType::ChampionKill => "ChampionKill".to_string(),
+                    crate::storage::models::EventType::Multikill(2) => "DoubleKill".to_string(),
+                    crate::storage::models::EventType::Multikill(3) => "TripleKill".to_string(),
+                    crate::storage::models::EventType::Multikill(4) => "QuadraKill".to_string(),
+                    crate::storage::models::EventType::Multikill(5) => "PentaKill".to_string(),
+                    crate::storage::models::EventType::Multikill(n) => {
+                        format!("Multikill({})", n)
+                    }
+                    crate::storage::models::EventType::TurretKill => "TurretKill".to_string(),
+                    crate::storage::models::EventType::InhibitorKill => {
+                        "InhibitorKill".to_string()
+                    }
+                    crate::storage::models::EventType::DragonKill => "DragonKill".to_string(),
+                    crate::storage::models::EventType::BaronKill => "BaronKill".to_string(),
+                    crate::storage::models::EventType::Ace => "Ace".to_string(),
+                    crate::storage::models::EventType::FirstBlood => "FirstBlood".to_string(),
+                    crate::storage::models::EventType::Custom(s) => s.clone(),
+                };
+
+                all_clips.push(ClipInfo {
+                    id: clip_id_counter,
+                    event_type,
+                    event_time: clip.event_time,
+                    priority: clip.priority as i32,
+                    file_path: clip.file_path,
+                    thumbnail_path: clip.thumbnail_path,
+                    duration: Some(clip.duration),
+                });
+
+                clip_id_counter += 1;
+            }
+        }
+
+        info!(
+            "Total clips loaded from {} games: {}",
+            game_ids.len(),
+            all_clips.len()
+        );
+
+        Ok(all_clips)
     }
 
     /// Update progress
@@ -498,6 +555,11 @@ impl AutoComposer {
 mod tests {
     use super::*;
 
+    fn create_test_storage() -> Arc<Storage> {
+        let temp_dir = std::env::temp_dir().join(format!("lolshorts_test_{}", std::process::id()));
+        Arc::new(Storage::new(&temp_dir).expect("Failed to create test storage"))
+    }
+
     fn create_test_clip(id: i64, priority: i32, duration: f64, event_type: &str) -> ClipInfo {
         ClipInfo {
             id,
@@ -513,7 +575,8 @@ mod tests {
     #[tokio::test]
     async fn test_clip_selection_by_priority() {
         let processor = Arc::new(VideoProcessor::new());
-        let composer = AutoComposer::new(processor);
+        let storage = create_test_storage();
+        let composer = AutoComposer::new(processor, storage);
 
         let clips = vec![
             create_test_clip(1, 1, 10.0, "Kill"),         // Priority 1
@@ -547,7 +610,8 @@ mod tests {
     #[tokio::test]
     async fn test_clip_selection_fits_duration() {
         let processor = Arc::new(VideoProcessor::new());
-        let composer = AutoComposer::new(processor);
+        let storage = create_test_storage();
+        let composer = AutoComposer::new(processor, storage);
 
         let clips = vec![
             create_test_clip(1, 5, 20.0, "Pentakill"),
@@ -575,7 +639,8 @@ mod tests {
     #[tokio::test]
     async fn test_manual_clip_selection() {
         let processor = Arc::new(VideoProcessor::new());
-        let composer = AutoComposer::new(processor);
+        let storage = create_test_storage();
+        let composer = AutoComposer::new(processor, storage);
 
         let clips = vec![
             create_test_clip(1, 1, 10.0, "Kill"),
