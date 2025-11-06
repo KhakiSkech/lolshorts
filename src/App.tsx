@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Dashboard } from "@/pages/Dashboard";
 import { Games } from "@/pages/Games";
 import { Editor } from "@/pages/Editor";
+import { AutoEdit } from "@/pages/AutoEdit";
 import { Settings } from "@/pages/Settings";
 import { PaymentSuccess } from "@/pages/PaymentSuccess";
 import { PaymentFail } from "@/pages/PaymentFail";
@@ -35,6 +36,12 @@ const editorRoute = new Route({
   component: Editor,
 });
 
+const autoEditRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/auto-edit",
+  component: AutoEdit,
+});
+
 const settingsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/settings",
@@ -58,6 +65,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   gamesRoute,
   editorRoute,
+  autoEditRoute,
   settingsRoute,
   paymentSuccessRoute,
   paymentFailRoute,

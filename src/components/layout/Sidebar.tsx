@@ -1,4 +1,4 @@
-import { Home, Film, Video, Settings, LogOut } from 'lucide-react';
+import { Home, Film, Video, Settings, LogOut, Sparkles } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,8 @@ export function Sidebar({ className = '' }: SidebarProps) {
   const navItems = [
     { path: '/', label: 'Dashboard', icon: Home },
     { path: '/games', label: 'Games', icon: Film },
-    { path: '/editor', label: 'Editor', icon: Video, badge: 'Soon' },
+    { path: '/editor', label: 'Editor', icon: Video },
+    { path: '/auto-edit', label: 'Auto-Edit', icon: Sparkles, badge: 'PRO' },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
 
