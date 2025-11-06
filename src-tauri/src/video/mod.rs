@@ -12,19 +12,220 @@ pub use processor::VideoProcessor;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// Video processing errors with user-friendly messages
 #[derive(Debug, Error)]
 pub enum VideoError {
-    #[error("FFmpeg error: {0}")]
-    FfmpegError(String),
-    #[error("File not found: {0}")]
-    FileNotFound(String),
-    #[error("Processing error: {0}")]
-    ProcessingError(String),
-    #[error("Anyhow error: {0}")]
+    // File System Errors
+    #[error("Video file not found: {path}\n\nPlease check if the file exists and hasn't been moved or deleted.")]
+    FileNotFound { path: String },
+
+    #[error("Cannot read video file: {path}\n\nPossible causes:\n- File is corrupted or incomplete\n- Insufficient permissions\n- File is being used by another program")]
+    FileAccessError { path: String },
+
+    #[error("Not enough disk space to save video\n\nRequired: {required_mb} MB\nAvailable: {available_mb} MB\n\nFree up space or choose a different output location.")]
+    InsufficientDiskSpace {
+        required_mb: u64,
+        available_mb: u64,
+    },
+
+    #[error("Output directory not found: {path}\n\nPlease ensure the directory exists or choose a different location.")]
+    OutputDirectoryNotFound { path: String },
+
+    // FFmpeg Errors
+    #[error("FFmpeg is not installed or not found in system PATH\n\nPlease install FFmpeg from https://ffmpeg.org/download.html")]
+    FfmpegNotFound,
+
+    #[error("FFmpeg process failed: {message}\n\nTechnical details: {stderr}")]
+    FfmpegProcessError { message: String, stderr: String },
+
+    #[error("Video codec not supported: {codec}\n\nSupported formats: MP4, AVI, MKV, MOV\nPlease convert your video file to a supported format.")]
+    UnsupportedCodec { codec: String },
+
+    #[error("Video file is corrupted or invalid\n\nThe video file may be damaged. Try:\n- Re-recording the game\n- Using a different video file\n- Checking if the file plays in a video player")]
+    CorruptedVideo,
+
+    // Canvas/Audio Processing Errors
+    #[error("Failed to apply canvas overlay\n\nReason: {reason}\n\nPlease check your canvas template configuration.")]
+    CanvasApplicationError { reason: String },
+
+    #[error("Background music file not found: {path}\n\nPlease upload a valid audio file.")]
+    BackgroundMusicNotFound { path: String },
+
+    #[error("Audio mixing failed: {reason}\n\nCheck that:\n- Game audio exists in the clip\n- Background music file is valid\n- Audio levels are correctly configured")]
+    AudioMixingError { reason: String },
+
+    // Clip Selection Errors
+    #[error("No clips found for the selected games\n\nMake sure you have:\n- Recorded some games\n- Interesting events occurred (kills, objectives, etc.)\n- Clips were successfully saved")]
+    NoClipsFound,
+
+    #[error("Not enough clips to create {target_duration}s video\n\nFound: {available_duration}s of clips\nRequired: {target_duration}s\n\nTry:\n- Selecting more games\n- Reducing target duration\n- Lowering priority threshold")]
+    InsufficientClips {
+        available_duration: u64,
+        target_duration: u64,
+    },
+
+    // Concatenation Errors
+    #[error("Failed to merge video clips\n\nReason: {reason}\n\nThis may be due to:\n- Incompatible video formats\n- Corrupted clip files\n- Insufficient system resources")]
+    ConcatenationError { reason: String },
+
+    // Resource Errors
+    #[error("System resources exhausted\n\nVideo processing requires:\n- At least 2GB free RAM\n- CPU availability\n\nClose other applications and try again.")]
+    ResourceExhaustion,
+
+    #[error("Video processing timeout\n\nOperation took longer than {timeout_secs}s\n\nTry:\n- Processing fewer clips\n- Reducing video duration\n- Closing other applications")]
+    Timeout { timeout_secs: u64 },
+
+    // Generic fallback
+    #[error("Video processing failed: {message}")]
+    ProcessingError { message: String },
+
+    #[error("Unexpected error: {0}\n\nPlease report this issue if it persists.")]
     AnyhowError(#[from] anyhow::Error),
 }
 
+impl VideoError {
+    /// Convert FFmpeg stderr output to user-friendly error
+    pub fn from_ffmpeg_stderr(stderr: &str) -> Self {
+        // Check for common FFmpeg error patterns
+        if stderr.contains("No such file or directory") {
+            if let Some(path) = extract_file_path_from_stderr(stderr) {
+                return Self::FileNotFound { path };
+            }
+        }
+
+        if stderr.contains("Invalid data found") || stderr.contains("moov atom not found") {
+            return Self::CorruptedVideo;
+        }
+
+        if stderr.contains("Codec") && stderr.contains("not currently supported") {
+            if let Some(codec) = extract_codec_from_stderr(stderr) {
+                return Self::UnsupportedCodec { codec };
+            }
+        }
+
+        if stderr.contains("Permission denied") {
+            if let Some(path) = extract_file_path_from_stderr(stderr) {
+                return Self::FileAccessError { path };
+            }
+        }
+
+        if stderr.contains("No space left on device") {
+            return Self::InsufficientDiskSpace {
+                required_mb: 0, // Will be calculated by caller
+                available_mb: 0,
+            };
+        }
+
+        // Generic FFmpeg error with details
+        Self::FfmpegProcessError {
+            message: "FFmpeg failed to process video".to_string(),
+            stderr: stderr.to_string(),
+        }
+    }
+
+    /// Get user-friendly recovery suggestions
+    pub fn recovery_suggestions(&self) -> Vec<String> {
+        match self {
+            Self::FileNotFound { .. } => vec![
+                "Check if the file was moved or deleted".to_string(),
+                "Re-record the game if the clip is missing".to_string(),
+            ],
+            Self::InsufficientDiskSpace { .. } => vec![
+                "Free up disk space on your drive".to_string(),
+                "Change output location in settings".to_string(),
+                "Delete old videos you no longer need".to_string(),
+            ],
+            Self::FfmpegNotFound => vec![
+                "Install FFmpeg from https://ffmpeg.org".to_string(),
+                "Add FFmpeg to your system PATH".to_string(),
+                "Restart the application after installing".to_string(),
+            ],
+            Self::NoClipsFound => vec![
+                "Record more games to generate clips".to_string(),
+                "Check recording settings are enabled".to_string(),
+                "Verify League of Legends client is running".to_string(),
+            ],
+            Self::InsufficientClips { .. } => vec![
+                "Select more games to get more clips".to_string(),
+                "Reduce target video duration".to_string(),
+                "Lower clip priority threshold in settings".to_string(),
+            ],
+            Self::CorruptedVideo => vec![
+                "Re-record the affected game".to_string(),
+                "Check if the video plays in a media player".to_string(),
+                "Delete and re-create the clip".to_string(),
+            ],
+            _ => vec!["Try again".to_string(), "Contact support if issue persists".to_string()],
+        }
+    }
+}
+
+/// Extract file path from FFmpeg stderr output
+fn extract_file_path_from_stderr(stderr: &str) -> Option<String> {
+    // Look for patterns like: "filename: No such file or directory"
+    stderr
+        .lines()
+        .find(|line| line.contains("No such file") || line.contains("Permission denied"))
+        .and_then(|line| {
+            line.split(':')
+                .next()
+                .map(|s| s.trim().to_string())
+        })
+}
+
+/// Extract codec name from FFmpeg stderr output
+fn extract_codec_from_stderr(stderr: &str) -> Option<String> {
+    // Look for patterns like: "Codec 'xyz' is not currently supported"
+    stderr
+        .lines()
+        .find(|line| line.contains("Codec"))
+        .and_then(|line| {
+            line.split('\'')
+                .nth(1)
+                .map(|s| s.to_string())
+        })
+}
+
 pub type Result<T> = std::result::Result<T, VideoError>;
+
+/// Helper to execute FFmpeg command with proper error handling
+pub async fn execute_ffmpeg_command(
+    command: &mut tokio::process::Command,
+) -> Result<()> {
+    use tokio::io::AsyncReadExt;
+
+    // Ensure stderr is piped
+    command.stderr(std::process::Stdio::piped());
+    command.stdout(std::process::Stdio::null());
+
+    let mut child = command.spawn().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            VideoError::FfmpegNotFound
+        } else {
+            VideoError::ProcessingError {
+                message: format!("Failed to spawn FFmpeg process: {}", e),
+            }
+        }
+    })?;
+
+    // Capture stderr for error messages
+    let mut stderr_output = String::new();
+    if let Some(mut stderr) = child.stderr.take() {
+        stderr.read_to_string(&mut stderr_output).await.ok();
+    }
+
+    // Wait for command to complete
+    let status = child.wait().await.map_err(|e| VideoError::ProcessingError {
+        message: format!("Failed to wait for FFmpeg process: {}", e),
+    })?;
+
+    // Check exit status
+    if !status.success() {
+        return Err(VideoError::from_ffmpeg_stderr(&stderr_output));
+    }
+
+    Ok(())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClipInfo {

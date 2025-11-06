@@ -1,7 +1,8 @@
-use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use tokio::process::Command as TokioCommand;
-use tracing::{error, info};
+use tracing::info;
+
+use super::{execute_ffmpeg_command, Result, VideoError};
 
 /// FFmpeg video processor for clip extraction and composition
 pub struct VideoProcessor {
@@ -42,47 +43,49 @@ impl VideoProcessor {
 
         // Validate input file exists
         if !input.exists() {
-            anyhow::bail!("Input file does not exist: {:?}", input);
+            return Err(VideoError::FileNotFound {
+                path: input.display().to_string(),
+            });
         }
 
         // Create output directory if it doesn't exist
         if let Some(parent) = output.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .context("Failed to create output directory")?;
+            if !parent.exists() {
+                return Err(VideoError::OutputDirectoryNotFound {
+                    path: parent.display().to_string(),
+                });
+            }
         }
 
         // Run FFmpeg command to extract clip
         // Using -ss before -i for fast seeking, -c copy to avoid re-encoding when possible
-        let status = TokioCommand::new(&self.ffmpeg_path)
-            .args(&[
-                "-ss",
-                &start_time.to_string(),
-                "-i",
-                input.to_str().context("Invalid input path")?,
-                "-t",
-                &duration.to_string(),
-                "-c",
-                "copy", // Copy codec without re-encoding
-                "-avoid_negative_ts",
-                "make_zero",
-                "-y", // Overwrite output file
-                output.to_str().context("Invalid output path")?,
-            ])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::piped())
-            .status()
-            .await
-            .context("Failed to execute FFmpeg")?;
+        let mut command = TokioCommand::new(&self.ffmpeg_path);
+        command.args(&[
+            "-ss",
+            &start_time.to_string(),
+            "-i",
+            input.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: input.display().to_string(),
+            })?,
+            "-t",
+            &duration.to_string(),
+            "-c",
+            "copy", // Copy codec without re-encoding
+            "-avoid_negative_ts",
+            "make_zero",
+            "-y", // Overwrite output file
+            output.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: output.display().to_string(),
+            })?,
+        ]);
 
-        if !status.success() {
-            error!("FFmpeg clip extraction failed with status: {}", status);
-            anyhow::bail!("FFmpeg clip extraction failed");
-        }
+        execute_ffmpeg_command(&mut command).await?;
 
         // Verify output file was created
         if !output.exists() {
-            anyhow::bail!("Output file was not created: {:?}", output);
+            return Err(VideoError::ProcessingError {
+                message: format!("Output file was not created: {:?}", output),
+            });
         }
 
         info!("Clip extracted successfully: {:?}", output);
@@ -123,15 +126,19 @@ impl VideoProcessor {
         // Validate all input files exist
         for clip in clip_paths {
             if !clip.exists() {
-                anyhow::bail!("Clip file does not exist: {:?}", clip);
+                return Err(VideoError::FileNotFound {
+                    path: clip.display().to_string(),
+                });
             }
         }
 
         // Create output directory if it doesn't exist
         if let Some(parent) = output.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .context("Failed to create output directory")?;
+            if !parent.exists() {
+                return Err(VideoError::OutputDirectoryNotFound {
+                    path: parent.display().to_string(),
+                });
+            }
         }
 
         // If only one clip, just scale and crop it
@@ -155,53 +162,56 @@ impl VideoProcessor {
 
         tokio::fs::write(&concat_file, concat_content)
             .await
-            .context("Failed to write concat file")?;
+            .map_err(|e| VideoError::ProcessingError {
+                message: format!("Failed to write concat file: {}", e),
+            })?;
 
         // Run FFmpeg to concatenate and scale to 9:16
-        let status = TokioCommand::new(&self.ffmpeg_path)
-            .args(&[
-                "-f",
-                "concat",
-                "-safe",
-                "0",
-                "-i",
-                concat_file.to_str().context("Invalid concat file path")?,
-                "-vf",
-                &format!(
-                    "scale={}:{},setsar=1",
-                    target_width,
-                    target_height
-                ),
-                "-c:v",
-                "libx264",
-                "-preset",
-                "medium",
-                "-crf",
-                "23",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-y",
-                output.to_str().context("Invalid output path")?,
-            ])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::piped())
-            .status()
-            .await
-            .context("Failed to execute FFmpeg")?;
+        let mut command = TokioCommand::new(&self.ffmpeg_path);
+        command.args(&[
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            concat_file.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: concat_file.display().to_string(),
+            })?,
+            "-vf",
+            &format!(
+                "scale={}:{},setsar=1",
+                target_width, target_height
+            ),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "23",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-y",
+            output.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: output.display().to_string(),
+            })?,
+        ]);
+
+        let result = execute_ffmpeg_command(&mut command).await;
 
         // Clean up concat file
         let _ = tokio::fs::remove_file(&concat_file).await;
 
-        if !status.success() {
-            error!("FFmpeg composition failed with status: {}", status);
-            anyhow::bail!("FFmpeg composition failed");
-        }
+        result.map_err(|e| VideoError::ConcatenationError {
+            reason: e.to_string(),
+        })?;
 
         // Verify output file was created
         if !output.exists() {
-            anyhow::bail!("Output file was not created: {:?}", output);
+            return Err(VideoError::ProcessingError {
+                message: format!("Output file was not created: {:?}", output),
+            });
         }
 
         info!("Short composed successfully: {:?}", output);
@@ -227,35 +237,31 @@ impl VideoProcessor {
             target_height, target_width, target_height
         );
 
-        let status = TokioCommand::new(&self.ffmpeg_path)
-            .args(&[
-                "-i",
-                input.to_str().context("Invalid input path")?,
-                "-vf",
-                &filter,
-                "-c:v",
-                "libx264",
-                "-preset",
-                "medium",
-                "-crf",
-                "23",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-y",
-                output.to_str().context("Invalid output path")?,
-            ])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::piped())
-            .status()
-            .await
-            .context("Failed to execute FFmpeg")?;
+        let mut command = TokioCommand::new(&self.ffmpeg_path);
+        command.args(&[
+            "-i",
+            input.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: input.display().to_string(),
+            })?,
+            "-vf",
+            &filter,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "23",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-y",
+            output.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: output.display().to_string(),
+            })?,
+        ]);
 
-        if !status.success() {
-            error!("FFmpeg scale/crop failed with status: {}", status);
-            anyhow::bail!("FFmpeg scale/crop failed");
-        }
+        execute_ffmpeg_command(&mut command).await?;
 
         Ok(output.to_path_buf())
     }
@@ -285,44 +291,46 @@ impl VideoProcessor {
 
         // Validate input file exists
         if !input.exists() {
-            anyhow::bail!("Input file does not exist: {:?}", input);
+            return Err(VideoError::FileNotFound {
+                path: input.display().to_string(),
+            });
         }
 
         // Create output directory if it doesn't exist
         if let Some(parent) = output.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .context("Failed to create output directory")?;
+            if !parent.exists() {
+                return Err(VideoError::OutputDirectoryNotFound {
+                    path: parent.display().to_string(),
+                });
+            }
         }
 
         // Run FFmpeg to extract a single frame as JPEG
-        let status = TokioCommand::new(&self.ffmpeg_path)
-            .args(&[
-                "-ss",
-                &time_offset.to_string(),
-                "-i",
-                input.to_str().context("Invalid input path")?,
-                "-vframes",
-                "1", // Extract only 1 frame
-                "-q:v",
-                "2", // High quality JPEG
-                "-y",
-                output.to_str().context("Invalid output path")?,
-            ])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::piped())
-            .status()
-            .await
-            .context("Failed to execute FFmpeg")?;
+        let mut command = TokioCommand::new(&self.ffmpeg_path);
+        command.args(&[
+            "-ss",
+            &time_offset.to_string(),
+            "-i",
+            input.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: input.display().to_string(),
+            })?,
+            "-vframes",
+            "1", // Extract only 1 frame
+            "-q:v",
+            "2", // High quality JPEG
+            "-y",
+            output.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: output.display().to_string(),
+            })?,
+        ]);
 
-        if !status.success() {
-            error!("FFmpeg thumbnail generation failed with status: {}", status);
-            anyhow::bail!("FFmpeg thumbnail generation failed");
-        }
+        execute_ffmpeg_command(&mut command).await?;
 
         // Verify output file was created
         if !output.exists() {
-            anyhow::bail!("Output file was not created: {:?}", output);
+            return Err(VideoError::ProcessingError {
+                message: format!("Output file was not created: {:?}", output),
+            });
         }
 
         info!("Thumbnail generated successfully: {:?}", output);
@@ -334,7 +342,9 @@ impl VideoProcessor {
         let input = input_path.as_ref();
 
         if !input.exists() {
-            anyhow::bail!("Input file does not exist: {:?}", input);
+            return Err(VideoError::FileNotFound {
+                path: input.display().to_string(),
+            });
         }
 
         let output = TokioCommand::new("ffprobe")
@@ -345,21 +355,34 @@ impl VideoProcessor {
                 "format=duration",
                 "-of",
                 "default=noprint_wrappers=1:nokey=1",
-                input.to_str().context("Invalid input path")?,
+                input.to_str().ok_or_else(|| VideoError::FileAccessError {
+                    path: input.display().to_string(),
+                })?,
             ])
             .output()
             .await
-            .context("Failed to execute ffprobe")?;
+            .map_err(|e| {
+                if e.kind() == std::io::ErrorKind::NotFound {
+                    VideoError::FfmpegNotFound
+                } else {
+                    VideoError::ProcessingError {
+                        message: format!("Failed to execute ffprobe: {}", e),
+                    }
+                }
+            })?;
 
         if !output.status.success() {
-            anyhow::bail!("ffprobe failed to get duration");
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(VideoError::from_ffmpeg_stderr(&stderr));
         }
 
         let duration_str = String::from_utf8_lossy(&output.stdout);
         let duration = duration_str
             .trim()
             .parse::<f64>()
-            .context("Failed to parse duration")?;
+            .map_err(|e| VideoError::ProcessingError {
+                message: format!("Failed to parse duration: {}", e),
+            })?;
 
         Ok(duration)
     }

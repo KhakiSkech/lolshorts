@@ -1,11 +1,10 @@
-use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
-use super::{ClipInfo, VideoProcessor};
+use super::{execute_ffmpeg_command, ClipInfo, Result, VideoError, VideoProcessor};
 use crate::storage::Storage;
 
 /// Configuration for auto-edit composition
@@ -201,7 +200,7 @@ impl AutoComposer {
         let all_clips = self.load_clips_from_games(&config.game_ids).await?;
 
         if all_clips.is_empty() {
-            anyhow::bail!("No clips found for selected games");
+            return Err(VideoError::NoClipsFound);
         }
 
         // Step 2: Select clips based on priority and duration (20% progress)
@@ -216,7 +215,7 @@ impl AutoComposer {
         let selected_clips = self.select_clips(&all_clips, &config).await?;
 
         if selected_clips.is_empty() {
-            anyhow::bail!("No clips selected after filtering");
+            return Err(VideoError::NoClipsFound);
         }
 
         info!(
@@ -327,7 +326,7 @@ impl AutoComposer {
                 .collect();
 
             if selected.is_empty() {
-                anyhow::bail!("None of the manually selected clip IDs were found");
+                return Err(VideoError::NoClipsFound);
             }
 
             return Ok(selected);
@@ -387,7 +386,9 @@ impl AutoComposer {
         let output_dir = std::env::temp_dir().join("lolshorts_auto_edit");
         tokio::fs::create_dir_all(&output_dir)
             .await
-            .context("Failed to create temp directory for prepared clips")?;
+            .map_err(|e| VideoError::ProcessingError {
+                message: format!("Failed to create temp directory: {}", e),
+            })?;
 
         // Calculate total duration
         let total_duration: f64 = clips
@@ -416,7 +417,9 @@ impl AutoComposer {
             // Validate all files exist
             for path in &paths {
                 if !path.exists() {
-                    anyhow::bail!("Clip file not found: {:?}", path);
+                    return Err(VideoError::FileNotFound {
+                        path: path.display().to_string(),
+                    });
                 }
             }
 
@@ -436,7 +439,9 @@ impl AutoComposer {
             let input_path = PathBuf::from(&clip.file_path);
 
             if !input_path.exists() {
-                anyhow::bail!("Clip file not found: {:?}", input_path);
+                return Err(VideoError::FileNotFound {
+                    path: input_path.display().to_string(),
+                });
             }
 
             let clip_duration = clip.duration.unwrap_or(10.0);
@@ -465,7 +470,9 @@ impl AutoComposer {
             self.video_processor
                 .extract_clip(&input_path, &output_path, start_time, trimmed_duration)
                 .await
-                .context(format!("Failed to trim clip {}: {:?}", idx, input_path))?;
+                .map_err(|e| VideoError::ProcessingError {
+                    message: format!("Failed to trim clip {}: {}", idx, e),
+                })?;
 
             prepared_paths.push(output_path);
         }
@@ -484,7 +491,9 @@ impl AutoComposer {
         let output_dir = std::env::temp_dir().join("lolshorts_auto_edit");
         tokio::fs::create_dir_all(&output_dir)
             .await
-            .context("Failed to create temp directory")?;
+            .map_err(|e| VideoError::ProcessingError {
+                message: format!("Failed to create temp directory: {}", e),
+            })?;
 
         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
         let output_path = output_dir.join(format!("concatenated_{}.mp4", timestamp));
@@ -511,7 +520,9 @@ impl AutoComposer {
         let output_dir = std::env::temp_dir().join("lolshorts_auto_edit");
         tokio::fs::create_dir_all(&output_dir)
             .await
-            .context("Failed to create temp directory for canvas overlay")?;
+            .map_err(|e| VideoError::CanvasApplicationError {
+                reason: format!("Failed to create temp directory: {}", e),
+            })?;
 
         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
         let output_path = output_dir.join(format!("with_canvas_{}.mp4", timestamp));
@@ -666,30 +677,33 @@ impl AutoComposer {
         info!("FFmpeg filter chain: {}", filter_complex);
 
         // Execute FFmpeg command
-        let status = tokio::process::Command::new("ffmpeg")
-            .args(&[
-                "-i",
-                video_path.to_str().context("Invalid video path")?,
-                "-filter_complex",
-                &filter_complex,
-                "-c:v",
-                "libx264",
-                "-preset",
-                "medium",
-                "-crf",
-                "23",
-                "-c:a",
-                "copy", // Copy audio unchanged
-                "-y",
-                output_path.to_str().context("Invalid output path")?,
-            ])
-            .status()
-            .await
-            .context("Failed to execute FFmpeg for canvas overlay")?;
+        let mut command = tokio::process::Command::new("ffmpeg");
+        command.args(&[
+            "-i",
+            video_path.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: video_path.display().to_string(),
+            })?,
+            "-filter_complex",
+            &filter_complex,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "23",
+            "-c:a",
+            "copy", // Copy audio unchanged
+            "-y",
+            output_path.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: output_path.display().to_string(),
+            })?,
+        ]);
 
-        if !status.success() {
-            anyhow::bail!("FFmpeg canvas overlay failed with status: {}", status);
-        }
+        execute_ffmpeg_command(&mut command)
+            .await
+            .map_err(|e| VideoError::CanvasApplicationError {
+                reason: e.to_string(),
+            })?;
 
         info!("Successfully applied canvas overlay");
         Ok(output_path)
@@ -714,14 +728,18 @@ impl AutoComposer {
         let output_dir = std::env::temp_dir().join("lolshorts_auto_edit");
         tokio::fs::create_dir_all(&output_dir)
             .await
-            .context("Failed to create temp directory for audio mixing")?;
+            .map_err(|e| VideoError::AudioMixingError {
+                reason: format!("Failed to create temp directory: {}", e),
+            })?;
 
         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
         let output_path = output_dir.join(format!("with_audio_{}.mp4", timestamp));
 
         let music_path = PathBuf::from(&music.file_path);
         if !music_path.exists() {
-            anyhow::bail!("Background music file not found: {}", music.file_path);
+            return Err(VideoError::BackgroundMusicNotFound {
+                path: music.file_path.clone(),
+            });
         }
 
         info!("Mixing audio: game={}%, music={}%", levels.game_audio, levels.background_music);
@@ -732,10 +750,13 @@ impl AutoComposer {
         let music_volume = levels.background_music as f64 / 100.0;
 
         // Get video duration for fade-out timing
-        let video_duration = self.video_processor
+        let video_duration = self
+            .video_processor
             .get_duration(video_path)
             .await
-            .context("Failed to get video duration")?;
+            .map_err(|e| VideoError::AudioMixingError {
+                reason: format!("Failed to get video duration: {}", e),
+            })?;
 
         info!("Video duration: {:.1}s", video_duration);
 
@@ -782,35 +803,40 @@ impl AutoComposer {
         info!("Audio filter chain: {}", audio_filter);
 
         // Execute FFmpeg command
-        let status = tokio::process::Command::new("ffmpeg")
-            .args(&[
-                "-i",
-                video_path.to_str().context("Invalid video path")?,
-                "-i",
-                music_path.to_str().context("Invalid music path")?,
-                "-filter_complex",
-                &audio_filter,
-                "-map",
-                "0:v", // Video from first input
-                "-map",
-                "[audio_out]", // Mixed audio
-                "-c:v",
-                "copy", // Copy video codec (no re-encoding)
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-shortest", // End when shortest input ends
-                "-y",
-                output_path.to_str().context("Invalid output path")?,
-            ])
-            .status()
-            .await
-            .context("Failed to execute FFmpeg for audio mixing")?;
+        let mut command = tokio::process::Command::new("ffmpeg");
+        command.args(&[
+            "-i",
+            video_path.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: video_path.display().to_string(),
+            })?,
+            "-i",
+            music_path.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: music_path.display().to_string(),
+            })?,
+            "-filter_complex",
+            &audio_filter,
+            "-map",
+            "0:v", // Video from first input
+            "-map",
+            "[audio_out]", // Mixed audio
+            "-c:v",
+            "copy", // Copy video codec (no re-encoding)
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-shortest", // End when shortest input ends
+            "-y",
+            output_path.to_str().ok_or_else(|| VideoError::FileAccessError {
+                path: output_path.display().to_string(),
+            })?,
+        ]);
 
-        if !status.success() {
-            anyhow::bail!("FFmpeg audio mixing failed with status: {}", status);
-        }
+        execute_ffmpeg_command(&mut command)
+            .await
+            .map_err(|e| VideoError::AudioMixingError {
+                reason: e.to_string(),
+            })?;
 
         info!("Successfully mixed audio");
         Ok(output_path)
@@ -826,7 +852,9 @@ impl AutoComposer {
             let storage_clips = self
                 .storage
                 .load_clip_metadata(game_id)
-                .context(format!("Failed to load clips for game {}", game_id))?;
+                .map_err(|e| VideoError::ProcessingError {
+                    message: format!("Failed to load clips for game {}: {}", game_id, e),
+                })?;
 
             info!(
                 "Loaded {} clips from game {}",
