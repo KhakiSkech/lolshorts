@@ -466,6 +466,86 @@ impl Storage {
 
         Ok(filtered)
     }
+
+    // ========================================================================
+    // Canvas Template Storage
+    // ========================================================================
+
+    /// Save a canvas template to the template library
+    ///
+    /// Templates are stored in: <base_path>/templates/<template_id>.json
+    pub fn save_canvas_template(&self, template: &crate::video::CanvasTemplate) -> Result<()> {
+        let templates_dir = self.base_path.join("templates");
+        fs::create_dir_all(&templates_dir)?;
+
+        let template_path = templates_dir.join(format!("{}.json", template.id));
+        let json = serde_json::to_string_pretty(template)?;
+        fs::write(template_path, json)?;
+
+        tracing::info!("Saved canvas template: {} ({})", template.name, template.id);
+        Ok(())
+    }
+
+    /// Load a canvas template by ID
+    pub fn load_canvas_template(&self, template_id: &str) -> Result<crate::video::CanvasTemplate> {
+        let template_path = self.base_path.join("templates").join(format!("{}.json", template_id));
+
+        if !template_path.exists() {
+            return Err(StorageError::GameNotFound(format!("Template not found: {}", template_id)));
+        }
+
+        let json = fs::read_to_string(template_path)?;
+        let template = serde_json::from_str(&json)?;
+
+        Ok(template)
+    }
+
+    /// List all available canvas templates
+    ///
+    /// Returns a list of template IDs and names
+    pub fn list_canvas_templates(&self) -> Result<Vec<CanvasTemplateInfo>> {
+        let templates_dir = self.base_path.join("templates");
+
+        if !templates_dir.exists() {
+            return Ok(Vec::new());
+        }
+
+        let mut templates = Vec::new();
+
+        for entry in fs::read_dir(templates_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if let Ok(json) = fs::read_to_string(&path) {
+                    if let Ok(template) = serde_json::from_str::<crate::video::CanvasTemplate>(&json) {
+                        templates.push(CanvasTemplateInfo {
+                            id: template.id.clone(),
+                            name: template.name.clone(),
+                            element_count: template.elements.len(),
+                        });
+                    }
+                }
+            }
+        }
+
+        // Sort by name
+        templates.sort_by(|a, b| a.name.cmp(&b.name));
+
+        Ok(templates)
+    }
+
+    /// Delete a canvas template
+    pub fn delete_canvas_template(&self, template_id: &str) -> Result<()> {
+        let template_path = self.base_path.join("templates").join(format!("{}.json", template_id));
+
+        if template_path.exists() {
+            fs::remove_file(template_path)?;
+            tracing::info!("Deleted canvas template: {}", template_id);
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -473,6 +553,14 @@ pub struct StorageStats {
     pub total_games: usize,
     pub total_clips: usize,
     pub total_size_bytes: u64,
+}
+
+/// Canvas template metadata for listing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CanvasTemplateInfo {
+    pub id: String,
+    pub name: String,
+    pub element_count: usize,
 }
 
 #[cfg(test)]

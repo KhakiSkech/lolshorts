@@ -277,6 +277,11 @@ async fn main() {
             // Auto-edit commands
             video::commands::start_auto_edit,
             video::commands::get_auto_edit_progress,
+            // Canvas template commands
+            video::commands::save_canvas_template,
+            video::commands::load_canvas_template,
+            video::commands::list_canvas_templates,
+            video::commands::delete_canvas_template,
             // LCU commands
             lcu::commands::connect_lcu,
             lcu::commands::check_lcu_status,

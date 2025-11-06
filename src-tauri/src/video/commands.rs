@@ -182,3 +182,74 @@ pub async fn get_auto_edit_progress(
     let progress = state.auto_composer.get_progress().await;
     Ok(progress)
 }
+
+// ========================================================================
+// Canvas Template Management
+// ========================================================================
+
+/// Save a canvas template to the library for reuse
+#[tauri::command]
+pub async fn save_canvas_template(
+    state: State<'_, AppState>,
+    template: crate::video::CanvasTemplate,
+) -> Result<(), String> {
+    // Require authentication
+    require_auth(&state.auth).map_err(|e| e.to_string())?;
+
+    state
+        .storage
+        .save_canvas_template(&template)
+        .map_err(|e| format!("Failed to save canvas template: {}", e))?;
+
+    Ok(())
+}
+
+/// Load a canvas template by ID
+#[tauri::command]
+pub async fn load_canvas_template(
+    state: State<'_, AppState>,
+    template_id: String,
+) -> Result<crate::video::CanvasTemplate, String> {
+    // Require authentication
+    require_auth(&state.auth).map_err(|e| e.to_string())?;
+
+    let template = state
+        .storage
+        .load_canvas_template(&template_id)
+        .map_err(|e| format!("Failed to load canvas template: {}", e))?;
+
+    Ok(template)
+}
+
+/// List all available canvas templates
+#[tauri::command]
+pub async fn list_canvas_templates(
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::storage::CanvasTemplateInfo>, String> {
+    // Require authentication
+    require_auth(&state.auth).map_err(|e| e.to_string())?;
+
+    let templates = state
+        .storage
+        .list_canvas_templates()
+        .map_err(|e| format!("Failed to list canvas templates: {}", e))?;
+
+    Ok(templates)
+}
+
+/// Delete a canvas template
+#[tauri::command]
+pub async fn delete_canvas_template(
+    state: State<'_, AppState>,
+    template_id: String,
+) -> Result<(), String> {
+    // Require authentication
+    require_auth(&state.auth).map_err(|e| e.to_string())?;
+
+    state
+        .storage
+        .delete_canvas_template(&template_id)
+        .map_err(|e| format!("Failed to delete canvas template: {}", e))?;
+
+    Ok(())
+}

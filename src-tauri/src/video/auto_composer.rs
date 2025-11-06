@@ -370,23 +370,113 @@ impl AutoComposer {
     }
 
     /// Prepare clips by trimming to fit target duration
+    ///
+    /// This function intelligently trims clips if the total duration exceeds
+    /// the target. Trimming is done proportionally based on clip duration.
+    ///
+    /// # Strategy
+    /// 1. Calculate total duration of all clips
+    /// 2. If within target (with 10% buffer), return original clips
+    /// 3. If exceeds target, calculate trim factor and trim each clip proportionally
+    /// 4. Maintain minimum clip length of 3 seconds for quality
     async fn prepare_clips(
         &self,
         clips: &[ClipInfo],
         target_duration: u32,
     ) -> Result<Vec<PathBuf>> {
-        // For now, just return the clip paths as-is
-        // In the future, implement intelligent trimming
-        let paths: Vec<PathBuf> = clips.iter().map(|c| PathBuf::from(&c.file_path)).collect();
+        let output_dir = std::env::temp_dir().join("lolshorts_auto_edit");
+        tokio::fs::create_dir_all(&output_dir)
+            .await
+            .context("Failed to create temp directory for prepared clips")?;
 
-        // Validate all files exist
-        for path in &paths {
-            if !path.exists() {
-                anyhow::bail!("Clip file not found: {:?}", path);
+        // Calculate total duration
+        let total_duration: f64 = clips
+            .iter()
+            .map(|c| c.duration.unwrap_or(10.0))
+            .sum();
+
+        let target = target_duration as f64;
+        let buffer_target = target * 0.9; // Leave 10% buffer for transitions
+
+        info!(
+            "Preparing {} clips: total={:.1}s, target={:.1}s",
+            clips.len(),
+            total_duration,
+            target
+        );
+
+        // If within target, validate and return original paths
+        if total_duration <= buffer_target {
+            info!("Total duration within target, using original clips");
+            let paths: Vec<PathBuf> = clips
+                .iter()
+                .map(|c| PathBuf::from(&c.file_path))
+                .collect();
+
+            // Validate all files exist
+            for path in &paths {
+                if !path.exists() {
+                    anyhow::bail!("Clip file not found: {:?}", path);
+                }
             }
+
+            return Ok(paths);
         }
 
-        Ok(paths)
+        // Need to trim clips proportionally
+        info!(
+            "Total duration {:.1}s exceeds target {:.1}s, applying intelligent trimming",
+            total_duration, buffer_target
+        );
+
+        let trim_factor = buffer_target / total_duration;
+        let mut prepared_paths = Vec::new();
+
+        for (idx, clip) in clips.iter().enumerate() {
+            let input_path = PathBuf::from(&clip.file_path);
+
+            if !input_path.exists() {
+                anyhow::bail!("Clip file not found: {:?}", input_path);
+            }
+
+            let clip_duration = clip.duration.unwrap_or(10.0);
+            let trimmed_duration = (clip_duration * trim_factor).max(3.0); // Minimum 3 seconds
+
+            // If trimming saves less than 0.5 seconds, use original
+            if (clip_duration - trimmed_duration).abs() < 0.5 {
+                info!(
+                    "Clip {} ({:.1}s): using original (trimming saves <0.5s)",
+                    idx, clip_duration
+                );
+                prepared_paths.push(input_path);
+                continue;
+            }
+
+            // Trim the clip from the center to preserve important moments
+            let start_time = (clip_duration - trimmed_duration) / 2.0;
+            let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+            let output_path = output_dir.join(format!("trimmed_{}_{}.mp4", idx, timestamp));
+
+            info!(
+                "Clip {}: trimming from {:.1}s to {:.1}s (start={:.1}s)",
+                idx, clip_duration, trimmed_duration, start_time
+            );
+
+            self.video_processor
+                .extract_clip(&input_path, &output_path, start_time, trimmed_duration)
+                .await
+                .context(format!("Failed to trim clip {}: {:?}", idx, input_path))?;
+
+            prepared_paths.push(output_path);
+        }
+
+        info!(
+            "Successfully prepared {} clips (trimmed {})",
+            clips.len(),
+            clips.len() - prepared_paths.len()
+        );
+
+        Ok(prepared_paths)
     }
 
     /// Concatenate multiple clips
@@ -406,28 +496,324 @@ impl AutoComposer {
     }
 
     /// Apply canvas overlay (background + text + images)
+    ///
+    /// Creates a complex FFmpeg filter chain to apply:
+    /// 1. Background layer (color, gradient, or image)
+    /// 2. Text overlays with positioning
+    /// 3. Image overlays with positioning
+    ///
+    /// All positions are percentage-based (0-100) and converted to 1080x1920 pixels.
     async fn apply_canvas_overlay(
         &self,
         video_path: &Path,
-        _canvas: &CanvasTemplate,
+        canvas: &CanvasTemplate,
     ) -> Result<PathBuf> {
-        // TODO: Implement canvas overlay using FFmpeg filters
-        // For now, return the video as-is
-        warn!("Canvas overlay not yet implemented, skipping...");
-        Ok(video_path.to_path_buf())
+        let output_dir = std::env::temp_dir().join("lolshorts_auto_edit");
+        tokio::fs::create_dir_all(&output_dir)
+            .await
+            .context("Failed to create temp directory for canvas overlay")?;
+
+        let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+        let output_path = output_dir.join(format!("with_canvas_{}.mp4", timestamp));
+
+        info!("Applying canvas template: {}", canvas.name);
+
+        // YouTube Shorts dimensions
+        const WIDTH: u32 = 1080;
+        const HEIGHT: u32 = 1920;
+
+        // Build FFmpeg filter chain
+        let mut filter_parts = Vec::new();
+
+        // Step 1: Apply background layer
+        match &canvas.background {
+            BackgroundLayer::Color { value } => {
+                // Create solid color background
+                info!("Canvas background: solid color {}", value);
+                filter_parts.push(format!(
+                    "color=c={}:s={}x{}:d=1[bg]",
+                    value, WIDTH, HEIGHT
+                ));
+                filter_parts.push("[0:v][bg]overlay=shortest=1".to_string());
+            }
+            BackgroundLayer::Gradient { value } => {
+                // For gradient, we'll use a simple vertical gradient
+                // Format: "color1:color2" (e.g., "blue:purple")
+                info!("Canvas background: gradient {}", value);
+                let colors: Vec<&str> = value.split(':').collect();
+                if colors.len() == 2 {
+                    filter_parts.push(format!(
+                        "color=c={}:s={}x{}:d=1,\
+                         geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)',\
+                         fade=type=in:duration=0:color={}[bg]",
+                        colors[0], WIDTH, HEIGHT, colors[1]
+                    ));
+                    filter_parts.push("[0:v][bg]overlay=shortest=1".to_string());
+                } else {
+                    warn!("Invalid gradient format, skipping background");
+                }
+            }
+            BackgroundLayer::Image { path } => {
+                info!("Canvas background: image {}", path);
+                let bg_path = PathBuf::from(path);
+                if bg_path.exists() {
+                    // Scale background image to fit 1080x1920 with blur effect
+                    filter_parts.push(format!(
+                        "movie={}[bg_img];\
+                         [bg_img]scale={}:{}:force_original_aspect_ratio=increase,\
+                         crop={}:{},\
+                         boxblur=20[bg]",
+                        path, WIDTH, HEIGHT, WIDTH, HEIGHT
+                    ));
+                    filter_parts.push("[0:v][bg]overlay=shortest=1".to_string());
+                } else {
+                    warn!("Background image not found: {}", path);
+                }
+            }
+        }
+
+        // Step 2: Apply text overlays
+        for (idx, element) in canvas.elements.iter().enumerate() {
+            if let CanvasElement::Text {
+                content,
+                font,
+                size,
+                color,
+                outline,
+                position,
+                ..
+            } = element
+            {
+                // Convert percentage position to pixels
+                let x = (position.x * WIDTH as f32 / 100.0) as u32;
+                let y = (position.y * HEIGHT as f32 / 100.0) as u32;
+
+                info!(
+                    "Text overlay {}: '{}' at ({}, {})",
+                    idx, content, x, y
+                );
+
+                // Build drawtext filter
+                let mut drawtext = format!(
+                    "drawtext=text='{}':fontfile={}:fontsize={}:fontcolor={}:x={}:y={}",
+                    content.replace("'", "\\'"),
+                    font,
+                    size,
+                    color,
+                    x,
+                    y
+                );
+
+                // Add outline if specified
+                if let Some(outline_color) = outline {
+                    drawtext.push_str(&format!(
+                        ":borderw=2:bordercolor={}",
+                        outline_color
+                    ));
+                }
+
+                filter_parts.push(drawtext);
+            }
+        }
+
+        // Step 3: Apply image overlays
+        for (idx, element) in canvas.elements.iter().enumerate() {
+            if let CanvasElement::Image {
+                path,
+                width,
+                height,
+                position,
+                ..
+            } = element
+            {
+                let img_path = PathBuf::from(path);
+                if !img_path.exists() {
+                    warn!("Overlay image not found: {}", path);
+                    continue;
+                }
+
+                // Convert percentage position to pixels
+                let x = (position.x * WIDTH as f32 / 100.0) as u32;
+                let y = (position.y * HEIGHT as f32 / 100.0) as u32;
+
+                info!(
+                    "Image overlay {}: {} at ({}, {}) size {}x{}",
+                    idx, path, x, y, width, height
+                );
+
+                // Add movie input and overlay
+                filter_parts.push(format!(
+                    "movie={}[img{}];\
+                     [img{}]scale={}:{}[scaled_img{}]",
+                    path, idx, idx, width, height, idx
+                ));
+                filter_parts.push(format!(
+                    "overlay={}:{}[out{}]",
+                    x, y, idx
+                ));
+            }
+        }
+
+        // If no filters to apply, return original video
+        if filter_parts.is_empty() {
+            info!("No canvas elements to apply, returning original video");
+            return Ok(video_path.to_path_buf());
+        }
+
+        // Combine filter chain
+        let filter_complex = filter_parts.join(";");
+
+        info!("FFmpeg filter chain: {}", filter_complex);
+
+        // Execute FFmpeg command
+        let status = tokio::process::Command::new("ffmpeg")
+            .args(&[
+                "-i",
+                video_path.to_str().context("Invalid video path")?,
+                "-filter_complex",
+                &filter_complex,
+                "-c:v",
+                "libx264",
+                "-preset",
+                "medium",
+                "-crf",
+                "23",
+                "-c:a",
+                "copy", // Copy audio unchanged
+                "-y",
+                output_path.to_str().context("Invalid output path")?,
+            ])
+            .status()
+            .await
+            .context("Failed to execute FFmpeg for canvas overlay")?;
+
+        if !status.success() {
+            anyhow::bail!("FFmpeg canvas overlay failed with status: {}", status);
+        }
+
+        info!("Successfully applied canvas overlay");
+        Ok(output_path)
     }
 
     /// Mix game audio with background music
+    ///
+    /// Uses FFmpeg's amix filter to combine:
+    /// - Game audio (from video) at specified volume
+    /// - Background music (MP3 file) at specified volume
+    ///
+    /// Features:
+    /// - Volume control via AudioLevels (0-100 converted to FFmpeg volume)
+    /// - Music looping if shorter than video
+    /// - Fade-in (3s) and fade-out (3s) for professional sound
     async fn mix_audio(
         &self,
         video_path: &Path,
-        _music: &BackgroundMusic,
-        _levels: &AudioLevels,
+        music: &BackgroundMusic,
+        levels: &AudioLevels,
     ) -> Result<PathBuf> {
-        // TODO: Implement audio mixing using FFmpeg amix filter
-        // For now, return the video as-is
-        warn!("Audio mixing not yet implemented, skipping...");
-        Ok(video_path.to_path_buf())
+        let output_dir = std::env::temp_dir().join("lolshorts_auto_edit");
+        tokio::fs::create_dir_all(&output_dir)
+            .await
+            .context("Failed to create temp directory for audio mixing")?;
+
+        let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+        let output_path = output_dir.join(format!("with_audio_{}.mp4", timestamp));
+
+        let music_path = PathBuf::from(&music.file_path);
+        if !music_path.exists() {
+            anyhow::bail!("Background music file not found: {}", music.file_path);
+        }
+
+        info!("Mixing audio: game={}%, music={}%", levels.game_audio, levels.background_music);
+
+        // Convert 0-100 volume to FFmpeg volume (0.0-2.0)
+        // 100% = 1.0, 50% = 0.5, 200% = 2.0
+        let game_volume = levels.game_audio as f64 / 100.0;
+        let music_volume = levels.background_music as f64 / 100.0;
+
+        // Get video duration for fade-out timing
+        let video_duration = self.video_processor
+            .get_duration(video_path)
+            .await
+            .context("Failed to get video duration")?;
+
+        info!("Video duration: {:.1}s", video_duration);
+
+        // Build audio filter chain
+        let mut audio_filter = String::new();
+
+        // [0:a] = game audio with volume adjustment
+        audio_filter.push_str(&format!("[0:a]volume={}[game_audio];", game_volume));
+
+        // [1:a] = background music with volume, fade-in, fade-out
+        let fade_duration = 3.0; // 3 seconds fade
+        let fade_out_start = (video_duration - fade_duration).max(0.0);
+
+        if music.loop_music {
+            // Loop music if shorter than video
+            audio_filter.push_str(&format!(
+                "[1:a]aloop=loop=-1:size=2e+09,\
+                 atrim=0:{},\
+                 volume={},\
+                 afade=t=in:st=0:d={},\
+                 afade=t=out:st={}:d={}[bg_music];",
+                video_duration,
+                music_volume,
+                fade_duration,
+                fade_out_start,
+                fade_duration
+            ));
+        } else {
+            // No looping - music plays once
+            audio_filter.push_str(&format!(
+                "[1:a]volume={},\
+                 afade=t=in:st=0:d={},\
+                 afade=t=out:st={}:d={}[bg_music];",
+                music_volume,
+                fade_duration,
+                fade_out_start,
+                fade_duration
+            ));
+        }
+
+        // Mix the two audio streams
+        audio_filter.push_str("[game_audio][bg_music]amix=inputs=2:duration=first[audio_out]");
+
+        info!("Audio filter chain: {}", audio_filter);
+
+        // Execute FFmpeg command
+        let status = tokio::process::Command::new("ffmpeg")
+            .args(&[
+                "-i",
+                video_path.to_str().context("Invalid video path")?,
+                "-i",
+                music_path.to_str().context("Invalid music path")?,
+                "-filter_complex",
+                &audio_filter,
+                "-map",
+                "0:v", // Video from first input
+                "-map",
+                "[audio_out]", // Mixed audio
+                "-c:v",
+                "copy", // Copy video codec (no re-encoding)
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-shortest", // End when shortest input ends
+                "-y",
+                output_path.to_str().context("Invalid output path")?,
+            ])
+            .status()
+            .await
+            .context("Failed to execute FFmpeg for audio mixing")?;
+
+        if !status.success() {
+            anyhow::bail!("FFmpeg audio mixing failed with status: {}", status);
+        }
+
+        info!("Successfully mixed audio");
+        Ok(output_path)
     }
 
     /// Load clips from database for given game IDs
