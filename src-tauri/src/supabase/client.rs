@@ -59,7 +59,18 @@ impl SupabaseClient {
     pub async fn sign_up(&self, email: &str, password: &str) -> Result<Session> {
         info!("Attempting to sign up user: {}", email);
 
-        let url = format!("{}/auth/v1/signup", self.config.project_url);
+        // Check if email confirmation should be disabled (for development)
+        let disable_email_confirm = std::env::var("SUPABASE_DISABLE_EMAIL_CONFIRM")
+            .unwrap_or_else(|_| "false".to_string())
+            .to_lowercase() == "true";
+
+        let mut url = format!("{}/auth/v1/signup", self.config.project_url);
+
+        // Add autoconfirm parameter if email confirmation is disabled
+        if disable_email_confirm {
+            url.push_str("?autoconfirm=true");
+            info!("Email confirmation disabled for development");
+        }
 
         let response = self
             .client
