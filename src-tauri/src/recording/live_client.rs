@@ -1,4 +1,4 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -13,14 +13,14 @@ const LIVE_CLIENT_API: &str = "https://127.0.0.1:2999/liveclientdata";
 #[derive(Debug, Clone, PartialEq)]
 pub enum EventTrigger {
     ChampionKill,
-    Multikill(u8),  // Double, Triple, Quadra, Penta
+    Multikill(u8), // Double, Triple, Quadra, Penta
     DragonKill,
     BaronKill,
     TurretKill,
     InhibitorKill,
     Ace,
-    Steal,  // Dragon/Baron steal
-    ClutchPlay,  // 1v2+, low HP survival
+    Steal,      // Dragon/Baron steal
+    ClutchPlay, // 1v2+, low HP survival
 }
 
 impl EventTrigger {
@@ -28,10 +28,10 @@ impl EventTrigger {
     pub fn priority(&self) -> u8 {
         match self {
             EventTrigger::ChampionKill => 1,
-            EventTrigger::Multikill(2) => 2,  // Double
-            EventTrigger::Multikill(3) => 3,  // Triple
-            EventTrigger::Multikill(4) => 4,  // Quadra
-            EventTrigger::Multikill(5) => 5,  // Penta
+            EventTrigger::Multikill(2) => 2, // Double
+            EventTrigger::Multikill(3) => 3, // Triple
+            EventTrigger::Multikill(4) => 4, // Quadra
+            EventTrigger::Multikill(5) => 5, // Penta
             EventTrigger::DragonKill => 2,
             EventTrigger::BaronKill => 3,
             EventTrigger::TurretKill => 1,
@@ -46,8 +46,8 @@ impl EventTrigger {
     /// Get recommended clip duration before event (seconds)
     pub fn pre_duration(&self) -> u32 {
         match self {
-            EventTrigger::Multikill(_) => 15,  // Need setup time
-            EventTrigger::Steal => 20,  // Need fight context
+            EventTrigger::Multikill(_) => 15, // Need setup time
+            EventTrigger::Steal => 20,        // Need fight context
             EventTrigger::ClutchPlay => 20,
             _ => 10,
         }
@@ -56,7 +56,7 @@ impl EventTrigger {
     /// Get recommended clip duration after event (seconds)
     pub fn post_duration(&self) -> u32 {
         match self {
-            EventTrigger::Ace => 10,  // Show aftermath
+            EventTrigger::Ace => 10, // Show aftermath
             EventTrigger::BaronKill => 5,
             EventTrigger::Multikill(_) => 5,
             _ => 3,
@@ -208,17 +208,22 @@ impl LiveClientMonitor {
     async fn fetch_game_data(&self) -> Result<AllGameData> {
         let url = format!("{}/allgamedata", LIVE_CLIENT_API);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .send()
             .await
             .context("Failed to connect to Live Client API")?;
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("API returned status: {}", response.status()));
+            return Err(anyhow::anyhow!(
+                "API returned status: {}",
+                response.status()
+            ));
         }
 
-        let data = response.json::<AllGameData>()
+        let data = response
+            .json::<AllGameData>()
             .await
             .context("Failed to parse game data")?;
 
@@ -243,7 +248,11 @@ impl LiveClientMonitor {
 
             // Detect event triggers
             if let Some(trigger) = self.detect_trigger(event, player_name).await {
-                info!("Event trigger detected: {:?} (priority: {})", trigger, trigger.priority());
+                info!(
+                    "Event trigger detected: {:?} (priority: {})",
+                    trigger,
+                    trigger.priority()
+                );
                 on_event(trigger, event.clone());
             }
 
@@ -269,7 +278,7 @@ impl LiveClientMonitor {
                         }
                     } else if event.victim_name.as_deref() == Some(player_name) {
                         // Player died - might want to save if it was a close fight
-                        None  // TODO: Detect clutch plays
+                        None // TODO: Detect clutch plays
                     } else if let Some(assisters) = &event.assisters {
                         if assisters.contains(&player_name.to_string()) {
                             // Player got an assist
@@ -344,16 +353,14 @@ impl LiveClientMonitor {
         });
 
         // Count kills by this player in the window
-        let kill_count = kills.iter()
-            .filter(|k| k.killer == killer)
-            .count() as u8;
+        let kill_count = kills.iter().filter(|k| k.killer == killer).count() as u8;
 
         // Return multikill level
         match kill_count {
-            5.. => 5,  // Pentakill
-            4 => 4,    // Quadrakill
-            3 => 3,    // Triple kill
-            2 => 2,    // Double kill
+            5.. => 5, // Pentakill
+            4 => 4,   // Quadrakill
+            3 => 3,   // Triple kill
+            2 => 2,   // Double kill
             _ => 1,
         }
     }

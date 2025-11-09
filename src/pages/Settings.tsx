@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { VideoSettings } from "@/components/settings/VideoSettings";
 import { AudioSettings } from "@/components/settings/AudioSettings";
 import { ClipTimingSettings } from "@/components/settings/ClipTimingSettings";
 import { HotkeySettings } from "@/components/settings/HotkeySettings";
+import { LanguageSelector } from "@/components/settings/LanguageSelector";
 import {
   Settings as SettingsIcon,
   CreditCard,
@@ -44,6 +46,7 @@ interface RecordingSettings {
 }
 
 export function Settings() {
+  const { t } = useTranslation();
   const { user, isAuthenticated } = useAuthStore();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -152,173 +155,11 @@ export function Settings() {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold mb-6">Settings</h2>
+      <h2 className="text-3xl font-bold mb-6">{t('settings.title')}</h2>
 
       <div className="space-y-6">
-        {/* License & Subscription */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Crown className="w-6 h-6" />
-              License & Subscription
-            </CardTitle>
-            <CardDescription>
-              Your current plan and subscription details
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!isAuthenticated ? (
-              <div className="text-center py-8">
-                <Shield className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <p className="text-lg font-semibold mb-2">Login Required</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Please login to view and manage your subscription
-                </p>
-                <Button onClick={() => setShowAuthModal(true)}>
-                  Login or Sign Up
-                </Button>
-              </div>
-            ) : isLoadingLicense ? (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">Loading license information...</p>
-              </div>
-            ) : license ? (
-              <>
-                {/* Current Plan */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold flex items-center gap-2">
-                        Current Plan
-                        <Badge variant={license.tier === "PRO" ? "default" : "secondary"} className="text-base">
-                          {license.tier}
-                        </Badge>
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {license.tier === "PRO"
-                          ? "Unlimited clips, priority support, and advanced features"
-                          : "Free tier with basic recording features"
-                        }
-                      </p>
-                    </div>
-                    {license.tier === "FREE" && (
-                      <Button onClick={handleUpgradeToPro}>
-                        <Crown className="w-4 h-4 mr-2" />
-                        Upgrade to PRO
-                      </Button>
-                    )}
-                  </div>
-
-                  <Separator className="my-4" />
-
-                  {/* Plan Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Status</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        {license.is_active ? (
-                          <>
-                            <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            <span className="font-medium">Active</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-4 h-4 text-destructive" />
-                            <span className="font-medium">Inactive</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {license.tier === "PRO" && license.expires_at && (
-                      <>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Expires On</p>
-                          <p className="font-medium mt-1">{formatExpirationDate(license.expires_at)}</p>
-                        </div>
-
-                        {getDaysRemaining(license.expires_at) > 0 && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Days Remaining</p>
-                            <p className="font-medium mt-1">
-                              {getDaysRemaining(license.expires_at)} days
-                            </p>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    <div>
-                      <p className="text-sm text-muted-foreground">Account Email</p>
-                      <p className="font-medium mt-1">{user?.email || "N/A"}</p>
-                    </div>
-                  </div>
-
-                  {license.tier === "PRO" && (
-                    <div className="mt-4">
-                      <Button onClick={handleManageSubscription} variant="outline">
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Manage Subscription
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Plan Comparison */}
-                {license.tier === "FREE" && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3">Why Upgrade to PRO?</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Unlimited Clips</p>
-                            <p className="text-xs text-muted-foreground">Record as many highlights as you want</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Advanced Editor</p>
-                            <p className="text-xs text-muted-foreground">Premium transitions and effects</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">Priority Support</p>
-                            <p className="text-xs text-muted-foreground">Get help faster</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">No Watermarks</p>
-                            <p className="text-xs text-muted-foreground">Export clean videos</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-4 p-4 bg-primary/10 rounded-lg">
-                        <p className="text-sm">
-                          <strong>PRO Pricing:</strong> ₩9,900/month or ₩99,000/year (Save 17%)
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">Failed to load license information</p>
-                <Button onClick={loadLicenseInfo} variant="outline" className="mt-4">
-                  Retry
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Language Selector */}
+        <LanguageSelector />
 
         {/* Recording Configuration */}
         <Card>
@@ -327,10 +168,10 @@ export function Settings() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <SettingsIcon className="w-6 h-6" />
-                  Recording Configuration
+                  {t('settings.recordingConfig.title')}
                 </CardTitle>
                 <CardDescription>
-                  Configure automatic clip recording preferences
+                  {t('settings.recordingConfig.description')}
                 </CardDescription>
               </div>
               <Button
@@ -339,24 +180,24 @@ export function Settings() {
                 onClick={resetSettingsToDefault}
                 disabled={isSavingSettings || !recordingSettings}
               >
-                Reset to Defaults
+                {t('settings.recordingConfig.resetToDefaults')}
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             {isLoadingSettings ? (
               <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">Loading settings...</p>
+                <p className="text-sm text-muted-foreground">{t('settings.recordingConfig.loadingSettings')}</p>
               </div>
             ) : recordingSettings ? (
               <Tabs defaultValue="events" className="w-full">
                 <TabsList className="grid w-full grid-cols-6">
-                  <TabsTrigger value="events">Events</TabsTrigger>
-                  <TabsTrigger value="modes">Game Modes</TabsTrigger>
-                  <TabsTrigger value="video">Video</TabsTrigger>
-                  <TabsTrigger value="audio">Audio</TabsTrigger>
-                  <TabsTrigger value="timing">Timing</TabsTrigger>
-                  <TabsTrigger value="hotkeys">Hotkeys</TabsTrigger>
+                  <TabsTrigger value="events">{t('settings.recordingConfig.tabs.events')}</TabsTrigger>
+                  <TabsTrigger value="modes">{t('settings.recordingConfig.tabs.modes')}</TabsTrigger>
+                  <TabsTrigger value="video">{t('settings.recordingConfig.tabs.video')}</TabsTrigger>
+                  <TabsTrigger value="audio">{t('settings.recordingConfig.tabs.audio')}</TabsTrigger>
+                  <TabsTrigger value="timing">{t('settings.recordingConfig.tabs.timing')}</TabsTrigger>
+                  <TabsTrigger value="hotkeys">{t('settings.recordingConfig.tabs.hotkeys')}</TabsTrigger>
                 </TabsList>
 
                 <div className="mt-6">
@@ -424,15 +265,180 @@ export function Settings() {
                 {isSavingSettings && (
                   <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
                     <Save className="w-4 h-4 animate-pulse" />
-                    Saving...
+                    {t('settings.recordingConfig.savingSettings')}
                   </div>
                 )}
               </Tabs>
             ) : (
               <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">Failed to load settings</p>
+                <p className="text-sm text-muted-foreground">{t('settings.recordingConfig.loadError')}</p>
                 <Button onClick={loadRecordingSettings} variant="outline" className="mt-4">
-                  Retry
+                  {t('editor.retry')}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* License & Subscription */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="w-6 h-6" />
+              {t('settings.license.title')}
+            </CardTitle>
+            <CardDescription>
+              {t('settings.license.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!isAuthenticated ? (
+              <div className="text-center py-8">
+                <Shield className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-semibold mb-2">{t('settings.license.loginRequired')}</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {t('settings.license.loginPrompt')}
+                </p>
+                <Button onClick={() => setShowAuthModal(true)}>
+                  {t('settings.license.loginButton')}
+                </Button>
+              </div>
+            ) : isLoadingLicense ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">{t('settings.license.loadingLicense')}</p>
+              </div>
+            ) : license ? (
+              <>
+                {/* Current Plan */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        {t('settings.license.currentPlan')}
+                        <Badge variant={license.tier === "PRO" ? "default" : "secondary"} className="text-base">
+                          {license.tier}
+                        </Badge>
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {license.tier === "PRO"
+                          ? t('settings.license.proPlanDescription')
+                          : t('settings.license.freePlanDescription')
+                        }
+                      </p>
+                    </div>
+                    {license.tier === "FREE" && (
+                      <Button onClick={handleUpgradeToPro}>
+                        <Crown className="w-4 h-4 mr-2" />
+                        {t('settings.account.upgradeToPro')}
+                      </Button>
+                    )}
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  {/* Plan Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">{t('settings.license.status')}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {license.is_active ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            <span className="font-medium">{t('settings.license.active')}</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-4 h-4 text-destructive" />
+                            <span className="font-medium">{t('settings.license.inactive')}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {license.tier === "PRO" && license.expires_at && (
+                      <>
+                        <div>
+                          <p className="text-sm text-muted-foreground">{t('settings.license.expiresOn')}</p>
+                          <p className="font-medium mt-1">{formatExpirationDate(license.expires_at)}</p>
+                        </div>
+
+                        {getDaysRemaining(license.expires_at) > 0 && (
+                          <div>
+                            <p className="text-sm text-muted-foreground">{t('settings.license.daysRemaining')}</p>
+                            <p className="font-medium mt-1">
+                              {getDaysRemaining(license.expires_at)} {t('settings.license.days')}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    <div>
+                      <p className="text-sm text-muted-foreground">{t('settings.license.accountEmail')}</p>
+                      <p className="font-medium mt-1">{user?.email || "N/A"}</p>
+                    </div>
+                  </div>
+
+                  {license.tier === "PRO" && (
+                    <div className="mt-4">
+                      <Button onClick={handleManageSubscription} variant="outline">
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        {t('settings.license.manageSubscription')}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Plan Comparison */}
+                {license.tier === "FREE" && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-lg font-semibold mb-3">{t('settings.license.whyUpgrade')}</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium text-sm">{t('settings.license.features.unlimitedClips')}</p>
+                            <p className="text-xs text-muted-foreground">{t('settings.license.features.unlimitedClipsDesc')}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium text-sm">{t('settings.license.features.advancedEditor')}</p>
+                            <p className="text-xs text-muted-foreground">{t('settings.license.features.advancedEditorDesc')}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium text-sm">{t('settings.license.features.prioritySupport')}</p>
+                            <p className="text-xs text-muted-foreground">{t('settings.license.features.prioritySupportDesc')}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium text-sm">{t('settings.license.features.noWatermarks')}</p>
+                            <p className="text-xs text-muted-foreground">{t('settings.license.features.noWatermarksDesc')}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 p-4 bg-primary/10 rounded-lg">
+                        <p className="text-sm">
+                          <strong>{t('settings.license.pricing')}</strong> {t('settings.license.pricingDetails')}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">{t('settings.license.loadError')}</p>
+                <Button onClick={loadLicenseInfo} variant="outline" className="mt-4">
+                  {t('editor.retry')}
                 </Button>
               </div>
             )}
@@ -443,21 +449,21 @@ export function Settings() {
         {isAuthenticated && user && (
           <Card>
             <CardHeader>
-              <CardTitle>Account Information</CardTitle>
-              <CardDescription>Your account details</CardDescription>
+              <CardTitle>{t('settings.accountInfo.title')}</CardTitle>
+              <CardDescription>{t('settings.accountInfo.description')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Email</span>
+                  <span className="text-sm text-muted-foreground">{t('settings.accountInfo.email')}</span>
                   <span className="text-sm font-medium">{user.email}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">User ID</span>
+                  <span className="text-sm text-muted-foreground">{t('settings.accountInfo.userId')}</span>
                   <span className="text-sm font-mono">{user.id.substring(0, 8)}...</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">License Tier</span>
+                  <span className="text-sm text-muted-foreground">{t('settings.accountInfo.licenseTier')}</span>
                   <Badge variant={user.tier === "Pro" ? "default" : "secondary"}>
                     {user.tier}
                   </Badge>

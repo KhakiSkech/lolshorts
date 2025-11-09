@@ -5,8 +5,7 @@ pub mod processor;
 pub mod thumbnail;
 
 pub use auto_composer::{
-    AudioLevels, AutoComposer, AutoEditConfig, AutoEditProgress, AutoEditResult, AutoEditStatus,
-    BackgroundLayer, BackgroundMusic, CanvasElement, CanvasTemplate, Position,
+    AutoComposer, AutoEditConfig, AutoEditProgress, AutoEditResult, CanvasTemplate,
 };
 pub use processor::VideoProcessor;
 
@@ -24,10 +23,7 @@ pub enum VideoError {
     FileAccessError { path: String },
 
     #[error("Not enough disk space to save video\n\nRequired: {required_mb} MB\nAvailable: {available_mb} MB\n\nFree up space or choose a different output location.")]
-    InsufficientDiskSpace {
-        required_mb: u64,
-        available_mb: u64,
-    },
+    InsufficientDiskSpace { required_mb: u64, available_mb: u64 },
 
     #[error("Output directory not found: {path}\n\nPlease ensure the directory exists or choose a different location.")]
     OutputDirectoryNotFound { path: String },
@@ -156,7 +152,10 @@ impl VideoError {
                 "Check if the video plays in a media player".to_string(),
                 "Delete and re-create the clip".to_string(),
             ],
-            _ => vec!["Try again".to_string(), "Contact support if issue persists".to_string()],
+            _ => vec![
+                "Try again".to_string(),
+                "Contact support if issue persists".to_string(),
+            ],
         }
     }
 }
@@ -167,11 +166,7 @@ fn extract_file_path_from_stderr(stderr: &str) -> Option<String> {
     stderr
         .lines()
         .find(|line| line.contains("No such file") || line.contains("Permission denied"))
-        .and_then(|line| {
-            line.split(':')
-                .next()
-                .map(|s| s.trim().to_string())
-        })
+        .and_then(|line| line.split(':').next().map(|s| s.trim().to_string()))
 }
 
 /// Extract codec name from FFmpeg stderr output
@@ -180,19 +175,13 @@ fn extract_codec_from_stderr(stderr: &str) -> Option<String> {
     stderr
         .lines()
         .find(|line| line.contains("Codec"))
-        .and_then(|line| {
-            line.split('\'')
-                .nth(1)
-                .map(|s| s.to_string())
-        })
+        .and_then(|line| line.split('\'').nth(1).map(|s| s.to_string()))
 }
 
 pub type Result<T> = std::result::Result<T, VideoError>;
 
 /// Helper to execute FFmpeg command with proper error handling
-pub async fn execute_ffmpeg_command(
-    command: &mut tokio::process::Command,
-) -> Result<()> {
+pub async fn execute_ffmpeg_command(command: &mut tokio::process::Command) -> Result<()> {
     use tokio::io::AsyncReadExt;
 
     // Ensure stderr is piped
@@ -216,9 +205,12 @@ pub async fn execute_ffmpeg_command(
     }
 
     // Wait for command to complete
-    let status = child.wait().await.map_err(|e| VideoError::ProcessingError {
-        message: format!("Failed to wait for FFmpeg process: {}", e),
-    })?;
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| VideoError::ProcessingError {
+            message: format!("Failed to wait for FFmpeg process: {}", e),
+        })?;
 
     // Check exit status
     if !status.success() {

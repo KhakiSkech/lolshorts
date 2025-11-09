@@ -1,13 +1,13 @@
+#![allow(dead_code)]
+use anyhow::{Context, Result};
+use std::fs;
 /// Resource cleanup and memory management for production stability
 ///
 /// Provides automatic cleanup of temporary files, orphaned processes,
 /// and memory leak prevention through RAII patterns and explicit cleanup hooks.
-
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
-use std::fs;
-use anyhow::{Result, Context};
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 
 /// Cleanup configuration
 #[derive(Debug, Clone)]
@@ -31,9 +31,9 @@ pub struct CleanupConfig {
 impl Default for CleanupConfig {
     fn default() -> Self {
         Self {
-            temp_file_max_age: Duration::from_secs(24 * 60 * 60),  // 24 hours
+            temp_file_max_age: Duration::from_secs(24 * 60 * 60), // 24 hours
             max_log_size_mb: 500,
-            max_temp_segments_mb: 10 * 1024,  // 10 GB
+            max_temp_segments_mb: 10 * 1024, // 10 GB
             cleanup_on_startup: true,
             cleanup_on_shutdown: true,
         }
@@ -69,10 +69,9 @@ impl CleanupManager {
         // Clean old temporary segments
         let temp_segments_dir = self.app_data_dir.join("recordings/temp_segments");
         if temp_segments_dir.exists() {
-            total_freed_mb += self.cleanup_old_files(
-                &temp_segments_dir,
-                self.config.temp_file_max_age
-            ).await?;
+            total_freed_mb += self
+                .cleanup_old_files(&temp_segments_dir, self.config.temp_file_max_age)
+                .await?;
         }
 
         // Clean old logs
@@ -114,8 +113,7 @@ impl CleanupManager {
         let mut freed_bytes: u64 = 0;
         let now = SystemTime::now();
 
-        let entries = fs::read_dir(dir)
-            .context(format!("Failed to read directory: {:?}", dir))?;
+        let entries = fs::read_dir(dir).context(format!("Failed to read directory: {:?}", dir))?;
 
         for entry in entries {
             let entry = entry?;
@@ -140,7 +138,7 @@ impl CleanupManager {
             }
         }
 
-        Ok(freed_bytes / 1024 / 1024)  // Convert to MB
+        Ok(freed_bytes / 1024 / 1024) // Convert to MB
     }
 
     /// Enforce log directory size limit
@@ -201,7 +199,7 @@ impl CleanupManager {
             }
         }
 
-        Ok(freed_bytes / 1024 / 1024)  // Convert to MB
+        Ok(freed_bytes / 1024 / 1024) // Convert to MB
     }
 
     /// Clear entire directory
@@ -210,8 +208,7 @@ impl CleanupManager {
             return Ok(());
         }
 
-        let entries = fs::read_dir(dir)
-            .context(format!("Failed to read directory: {:?}", dir))?;
+        let entries = fs::read_dir(dir).context(format!("Failed to read directory: {:?}", dir))?;
 
         let mut removed_count = 0;
 
@@ -239,7 +236,7 @@ impl CleanupManager {
     pub fn check_disk_space(&self) -> Result<f64> {
         #[cfg(target_os = "windows")]
         {
-            use std::os::windows::fs::MetadataExt;
+            
 
             let metadata = fs::metadata(&self.app_data_dir)?;
             // On Windows, we can't get free space directly from metadata
@@ -252,7 +249,7 @@ impl CleanupManager {
         #[cfg(not(target_os = "windows"))]
         {
             // Unix-like systems
-            Ok(10.0)  // Placeholder
+            Ok(10.0) // Placeholder
         }
     }
 }
@@ -300,7 +297,7 @@ impl Drop for TempFileGuard {
 /// Process cleanup utilities
 pub mod process {
     use std::process::Child;
-    use tracing::{warn, debug};
+    use tracing::{debug, warn};
 
     /// Ensure FFmpeg process is terminated
     pub fn terminate_ffmpeg(mut child: Child) {
@@ -326,10 +323,10 @@ pub mod process {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
     use std::fs::File;
     use std::io::Write;
     use std::thread::sleep;
+    use tempfile::tempdir;
 
     #[tokio::test]
     async fn test_cleanup_old_files() {
@@ -339,7 +336,7 @@ mod tests {
             CleanupConfig {
                 temp_file_max_age: Duration::from_secs(1),
                 ..Default::default()
-            }
+            },
         );
 
         // Create old file
@@ -354,7 +351,10 @@ mod tests {
         File::create(&new_file).unwrap();
 
         // Cleanup
-        let freed = manager.cleanup_old_files(temp_dir.path(), Duration::from_secs(1)).await.unwrap();
+        let freed = manager
+            .cleanup_old_files(temp_dir.path(), Duration::from_secs(1))
+            .await
+            .unwrap();
 
         // Old file should be removed
         assert!(!old_file.exists());
@@ -369,21 +369,24 @@ mod tests {
         let manager = CleanupManager::new(
             temp_dir.path().to_path_buf(),
             CleanupConfig {
-                max_log_size_mb: 1,  // 1 MB limit
+                max_log_size_mb: 1, // 1 MB limit
                 ..Default::default()
-            }
+            },
         );
 
         // Create large log files
         for i in 0..5 {
             let log_file = temp_dir.path().join(format!("log{}.txt", i));
             let mut file = File::create(&log_file).unwrap();
-            file.write_all(&vec![0u8; 500 * 1024]).unwrap();  // 500 KB each
-            sleep(Duration::from_millis(100));  // Ensure different modification times
+            file.write_all(&vec![0u8; 500 * 1024]).unwrap(); // 500 KB each
+            sleep(Duration::from_millis(100)); // Ensure different modification times
         }
 
         // Enforce limit
-        let freed = manager.enforce_log_size_limit(temp_dir.path()).await.unwrap();
+        let freed = manager
+            .enforce_log_size_limit(temp_dir.path())
+            .await
+            .unwrap();
 
         assert!(freed > 0);
     }

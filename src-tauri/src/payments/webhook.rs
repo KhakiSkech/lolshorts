@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use crate::auth::AuthManager;
 use crate::payments::TossPaymentsClient;
+use crate::supabase::SupabaseClient;
 
 /// Toss Payments webhook event types
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -72,6 +73,16 @@ pub struct SubscriptionData {
 pub struct WebhookState {
     pub auth: Arc<AuthManager>,
     pub payments: Arc<TossPaymentsClient>,
+    pub supabase: SupabaseClient,
+    pub service_role_key: String,
+}
+
+impl WebhookState {
+    /// Get service role authorization token for database writes
+    /// Service role bypasses RLS policies for webhook operations
+    fn service_token(&self) -> String {
+        format!("Bearer {}", self.service_role_key)
+    }
 }
 
 /// Handle Toss Payments webhook
@@ -105,7 +116,7 @@ pub async fn handle_webhook(
 
 /// Handle payment status change
 async fn handle_payment_status_changed(
-    _state: Arc<WebhookState>,
+    state: Arc<WebhookState>,
     payload: WebhookPayload,
 ) -> impl IntoResponse {
     match serde_json::from_value::<PaymentData>(payload.data) {
@@ -117,29 +128,45 @@ async fn handle_payment_status_changed(
                     // Payment completed successfully
                     info!("Payment completed: {}", payment.order_id);
 
-                    // TODO: Update database
-                    // 1. Mark payment as completed in payments table
-                    // 2. Activate PRO subscription in user_licenses table
-                    // 3. Create subscription record if billing key exists
-                    // 4. Send confirmation email (optional)
-
-                    (StatusCode::OK, Json(serde_json::json!({
-                        "success": true,
-                        "message": "Payment processed"
-                    })))
+                    // Update database: Mark payment as completed and activate license
+                    match process_successful_payment(&state, &payment).await {
+                        Ok(_) => {
+                            info!("Database updated successfully for payment: {}", payment.order_id);
+                            (StatusCode::OK, Json(serde_json::json!({
+                                "success": true,
+                                "message": "Payment processed"
+                            })))
+                        }
+                        Err(e) => {
+                            error!("Failed to update database for payment {}: {}", payment.order_id, e);
+                            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                                "success": false,
+                                "error": "Database update failed"
+                            })))
+                        }
+                    }
                 }
                 PaymentStatus::Cancelled | PaymentStatus::Aborted | PaymentStatus::Expired => {
                     // Payment was cancelled or failed
                     warn!("Payment cancelled/failed: {} -> {:?}", payment.order_id, payment.status);
 
-                    // TODO: Update database
-                    // 1. Mark payment as failed in payments table
-                    // 2. Send notification to user (optional)
-
-                    (StatusCode::OK, Json(serde_json::json!({
-                        "success": true,
-                        "message": "Payment failure processed"
-                    })))
+                    // Update database: Mark payment as failed
+                    match process_failed_payment(&state, &payment).await {
+                        Ok(_) => {
+                            info!("Payment failure recorded for: {}", payment.order_id);
+                            (StatusCode::OK, Json(serde_json::json!({
+                                "success": true,
+                                "message": "Payment failure processed"
+                            })))
+                        }
+                        Err(e) => {
+                            error!("Failed to record payment failure {}: {}", payment.order_id, e);
+                            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                                "success": false,
+                                "error": "Database update failed"
+                            })))
+                        }
+                    }
                 }
                 _ => {
                     // Other statuses (Ready, InProgress, WaitingForDeposit)
@@ -162,24 +189,115 @@ async fn handle_payment_status_changed(
     }
 }
 
+/// Process successful payment - update database
+async fn process_successful_payment(
+    state: &WebhookState,
+    payment: &PaymentData,
+) -> anyhow::Result<()> {
+    let service_token = state.service_token();
+
+    // Extract user_id from order_id (format: "user_<uuid>_<timestamp>")
+    let user_id = extract_user_id_from_order(&payment.order_id)?;
+
+    // 1. Update payment record in database
+    let payment_update = serde_json::json!({
+        "status": "completed",
+        "completed_at": payment.approved_at.as_ref().unwrap_or(&chrono::Utc::now().to_rfc3339()),
+        "method": payment.method,
+        "provider_data": serde_json::to_value(payment)?
+    });
+
+    state.supabase
+        .update("payments", &payment_update, &[("order_id", &format!("eq.{}", payment.order_id))], &service_token)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to update payment: {}", e))?;
+
+    // 2. Activate PRO license for user
+    let license_update = serde_json::json!({
+        "tier": "PRO",
+        "status": "active",
+        "started_at": chrono::Utc::now().to_rfc3339(),
+        "expires_at": null, // No expiration for one-time payments
+        "updated_at": chrono::Utc::now().to_rfc3339()
+    });
+
+    state.supabase
+        .update("user_licenses", &license_update, &[("user_id", &format!("eq.{}", user_id))], &service_token)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to activate license: {}", e))?;
+
+    info!("Successfully processed payment {} for user {}", payment.order_id, user_id);
+    Ok(())
+}
+
+/// Process failed/cancelled payment - update database
+async fn process_failed_payment(
+    state: &WebhookState,
+    payment: &PaymentData,
+) -> anyhow::Result<()> {
+    let service_token = state.service_token();
+
+    // Determine status based on payment status
+    let db_status = match payment.status {
+        PaymentStatus::Cancelled | PaymentStatus::PartialCancelled => "cancelled",
+        PaymentStatus::Aborted => "failed",
+        PaymentStatus::Expired => "failed",
+        _ => "failed"
+    };
+
+    // Update payment record
+    let payment_update = serde_json::json!({
+        "status": db_status,
+        "failed_at": payment.cancelled_at.as_ref().unwrap_or(&chrono::Utc::now().to_rfc3339()),
+        "failure_reason": format!("Payment {:?}", payment.status),
+        "provider_data": serde_json::to_value(payment)?
+    });
+
+    state.supabase
+        .update("payments", &payment_update, &[("order_id", &format!("eq.{}", payment.order_id))], &service_token)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to update payment: {}", e))?;
+
+    info!("Recorded failed payment: {}", payment.order_id);
+    Ok(())
+}
+
+/// Extract user ID from order_id format: "user_<uuid>_<timestamp>"
+fn extract_user_id_from_order(order_id: &str) -> anyhow::Result<String> {
+    let parts: Vec<&str> = order_id.split('_').collect();
+    if parts.len() >= 2 && parts[0] == "user" {
+        Ok(parts[1].to_string())
+    } else {
+        Err(anyhow::anyhow!("Invalid order_id format: {}", order_id))
+    }
+}
+
 /// Handle payment cancellation
 async fn handle_payment_cancelled(
-    _state: Arc<WebhookState>,
+    state: Arc<WebhookState>,
     payload: WebhookPayload,
 ) -> impl IntoResponse {
     match serde_json::from_value::<PaymentData>(payload.data) {
         Ok(payment) => {
             info!("Payment cancelled: {}", payment.order_id);
 
-            // TODO: Update database
-            // 1. Mark payment as cancelled in payments table
-            // 2. If partial cancellation, update amount
-            // 3. Process refund if applicable
-
-            (StatusCode::OK, Json(serde_json::json!({
-                "success": true,
-                "message": "Cancellation processed"
-            })))
+            // Update database: Mark payment as cancelled
+            match process_cancelled_payment(&state, &payment).await {
+                Ok(_) => {
+                    info!("Payment cancellation recorded: {}", payment.order_id);
+                    (StatusCode::OK, Json(serde_json::json!({
+                        "success": true,
+                        "message": "Cancellation processed"
+                    })))
+                }
+                Err(e) => {
+                    error!("Failed to record cancellation {}: {}", payment.order_id, e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                        "success": false,
+                        "error": "Database update failed"
+                    })))
+                }
+            }
         }
         Err(e) => {
             error!("Failed to parse cancellation data: {}", e);
@@ -191,24 +309,61 @@ async fn handle_payment_cancelled(
     }
 }
 
+/// Process cancelled payment - update database
+async fn process_cancelled_payment(
+    state: &WebhookState,
+    payment: &PaymentData,
+) -> anyhow::Result<()> {
+    let service_token = state.service_token();
+
+    // Determine if partial or full cancellation
+    let db_status = match payment.status {
+        PaymentStatus::PartialCancelled => "partial_cancelled",
+        _ => "cancelled"
+    };
+
+    // Update payment record
+    let payment_update = serde_json::json!({
+        "status": db_status,
+        "failed_at": payment.cancelled_at.as_ref().unwrap_or(&chrono::Utc::now().to_rfc3339()),
+        "provider_data": serde_json::to_value(payment)?
+    });
+
+    state.supabase
+        .update("payments", &payment_update, &[("order_id", &format!("eq.{}", payment.order_id))], &service_token)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to update payment: {}", e))?;
+
+    info!("Recorded cancelled payment: {}", payment.order_id);
+    Ok(())
+}
+
 /// Handle payment failure
 async fn handle_payment_failed(
-    _state: Arc<WebhookState>,
+    state: Arc<WebhookState>,
     payload: WebhookPayload,
 ) -> impl IntoResponse {
     match serde_json::from_value::<PaymentData>(payload.data) {
         Ok(payment) => {
             warn!("Payment failed: {}", payment.order_id);
 
-            // TODO: Update database
-            // 1. Mark payment as failed in payments table
-            // 2. Log failure reason
-            // 3. Send notification to user
-
-            (StatusCode::OK, Json(serde_json::json!({
-                "success": true,
-                "message": "Failure processed"
-            })))
+            // Update database: Mark payment as failed (reuses process_failed_payment)
+            match process_failed_payment(&state, &payment).await {
+                Ok(_) => {
+                    info!("Payment failure recorded: {}", payment.order_id);
+                    (StatusCode::OK, Json(serde_json::json!({
+                        "success": true,
+                        "message": "Failure processed"
+                    })))
+                }
+                Err(e) => {
+                    error!("Failed to record payment failure {}: {}", payment.order_id, e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                        "success": false,
+                        "error": "Database update failed"
+                    })))
+                }
+            }
         }
         Err(e) => {
             error!("Failed to parse failure data: {}", e);
@@ -222,23 +377,30 @@ async fn handle_payment_failed(
 
 /// Handle billing key issuance (for subscriptions)
 async fn handle_billing_key_issued(
-    _state: Arc<WebhookState>,
+    state: Arc<WebhookState>,
     payload: WebhookPayload,
 ) -> impl IntoResponse {
     match serde_json::from_value::<SubscriptionData>(payload.data) {
         Ok(subscription) => {
             info!("Billing key issued: {}", subscription.customer_key);
 
-            // TODO: Update database
-            // 1. Store billing_key in subscriptions table
-            // 2. Set status to 'active'
-            // 3. Calculate next_billing_date
-            // 4. Send confirmation email
-
-            (StatusCode::OK, Json(serde_json::json!({
-                "success": true,
-                "message": "Billing key stored"
-            })))
+            // Update database: Store billing key and activate subscription
+            match process_billing_key_issued(&state, &subscription).await {
+                Ok(_) => {
+                    info!("Subscription activated for customer: {}", subscription.customer_key);
+                    (StatusCode::OK, Json(serde_json::json!({
+                        "success": true,
+                        "message": "Billing key stored"
+                    })))
+                }
+                Err(e) => {
+                    error!("Failed to activate subscription {}: {}", subscription.customer_key, e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                        "success": false,
+                        "error": "Database update failed"
+                    })))
+                }
+            }
         }
         Err(e) => {
             error!("Failed to parse subscription data: {}", e);
@@ -250,25 +412,92 @@ async fn handle_billing_key_issued(
     }
 }
 
+/// Process billing key issuance - create/update subscription
+async fn process_billing_key_issued(
+    state: &WebhookState,
+    subscription: &SubscriptionData,
+) -> anyhow::Result<()> {
+    let service_token = state.service_token();
+
+    // Extract user_id from customer_key (format: "user_<uuid>")
+    let user_id = extract_user_id_from_customer(&subscription.customer_key)?;
+
+    // Calculate next billing date (default to monthly)
+    let next_billing_date = chrono::Utc::now() + chrono::Duration::days(30);
+
+    // Create or update subscription record
+    let subscription_data = serde_json::json!({
+        "user_id": user_id,
+        "billing_key": subscription.billing_key,
+        "period": "MONTHLY",
+        "status": "active",
+        "next_billing_date": next_billing_date.format("%Y-%m-%d").to_string(),
+        "created_at": chrono::Utc::now().to_rfc3339(),
+        "updated_at": chrono::Utc::now().to_rfc3339()
+    });
+
+    // Check if subscription exists
+    let existing = state.supabase
+        .query(
+            "subscriptions",
+            "id",
+            &[("user_id", &format!("eq.{}", user_id)), ("status", "eq.active")],
+            &service_token
+        )
+        .await?;
+
+    if existing.as_array().map_or(0, |a| a.len()) > 0 {
+        // Update existing subscription
+        state.supabase
+            .update("subscriptions", &subscription_data, &[("user_id", &format!("eq.{}", user_id))], &service_token)
+            .await?;
+    } else {
+        // Create new subscription
+        state.supabase
+            .insert("subscriptions", &subscription_data, &service_token)
+            .await?;
+    }
+
+    info!("Subscription activated for user {} with billing key", user_id);
+    Ok(())
+}
+
+/// Extract user ID from customer_key format: "user_<uuid>"
+fn extract_user_id_from_customer(customer_key: &str) -> anyhow::Result<String> {
+    let parts: Vec<&str> = customer_key.split('_').collect();
+    if parts.len() >= 2 && parts[0] == "user" {
+        Ok(parts[1].to_string())
+    } else {
+        Err(anyhow::anyhow!("Invalid customer_key format: {}", customer_key))
+    }
+}
+
 /// Handle billing key deletion (subscription cancellation)
 async fn handle_billing_key_deleted(
-    _state: Arc<WebhookState>,
+    state: Arc<WebhookState>,
     payload: WebhookPayload,
 ) -> impl IntoResponse {
     match serde_json::from_value::<SubscriptionData>(payload.data) {
         Ok(subscription) => {
             info!("Billing key deleted: {}", subscription.customer_key);
 
-            // TODO: Update database
-            // 1. Set subscription status to 'cancelled'
-            // 2. Set cancelled_at timestamp
-            // 3. Update user_license to expire at end of billing period
-            // 4. Send cancellation confirmation email
-
-            (StatusCode::OK, Json(serde_json::json!({
-                "success": true,
-                "message": "Subscription cancelled"
-            })))
+            // Update database: Cancel subscription
+            match process_billing_key_deleted(&state, &subscription).await {
+                Ok(_) => {
+                    info!("Subscription cancelled for customer: {}", subscription.customer_key);
+                    (StatusCode::OK, Json(serde_json::json!({
+                        "success": true,
+                        "message": "Subscription cancelled"
+                    })))
+                }
+                Err(e) => {
+                    error!("Failed to cancel subscription {}: {}", subscription.customer_key, e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                        "success": false,
+                        "error": "Database update failed"
+                    })))
+                }
+            }
         }
         Err(e) => {
             error!("Failed to parse deletion data: {}", e);
@@ -280,25 +509,92 @@ async fn handle_billing_key_deleted(
     }
 }
 
+/// Process billing key deletion - cancel subscription
+async fn process_billing_key_deleted(
+    state: &WebhookState,
+    subscription: &SubscriptionData,
+) -> anyhow::Result<()> {
+    let service_token = state.service_token();
+
+    // Extract user_id from customer_key
+    let user_id = extract_user_id_from_customer(&subscription.customer_key)?;
+
+    // Update subscription status to cancelled
+    let subscription_update = serde_json::json!({
+        "status": "cancelled",
+        "cancelled_at": chrono::Utc::now().to_rfc3339(),
+        "updated_at": chrono::Utc::now().to_rfc3339()
+    });
+
+    state.supabase
+        .update("subscriptions", &subscription_update, &[("user_id", &format!("eq.{}", user_id)), ("status", "eq.active")], &service_token)
+        .await?;
+
+    // Update user license to expire at end of current billing period
+    // Query subscription to get next_billing_date
+    let sub_data = state.supabase
+        .query(
+            "subscriptions",
+            "next_billing_date",
+            &[("user_id", &format!("eq.{}", user_id))],
+            &service_token
+        )
+        .await?;
+
+    let expires_at = if let Some(sub_array) = sub_data.as_array() {
+        if let Some(sub) = sub_array.first() {
+            sub.get("next_billing_date")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&chrono::Utc::now().format("%Y-%m-%d").to_string())
+                .to_string()
+        } else {
+            chrono::Utc::now().format("%Y-%m-%d").to_string()
+        }
+    } else {
+        chrono::Utc::now().format("%Y-%m-%d").to_string()
+    };
+
+    let license_update = serde_json::json!({
+        "status": "cancelled",
+        "expires_at": expires_at,
+        "cancelled_at": chrono::Utc::now().to_rfc3339(),
+        "updated_at": chrono::Utc::now().to_rfc3339()
+    });
+
+    state.supabase
+        .update("user_licenses", &license_update, &[("user_id", &format!("eq.{}", user_id))], &service_token)
+        .await?;
+
+    info!("Subscription and license cancelled for user {}", user_id);
+    Ok(())
+}
+
 /// Handle refund status change
 async fn handle_refund_status_changed(
-    _state: Arc<WebhookState>,
+    state: Arc<WebhookState>,
     payload: WebhookPayload,
 ) -> impl IntoResponse {
     match serde_json::from_value::<PaymentData>(payload.data) {
         Ok(payment) => {
             info!("Refund status changed: {}", payment.order_id);
 
-            // TODO: Update database
-            // 1. Update payment status to 'refunded'
-            // 2. Log refund details
-            // 3. Deactivate PRO license if fully refunded
-            // 4. Send refund confirmation email
-
-            (StatusCode::OK, Json(serde_json::json!({
-                "success": true,
-                "message": "Refund processed"
-            })))
+            // Update database: Mark payment as refunded and deactivate license
+            match process_refund(&state, &payment).await {
+                Ok(_) => {
+                    info!("Refund processed for payment: {}", payment.order_id);
+                    (StatusCode::OK, Json(serde_json::json!({
+                        "success": true,
+                        "message": "Refund processed"
+                    })))
+                }
+                Err(e) => {
+                    error!("Failed to process refund {}: {}", payment.order_id, e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                        "success": false,
+                        "error": "Database update failed"
+                    })))
+                }
+            }
         }
         Err(e) => {
             error!("Failed to parse refund data: {}", e);
@@ -308,6 +604,44 @@ async fn handle_refund_status_changed(
             })))
         }
     }
+}
+
+/// Process refund - update payment and deactivate license
+async fn process_refund(
+    state: &WebhookState,
+    payment: &PaymentData,
+) -> anyhow::Result<()> {
+    let service_token = state.service_token();
+
+    // Extract user_id from order_id
+    let user_id = extract_user_id_from_order(&payment.order_id)?;
+
+    // Update payment status to refunded
+    let payment_update = serde_json::json!({
+        "status": "refunded",
+        "failed_at": chrono::Utc::now().to_rfc3339(),
+        "failure_reason": "Payment refunded",
+        "provider_data": serde_json::to_value(payment)?
+    });
+
+    state.supabase
+        .update("payments", &payment_update, &[("order_id", &format!("eq.{}", payment.order_id))], &service_token)
+        .await?;
+
+    // Deactivate PRO license (revert to FREE)
+    let license_update = serde_json::json!({
+        "tier": "FREE",
+        "status": "active",
+        "expires_at": null,
+        "updated_at": chrono::Utc::now().to_rfc3339()
+    });
+
+    state.supabase
+        .update("user_licenses", &license_update, &[("user_id", &format!("eq.{}", user_id))], &service_token)
+        .await?;
+
+    info!("Refund processed and license downgraded for user {}", user_id);
+    Ok(())
 }
 
 #[cfg(test)]

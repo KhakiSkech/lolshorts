@@ -1,9 +1,9 @@
 pub mod commands;
 
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum LcuError {
@@ -126,7 +126,7 @@ impl LcuClient {
                 PathBuf::from(local_app_data)
                     .join("Riot Games")
                     .join("League of Legends")
-                    .join("lockfile")
+                    .join("lockfile"),
             );
         }
 
@@ -161,14 +161,19 @@ impl LcuClient {
         self.lockfile_data = Some(lockfile);
         self.http_client = Some(http_client);
 
-        tracing::info!("Connected to LCU on port {}", self.lockfile_data.as_ref().unwrap().port);
+        tracing::info!(
+            "Connected to LCU on port {}",
+            self.lockfile_data.as_ref().unwrap().port
+        );
 
         Ok(())
     }
 
     /// Get the base URL for LCU API
     fn get_base_url(&self) -> Result<String> {
-        let lockfile = self.lockfile_data.as_ref()
+        let lockfile = self
+            .lockfile_data
+            .as_ref()
             .ok_or(LcuError::Connection("Not connected".to_string()))?;
 
         Ok(format!("https://127.0.0.1:{}", lockfile.port))
@@ -197,9 +202,13 @@ impl LcuClient {
 
     /// Get game session from LCU API
     pub async fn get_game_session(&self) -> Result<GameSession> {
-        let client = self.http_client.as_ref()
+        let client = self
+            .http_client
+            .as_ref()
             .ok_or(LcuError::Connection("Not connected".to_string()))?;
-        let lockfile = self.lockfile_data.as_ref()
+        let lockfile = self
+            .lockfile_data
+            .as_ref()
             .ok_or(LcuError::Connection("Not connected".to_string()))?;
 
         let base_url = self.get_base_url()?;
@@ -216,7 +225,8 @@ impl LcuClient {
             return Err(LcuError::Api(format!("HTTP {}", response.status())));
         }
 
-        let session: GameSession = response.json()
+        let session: GameSession = response
+            .json()
             .await
             .map_err(|e| LcuError::Api(e.to_string()))?;
 
@@ -227,10 +237,13 @@ impl LcuClient {
     pub async fn is_in_game(&self) -> Result<bool> {
         let session = self.get_game_session().await?;
 
-        matches!(session.phase, GameFlowPhase::InProgress | GameFlowPhase::Reconnect)
-            .then_some(true)
-            .ok_or(LcuError::Api("Failed to check game state".to_string()))
-            .or(Ok(false))
+        matches!(
+            session.phase,
+            GameFlowPhase::InProgress | GameFlowPhase::Reconnect
+        )
+        .then_some(true)
+        .ok_or(LcuError::Api("Failed to check game state".to_string()))
+        .or(Ok(false))
     }
 
     /// Check if client is connected

@@ -1,5 +1,5 @@
+use super::{SubscriptionTier, User};
 use crate::AppState;
-use super::{User, SubscriptionTier};
 use tauri::State;
 use tracing::{error, info};
 
@@ -32,7 +32,10 @@ pub async fn login(
         .await
     {
         Ok(Some(license)) => {
-            info!("Fetched license for user: tier={}, status={:?}", license.tier, license.status);
+            info!(
+                "Fetched license for user: tier={}, status={:?}",
+                license.tier, license.status
+            );
             match license.tier.as_str() {
                 "PRO" => SubscriptionTier::Pro,
                 _ => SubscriptionTier::Free,
@@ -57,10 +60,7 @@ pub async fn login(
         expires_at: session.expires_at,
     };
 
-    state
-        .auth
-        .login(user.clone())
-        .map_err(|e| e.to_string())?;
+    state.auth.login(user.clone()).map_err(|e| e.to_string())?;
 
     info!("Login successful for user: {}", user.email);
     Ok(user)
@@ -95,7 +95,10 @@ pub async fn signup(
         .await
     {
         Ok(Some(license)) => {
-            info!("License created for new user: tier={}, status={:?}", license.tier, license.status);
+            info!(
+                "License created for new user: tier={}, status={:?}",
+                license.tier, license.status
+            );
             match license.tier.as_str() {
                 "PRO" => SubscriptionTier::Pro,
                 _ => SubscriptionTier::Free,
@@ -116,10 +119,7 @@ pub async fn signup(
         expires_at: session.expires_at,
     };
 
-    state
-        .auth
-        .login(user.clone())
-        .map_err(|e| e.to_string())?;
+    state.auth.login(user.clone()).map_err(|e| e.to_string())?;
 
     info!("Signup successful for user: {}", user.email);
     Ok(user)
@@ -136,7 +136,9 @@ pub async fn get_user_status(state: State<'_, AppState>) -> Result<Option<User>,
 }
 
 #[tauri::command]
-pub async fn get_license_info(state: State<'_, AppState>) -> Result<Option<crate::supabase::License>, String> {
+pub async fn get_license_info(
+    state: State<'_, AppState>,
+) -> Result<Option<crate::supabase::License>, String> {
     // Get current user
     let user = state.auth.get_current_user().map_err(|e| e.to_string())?;
 

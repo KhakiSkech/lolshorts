@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -31,6 +32,7 @@ interface EventFilterSettingsProps {
 }
 
 export function EventFilterSettings({ settings, onChange }: EventFilterSettingsProps) {
+  const { t } = useTranslation();
   const updateSetting = (key: keyof EventFilterSettings, value: boolean | number) => {
     onChange({ ...settings, [key]: value });
   };
@@ -55,7 +57,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
           record_ace: true,
           record_game_end: true,
           record_steal: true,
-          min_priority: 2,
+          min_priority: 1, // Allow single kills too
         });
         break;
       case "everything":
@@ -105,29 +107,29 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
   const getPriorityLabel = (priority: number): string => {
     const labels = {
-      1: "All Events",
-      2: "Important Events",
-      3: "High Priority",
-      4: "Critical Moments",
-      5: "Epic Plays Only",
+      1: t('settings.recordingConfig.eventFilter.priorityLabels.allEvents'),
+      2: t('settings.recordingConfig.eventFilter.priorityLabels.importantEvents'),
+      3: t('settings.recordingConfig.eventFilter.priorityLabels.highPriority'),
+      4: t('settings.recordingConfig.eventFilter.priorityLabels.criticalMoments'),
+      5: t('settings.recordingConfig.eventFilter.priorityLabels.epicPlaysOnly'),
     };
-    return labels[priority as keyof typeof labels] || "Custom";
+    return labels[priority as keyof typeof labels] || t('settings.recordingConfig.eventFilter.priorityLabels.custom');
   };
 
   return (
     <div className="space-y-6">
       {/* Presets */}
       <div>
-        <h3 className="text-sm font-semibold mb-3">Quick Presets</h3>
+        <h3 className="text-sm font-semibold mb-3">{t('settings.recordingConfig.eventFilter.quickPresets')}</h3>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => applyPreset("highlights")}>
-            Highlights Only
+            {t('settings.recordingConfig.eventFilter.highlightsOnly')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => applyPreset("everything")}>
-            Everything
+            {t('settings.recordingConfig.eventFilter.everything')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => applyPreset("minimal")}>
-            Minimal (Epic Only)
+            {t('settings.recordingConfig.eventFilter.minimal')}
           </Button>
         </div>
       </div>
@@ -135,15 +137,15 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
       {/* Priority Filter */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Priority Filter</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.eventFilter.priorityFilter')}</CardTitle>
           <CardDescription>
-            Filter events by importance level (1 = all, 5 = epic only)
+            {t('settings.recordingConfig.eventFilter.priorityFilterDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label>Minimum Priority</Label>
+              <Label>{t('settings.recordingConfig.eventFilter.minimumPriority')}</Label>
               <Badge variant="secondary">{getPriorityLabel(settings.min_priority)}</Badge>
             </div>
             <Slider
@@ -155,11 +157,11 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
               className="w-full"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>All</span>
-              <span>Important</span>
-              <span>High</span>
-              <span>Critical</span>
-              <span>Epic</span>
+              <span>{t('settings.recordingConfig.eventFilter.priorityScale.all')}</span>
+              <span>{t('settings.recordingConfig.eventFilter.priorityScale.important')}</span>
+              <span>{t('settings.recordingConfig.eventFilter.priorityScale.high')}</span>
+              <span>{t('settings.recordingConfig.eventFilter.priorityScale.critical')}</span>
+              <span>{t('settings.recordingConfig.eventFilter.priorityScale.epic')}</span>
             </div>
           </div>
         </CardContent>
@@ -168,15 +170,15 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
       {/* Kill Events */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Kill Events</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.eventFilter.killEvents.title')}</CardTitle>
           <CardDescription>
-            Record kills, deaths, and assists
+            {t('settings.recordingConfig.eventFilter.killEvents.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="record_kills" className="flex-1 cursor-pointer">
-              Kills
+              {t('settings.recordingConfig.eventFilter.killEvents.kills')}
             </Label>
             <Switch
               id="record_kills"
@@ -187,7 +189,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_multikills" className="flex-1 cursor-pointer">
-              Multikills (Double, Triple, Quadra, Penta)
+              {t('settings.recordingConfig.eventFilter.killEvents.multikills')}
             </Label>
             <Switch
               id="record_multikills"
@@ -198,7 +200,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_first_blood" className="flex-1 cursor-pointer">
-              First Blood
+              {t('settings.recordingConfig.eventFilter.killEvents.firstBlood')}
             </Label>
             <Switch
               id="record_first_blood"
@@ -209,7 +211,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_deaths" className="flex-1 cursor-pointer">
-              Deaths
+              {t('settings.recordingConfig.eventFilter.killEvents.deaths')}
             </Label>
             <Switch
               id="record_deaths"
@@ -220,7 +222,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_shutdown" className="flex-1 cursor-pointer">
-              Shutdown (Ending enemy killing spree)
+              {t('settings.recordingConfig.eventFilter.killEvents.shutdown')}
             </Label>
             <Switch
               id="record_shutdown"
@@ -231,7 +233,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_assists" className="flex-1 cursor-pointer">
-              Assists
+              {t('settings.recordingConfig.eventFilter.killEvents.assists')}
             </Label>
             <Switch
               id="record_assists"
@@ -242,7 +244,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_ace" className="flex-1 cursor-pointer">
-              Ace (Team kills all enemies)
+              {t('settings.recordingConfig.eventFilter.killEvents.ace')}
             </Label>
             <Switch
               id="record_ace"
@@ -256,15 +258,15 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
       {/* Objective Events */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Objective Events</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.eventFilter.objectiveEvents.title')}</CardTitle>
           <CardDescription>
-            Record dragon, baron, herald, and steal attempts
+            {t('settings.recordingConfig.eventFilter.objectiveEvents.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="record_dragon" className="flex-1 cursor-pointer">
-              Dragon
+              {t('settings.recordingConfig.eventFilter.objectiveEvents.dragon')}
             </Label>
             <Switch
               id="record_dragon"
@@ -275,7 +277,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_baron" className="flex-1 cursor-pointer">
-              Baron Nashor
+              {t('settings.recordingConfig.eventFilter.objectiveEvents.baronNashor')}
             </Label>
             <Switch
               id="record_baron"
@@ -286,7 +288,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_elder" className="flex-1 cursor-pointer">
-              Elder Dragon
+              {t('settings.recordingConfig.eventFilter.objectiveEvents.elderDragon')}
             </Label>
             <Switch
               id="record_elder"
@@ -297,7 +299,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_herald" className="flex-1 cursor-pointer">
-              Rift Herald
+              {t('settings.recordingConfig.eventFilter.objectiveEvents.riftHerald')}
             </Label>
             <Switch
               id="record_herald"
@@ -308,7 +310,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_steal" className="flex-1 cursor-pointer">
-              Objective Steals
+              {t('settings.recordingConfig.eventFilter.objectiveEvents.objectiveSteals')}
             </Label>
             <Switch
               id="record_steal"
@@ -322,15 +324,15 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
       {/* Structure Events */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Structure Events</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.eventFilter.structureEvents.title')}</CardTitle>
           <CardDescription>
-            Record tower, inhibitor, and nexus destruction
+            {t('settings.recordingConfig.eventFilter.structureEvents.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="record_turret" className="flex-1 cursor-pointer">
-              Turrets
+              {t('settings.recordingConfig.eventFilter.structureEvents.turrets')}
             </Label>
             <Switch
               id="record_turret"
@@ -341,7 +343,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_inhibitor" className="flex-1 cursor-pointer">
-              Inhibitors
+              {t('settings.recordingConfig.eventFilter.structureEvents.inhibitors')}
             </Label>
             <Switch
               id="record_inhibitor"
@@ -352,7 +354,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_nexus" className="flex-1 cursor-pointer">
-              Nexus
+              {t('settings.recordingConfig.eventFilter.structureEvents.nexus')}
             </Label>
             <Switch
               id="record_nexus"
@@ -363,7 +365,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
 
           <div className="flex items-center justify-between">
             <Label htmlFor="record_game_end" className="flex-1 cursor-pointer">
-              Game End
+              {t('settings.recordingConfig.eventFilter.structureEvents.gameEnd')}
             </Label>
             <Switch
               id="record_game_end"

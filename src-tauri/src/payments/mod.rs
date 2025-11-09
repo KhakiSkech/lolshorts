@@ -1,5 +1,7 @@
-pub mod toss;
+#![allow(dead_code)]
+
 pub mod commands;
+pub mod toss;
 // pub mod webhook; // Disabled for now - requires axum dependency
 pub mod subscription_commands;
 

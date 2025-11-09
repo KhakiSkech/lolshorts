@@ -1,4 +1,6 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { open } from '@tauri-apps/plugin-dialog';
 import { BackgroundMusic, AudioLevels } from '@/types/autoEdit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,31 +24,33 @@ export function AudioMixer({
   onBackgroundMusicChange,
   onAudioLevelsChange,
 }: AudioMixerProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleSelectMusic = useCallback(async () => {
+    try {
+      const selected = await open({
+        title: 'Select Background Music',
+        multiple: false,
+        filters: [{
+          name: 'Audio Files',
+          extensions: ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma']
+        }]
+      });
 
-    // Validate file type
-    if (!file.type.startsWith('audio/')) {
-      alert('Please select an audio file (MP3, WAV, etc.)');
-      return;
+      if (selected && typeof selected === 'string') {
+        onBackgroundMusicChange({
+          file_path: selected,
+          loop_music: backgroundMusic?.loop_music ?? true,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to select music file:', error);
+      alert(t('errors.fileSelectionFailed'));
     }
-
-    // For now, we'll just store the file path
-    // In production, you'd upload to a temporary location or process it
-    onBackgroundMusicChange({
-      file_path: file.name, // TODO: Get actual file path from file picker
-      loop_music: backgroundMusic?.loop_music ?? true,
-    });
-  }, [backgroundMusic, onBackgroundMusicChange]);
+  }, [backgroundMusic, onBackgroundMusicChange, t]);
 
   const handleRemoveMusic = useCallback(() => {
     onBackgroundMusicChange(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   }, [onBackgroundMusicChange]);
 
   const handleLoopToggle = useCallback((checked: boolean) => {
@@ -78,19 +82,12 @@ export function AudioMixer({
                 Add background music to your Short
               </p>
               <Button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={handleSelectMusic}
                 variant="outline"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload Music
               </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
             </div>
           ) : (
             <Card>

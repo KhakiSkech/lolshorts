@@ -1,8 +1,9 @@
-import { Home, Film, Video, Settings, LogOut, Sparkles } from 'lucide-react';
+import { Home, Film, Video, Settings, LogOut, Sparkles, Youtube, Grid3x3 } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/lib/auth';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   className?: string;
@@ -10,13 +11,16 @@ interface SidebarProps {
 
 export function Sidebar({ className = '' }: SidebarProps) {
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { t } = useTranslation();
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: Home },
-    { path: '/games', label: 'Games', icon: Film },
-    { path: '/editor', label: 'Editor', icon: Video },
-    { path: '/auto-edit', label: 'Auto-Edit', icon: Sparkles, badge: 'PRO' },
-    { path: '/settings', label: 'Settings', icon: Settings },
+    { path: '/', label: t('nav.dashboard'), icon: Home },
+    { path: '/games', label: t('nav.games'), icon: Film },
+    { path: '/editor', label: t('nav.editor'), icon: Video },
+    { path: '/auto-edit', label: t('nav.autoEdit'), icon: Sparkles, badge: t('nav.pro') },
+    { path: '/results', label: t('nav.results'), icon: Grid3x3 },
+    { path: '/youtube', label: t('nav.youtube'), icon: Youtube, badge: t('nav.pro') },
+    { path: '/settings', label: t('nav.settings'), icon: Settings },
   ];
 
   return (
@@ -24,7 +28,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
       {/* Logo and Brand */}
       <div className="p-6 border-b">
         <h1 className="text-2xl font-bold">LoLShorts</h1>
-        <p className="text-sm text-muted-foreground">Highlight Maker</p>
+        <p className="text-sm text-muted-foreground">{t('app.tagline')}</p>
       </div>
 
       {/* User Info */}
@@ -38,7 +42,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
           </div>
           {user.tier === 'Free' && (
             <Button variant="outline" size="sm" className="w-full text-xs">
-              Upgrade to PRO ⭐
+              {t('auth.upgradeToPro')} ⭐
             </Button>
           )}
         </div>
@@ -76,11 +80,11 @@ export function Sidebar({ className = '' }: SidebarProps) {
             onClick={() => logout()}
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Logout
+            {t('auth.logout')}
           </Button>
         ) : (
           <Button variant="outline" size="sm" className="w-full">
-            Login / Sign Up
+            {t('auth.loginSignup')}
           </Button>
         )}
       </div>

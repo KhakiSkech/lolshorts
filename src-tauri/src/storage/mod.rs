@@ -1,24 +1,20 @@
+pub mod commands;
 pub mod models;
 pub mod models_v2;
-pub mod commands;
 
-use std::path::{Path, PathBuf};
-use std::fs;
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 // Re-export public types
-pub use models::{GameMetadata, ClipMetadata, EventData};
+pub use models::{
+    AutoEditResultMetadata, AutoEditUsage, ClipMetadata, EventData, GameMetadata, StorageStats,
+    UploadStatus, YouTubeUploadStatus,
+};
 
 // Re-export V2 types for editor integration
-pub use models_v2::{
-    ClipMetadataV2, EventInfo, EventWindow, MergeStrategy,
-    VideoInfo, Resolution, FrameRate, VideoCodec,
-    AudioInfo, AudioTrack, AudioTrackType,
-    ClipTimeline, TimelineMarker, MarkerType, Chapter,
-    GameContext, GameMode, QueueType, Team, TeamScore, PlayerState,
-    UserAnnotations, Note,
-};
+pub use models_v2::ClipMetadataV2;
 
 #[derive(Debug, Error)]
 pub enum StorageError {
@@ -379,7 +375,10 @@ impl Storage {
         };
 
         // Add or update
-        if let Some(pos) = v1_clips.iter().position(|c| c.file_path == v1_clip.file_path) {
+        if let Some(pos) = v1_clips
+            .iter()
+            .position(|c| c.file_path == v1_clip.file_path)
+        {
             v1_clips[pos] = v1_clip;
         } else {
             v1_clips.push(v1_clip);
@@ -424,7 +423,11 @@ impl Storage {
     }
 
     /// Search clips by tags
-    pub fn search_clips_by_tags(&self, game_id: &str, tags: &[String]) -> Result<Vec<ClipMetadataV2>> {
+    pub fn search_clips_by_tags(
+        &self,
+        game_id: &str,
+        tags: &[String],
+    ) -> Result<Vec<ClipMetadataV2>> {
         let all_clips = self.load_all_clips_v2(game_id)?;
 
         let filtered = all_clips
@@ -439,7 +442,11 @@ impl Storage {
     }
 
     /// Get clips by priority threshold
-    pub fn get_clips_by_priority(&self, game_id: &str, min_priority: u8) -> Result<Vec<ClipMetadataV2>> {
+    pub fn get_clips_by_priority(
+        &self,
+        game_id: &str,
+        min_priority: u8,
+    ) -> Result<Vec<ClipMetadataV2>> {
         let all_clips = self.load_all_clips_v2(game_id)?;
 
         let filtered = all_clips
@@ -488,10 +495,16 @@ impl Storage {
 
     /// Load a canvas template by ID
     pub fn load_canvas_template(&self, template_id: &str) -> Result<crate::video::CanvasTemplate> {
-        let template_path = self.base_path.join("templates").join(format!("{}.json", template_id));
+        let template_path = self
+            .base_path
+            .join("templates")
+            .join(format!("{}.json", template_id));
 
         if !template_path.exists() {
-            return Err(StorageError::GameNotFound(format!("Template not found: {}", template_id)));
+            return Err(StorageError::GameNotFound(format!(
+                "Template not found: {}",
+                template_id
+            )));
         }
 
         let json = fs::read_to_string(template_path)?;
@@ -518,7 +531,9 @@ impl Storage {
 
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 if let Ok(json) = fs::read_to_string(&path) {
-                    if let Ok(template) = serde_json::from_str::<crate::video::CanvasTemplate>(&json) {
+                    if let Ok(template) =
+                        serde_json::from_str::<crate::video::CanvasTemplate>(&json)
+                    {
                         templates.push(CanvasTemplateInfo {
                             id: template.id.clone(),
                             name: template.name.clone(),
@@ -537,12 +552,364 @@ impl Storage {
 
     /// Delete a canvas template
     pub fn delete_canvas_template(&self, template_id: &str) -> Result<()> {
-        let template_path = self.base_path.join("templates").join(format!("{}.json", template_id));
+        let template_path = self
+            .base_path
+            .join("templates")
+            .join(format!("{}.json", template_id));
 
         if template_path.exists() {
             fs::remove_file(template_path)?;
             tracing::info!("Deleted canvas template: {}", template_id);
         }
+
+        Ok(())
+    }
+
+    // ========================================================================
+    // Generic Settings Storage
+    // ========================================================================
+
+    /// Get a setting value by key
+    pub async fn get_setting(&self, key: &str) -> Result<String> {
+        let settings_path = self.base_path.join("settings.json");
+
+        if !settings_path.exists() {
+            return Err(StorageError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Setting not found: {}", key),
+            )));
+        }
+
+        let json = fs::read_to_string(settings_path)?;
+        let settings: serde_json::Map<String, serde_json::Value> = serde_json::from_str(&json)?;
+
+        settings
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                StorageError::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("Setting not found: {}", key),
+                ))
+            })
+    }
+
+    /// Set a setting value by key
+    pub async fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+        let settings_path = self.base_path.join("settings.json");
+
+        // Load existing settings
+        let mut settings: serde_json::Map<String, serde_json::Value> = if settings_path.exists() {
+            let json = fs::read_to_string(&settings_path)?;
+            serde_json::from_str(&json)?
+        } else {
+            serde_json::Map::new()
+        };
+
+        // Update setting
+        settings.insert(key.to_string(), serde_json::Value::String(value.to_string()));
+
+        // Save settings
+        let json = serde_json::to_string_pretty(&settings)?;
+        fs::write(settings_path, json)?;
+
+        Ok(())
+    }
+
+    /// Remove a setting by key
+    pub async fn remove_setting(&self, key: &str) -> Result<()> {
+        let settings_path = self.base_path.join("settings.json");
+
+        if !settings_path.exists() {
+            return Ok(());
+        }
+
+        // Load existing settings
+        let json = fs::read_to_string(&settings_path)?;
+        let mut settings: serde_json::Map<String, serde_json::Value> = serde_json::from_str(&json)?;
+
+        // Remove setting
+        settings.remove(key);
+
+        // Save settings
+        let json = serde_json::to_string_pretty(&settings)?;
+        fs::write(settings_path, json)?;
+
+        Ok(())
+    }
+
+    // ========================================================================
+    // Auto-Edit Usage Tracking (Quota System)
+    // ========================================================================
+
+    /// Load auto-edit usage for current month
+    ///
+    /// Returns existing usage or creates new tracking for current month.
+    pub fn load_auto_edit_usage(&self) -> Result<AutoEditUsage> {
+        let usage_path = self.base_path.join("auto_edit_usage.json");
+
+        if !usage_path.exists() {
+            // No usage file exists, create new
+            return Ok(AutoEditUsage::new());
+        }
+
+        let json = fs::read_to_string(&usage_path)?;
+        let mut usage: AutoEditUsage = serde_json::from_str(&json)?;
+
+        // Check if we need to reset for new month
+        if !usage.is_current_month() {
+            tracing::info!(
+                "Resetting auto-edit usage for new month: {} -> {}",
+                usage.month,
+                AutoEditUsage::current_month()
+            );
+            usage = AutoEditUsage::reset_for_month(AutoEditUsage::current_month());
+            self.save_auto_edit_usage(&usage)?;
+        }
+
+        Ok(usage)
+    }
+
+    /// Save auto-edit usage
+    fn save_auto_edit_usage(&self, usage: &AutoEditUsage) -> Result<()> {
+        let usage_path = self.base_path.join("auto_edit_usage.json");
+        let json = serde_json::to_string_pretty(usage)?;
+        fs::write(usage_path, json)?;
+
+        tracing::debug!("Saved auto-edit usage: month={}, count={}", usage.month, usage.usage_count);
+        Ok(())
+    }
+
+    /// Increment auto-edit usage counter
+    ///
+    /// Returns the new usage count.
+    pub fn increment_auto_edit_usage(&self) -> Result<u32> {
+        let mut usage = self.load_auto_edit_usage()?;
+
+        usage.usage_count += 1;
+        usage.last_updated = chrono::Utc::now();
+
+        self.save_auto_edit_usage(&usage)?;
+
+        tracing::info!("Auto-edit usage incremented: {}/{} (month: {})",
+            usage.usage_count, "∞", usage.month);
+
+        Ok(usage.usage_count)
+    }
+
+    /// Check if user can perform auto-edit based on quota
+    ///
+    /// FREE tier: 5 per month
+    /// PRO tier: Unlimited
+    ///
+    /// Returns Ok(remaining) if allowed, Err if quota exceeded.
+    pub fn check_auto_edit_quota(&self, is_pro: bool) -> Result<u32> {
+        if is_pro {
+            // PRO tier has unlimited usage
+            return Ok(u32::MAX);
+        }
+
+        // FREE tier: check quota
+        const FREE_TIER_LIMIT: u32 = 5;
+
+        let usage = self.load_auto_edit_usage()?;
+
+        if usage.usage_count >= FREE_TIER_LIMIT {
+            return Err(StorageError::Io(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                format!(
+                    "Monthly auto-edit quota exceeded ({}/{}). Upgrade to PRO for unlimited usage.",
+                    usage.usage_count, FREE_TIER_LIMIT
+                ),
+            )));
+        }
+
+        let remaining = FREE_TIER_LIMIT - usage.usage_count;
+        Ok(remaining)
+    }
+
+    // ========================================================================
+    // Auto-Edit Result Storage
+    // ========================================================================
+
+    /// Save auto-edit result metadata
+    ///
+    /// Stores completed auto-edit information for display in Results tab.
+    pub fn save_auto_edit_result(&self, result: &models::AutoEditResultMetadata) -> Result<()> {
+        let results_path = self.base_path.join("auto_edit_results.json");
+
+        // Load existing results or create new list
+        let mut results: Vec<models::AutoEditResultMetadata> = if results_path.exists() {
+            let json = fs::read_to_string(&results_path)?;
+            serde_json::from_str(&json).unwrap_or_else(|_| Vec::new())
+        } else {
+            Vec::new()
+        };
+
+        // Add new result at the beginning (most recent first)
+        results.insert(0, result.clone());
+
+        // Save updated results
+        let json = serde_json::to_string_pretty(&results)?;
+        fs::write(results_path, json)?;
+
+        tracing::info!(
+            "Saved auto-edit result: {} (duration: {:.1}s, clips: {})",
+            result.result_id,
+            result.duration,
+            result.clip_count
+        );
+
+        Ok(())
+    }
+
+    /// Load all auto-edit results (sorted by most recent first)
+    pub fn load_auto_edit_results(&self) -> Result<Vec<models::AutoEditResultMetadata>> {
+        let results_path = self.base_path.join("auto_edit_results.json");
+
+        if !results_path.exists() {
+            return Ok(Vec::new());
+        }
+
+        let json = fs::read_to_string(results_path)?;
+        let results: Vec<models::AutoEditResultMetadata> = serde_json::from_str(&json)?;
+
+        tracing::debug!("Loaded {} auto-edit results", results.len());
+
+        Ok(results)
+    }
+
+    /// Load a specific auto-edit result by ID
+    pub fn load_auto_edit_result(&self, result_id: &str) -> Result<models::AutoEditResultMetadata> {
+        let results = self.load_auto_edit_results()?;
+
+        results
+            .into_iter()
+            .find(|r| r.result_id == result_id)
+            .ok_or_else(|| {
+                StorageError::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("Auto-edit result not found: {}", result_id),
+                ))
+            })
+    }
+
+    /// Delete an auto-edit result and its video file
+    ///
+    /// Removes the result metadata and optionally deletes the video file.
+    pub fn delete_auto_edit_result(&self, result_id: &str, delete_file: bool) -> Result<()> {
+        let results_path = self.base_path.join("auto_edit_results.json");
+
+        if !results_path.exists() {
+            return Err(StorageError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "No auto-edit results found",
+            )));
+        }
+
+        // Load existing results
+        let json = fs::read_to_string(&results_path)?;
+        let mut results: Vec<models::AutoEditResultMetadata> = serde_json::from_str(&json)?;
+
+        // Find and remove the result
+        let original_len = results.len();
+        let mut deleted_path: Option<String> = None;
+
+        results.retain(|r| {
+            if r.result_id == result_id {
+                if delete_file {
+                    deleted_path = Some(r.output_path.clone());
+                }
+                false // Remove this result
+            } else {
+                true // Keep this result
+            }
+        });
+
+        if results.len() == original_len {
+            return Err(StorageError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Auto-edit result not found: {}", result_id),
+            )));
+        }
+
+        // Delete the video file if requested
+        if let Some(file_path) = deleted_path {
+            let path = PathBuf::from(&file_path);
+            if path.exists() {
+                fs::remove_file(&path)?;
+                tracing::info!("Deleted auto-edit video file: {:?}", path);
+            }
+
+            // Also delete thumbnail if it exists
+            if let Ok(result) = self.load_auto_edit_result(result_id) {
+                if let Some(thumb_path) = result.thumbnail_path {
+                    let thumb = PathBuf::from(&thumb_path);
+                    if thumb.exists() {
+                        fs::remove_file(&thumb)?;
+                        tracing::info!("Deleted auto-edit thumbnail: {:?}", thumb);
+                    }
+                }
+            }
+        }
+
+        // Save updated results
+        let json = serde_json::to_string_pretty(&results)?;
+        fs::write(results_path, json)?;
+
+        tracing::info!("Deleted auto-edit result: {}", result_id);
+
+        Ok(())
+    }
+
+    /// Update YouTube upload status for an auto-edit result
+    ///
+    /// Updates the YouTube status field of a specific result.
+    pub fn update_auto_edit_youtube_status(
+        &self,
+        result_id: &str,
+        status: models::YouTubeUploadStatus,
+    ) -> Result<()> {
+        let results_path = self.base_path.join("auto_edit_results.json");
+
+        if !results_path.exists() {
+            return Err(StorageError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "No auto-edit results found",
+            )));
+        }
+
+        // Load existing results
+        let json = fs::read_to_string(&results_path)?;
+        let mut results: Vec<models::AutoEditResultMetadata> = serde_json::from_str(&json)?;
+
+        // Find and update the result
+        let mut found = false;
+        for result in &mut results {
+            if result.result_id == result_id {
+                result.youtube_status = Some(status.clone());
+                found = true;
+                break;
+            }
+        }
+
+        if !found {
+            return Err(StorageError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Auto-edit result not found: {}", result_id),
+            )));
+        }
+
+        // Save updated results
+        let json = serde_json::to_string_pretty(&results)?;
+        fs::write(results_path, json)?;
+
+        tracing::info!(
+            "Updated YouTube status for result {}: {:?}",
+            result_id,
+            status.status
+        );
 
         Ok(())
     }

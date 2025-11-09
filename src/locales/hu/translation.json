@@ -1,0 +1,433 @@
+{
+  "app": {
+    "name": "LoLShorts",
+    "tagline": "Kiemelkedő Pillanatok Készítője"
+  },
+  "nav": {
+    "dashboard": "Vezérlőpult",
+    "games": "Játékok",
+    "editor": "Szerkesztő",
+    "autoEdit": "Auto-szerkesztés",
+    "youtube": "YouTube",
+    "settings": "Beállítások",
+    "pro": "PRO"
+  },
+  "auth": {
+    "login": "Bejelentkezés",
+    "signup": "Regisztráció",
+    "logout": "Kijelentkezés",
+    "loginSignup": "Bejelentkezés / Regisztráció",
+    "email": "Email",
+    "password": "Jelszó",
+    "confirmPassword": "Jelszó megerősítése",
+    "forgotPassword": "Elfelejtett jelszó?",
+    "noAccount": "Nincs fiókod?",
+    "hasAccount": "Már van fiókod?",
+    "createAccount": "Fiók létrehozása",
+    "loginWithGoogle": "Bejelentkezés Google-lal",
+    "loginWithDiscord": "Bejelentkezés Discord-dal"
+  },
+  "dashboard": {
+    "title": "Vezérlőpult",
+    "welcome": "Üdv újra, {{name}}!",
+    "lcuStatus": {
+      "title": "League of Legends",
+      "connected": "Csatlakozva",
+      "disconnected": "Megszakítva",
+      "connecting": "Csatlakozás...",
+      "error": "Hiba",
+      "messages": {
+        "connected": "Csatlakozva a League klienshez",
+        "disconnected": "Csatlakozz a League klienshez a kezdéshez",
+        "autoReconnect": "Automatikus újracsatlakozás {{seconds}} másodpercenként",
+        "startLeague": "Győződj meg róla, hogy a League of Legends kliens fut"
+      }
+    },
+    "gameStatus": {
+      "title": "Jelenlegi játék",
+      "inGame": "Játékban",
+      "noGame": "Nincs játék",
+      "champion": "{{champion}} játszik",
+      "messages": {
+        "notInGame": "Nem vagy játékban",
+        "connectFirst": "Először csatlakozz a League-hez"
+      }
+    },
+    "recordingStatus": {
+      "title": "Felvétel",
+      "idle": "Tétlen",
+      "recording": "Felvétel",
+      "processing": "Feldolgozás",
+      "paused": "Szüneteltetve",
+      "messages": {
+        "autoStart": "Automatikusan indul a játék kezdetekor",
+        "loginRequired": "Bejelentkezés szükséges az automatikus felvételhez",
+        "recording": "Felvétel folyamatban",
+        "duration": "Időtartam: {{duration}}"
+      }
+    },
+    "stats": {
+      "title": "Gyors statisztikák",
+      "subtitle": "Felvételi statisztikáid",
+      "totalGames": "Összes játék:",
+      "totalClips": "Összes klip:",
+      "storageUsed": "Felhasznált tárhely:",
+      "comingSoon": "Hamarosan"
+    },
+    "gettingStarted": {
+      "title": "Kezdő lépések",
+      "subtitle": "Egyszerű beállítás - automatikus felvétel",
+      "steps": {
+        "login": "Jelentkezz be vagy hozz létre fiókot",
+        "startLeague": "Indítsd el a League of Legends klienst (automatikus csatlakozás kezdődik)",
+        "enterGame": "Lépj be egy játékba (bármilyen játékmód)",
+        "autoRecord": "A felvétel automatikusan indul a játék kezdetekor",
+        "playNormal": "Játssz normálisan - a kiemelkedő pillanatok automatikusan észlelésre kerülnek ölések, célok és multikillék alapján",
+        "afterGame": "A játék után a felvétel automatikusan leáll és a klipek mentésre kerülnek szerkesztéshez"
+      }
+    }
+  },
+  "games": {
+    "title": "Games",
+    "recordedGames": "Recorded Games",
+    "refresh": "Refresh",
+    "noGames": "No games recorded yet",
+    "noGamesRecorded": "No Games Recorded Yet",
+    "playGame": "Play a League of Legends game to start recording",
+    "startRecordingPrompt": "Start recording games from the Dashboard to see them here.",
+    "loadingGames": "Loading games...",
+    "loadingGameData": "Loading game data...",
+    "deleteConfirm": "Are you sure you want to delete this game and all its clips?",
+    "deleteFailed": "Failed to delete game",
+    "filters": {
+      "all": "All Games",
+      "withClips": "With Clips",
+      "favorites": "Favorites"
+    },
+    "sorting": {
+      "newest": "Newest First",
+      "oldest": "Oldest First",
+      "mostClips": "Most Clips"
+    },
+    "stats": {
+      "totalGames": "Total Games",
+      "totalClips": "Total Clips",
+      "storageUsed": "Storage Used"
+    },
+    "game": {
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "remake": "Remake",
+      "date": "Date",
+      "duration": "Duration",
+      "kda": "KDA",
+      "recorded": "Recorded",
+      "clips": "{{count}} Clips",
+      "kdaFormat": "{{kills}}/{{deaths}}/{{assists}}",
+      "viewClips": "View Clips",
+      "delete": "Delete Game"
+    }
+  },
+  "editor": {
+    "title": "Videószerkesztő",
+    "subtitle": "Szerkeszd és szabd testre klipjeidet",
+    "proRequired": "PRO előfizetés szükséges",
+    "upgradeToPro": "Váltás PRO-ra",
+    "noClips": "Nincsenek elérhető klipek",
+    "selectClips": "Válassz klipeket a játékaidból a szerkesztés kezdéséhez",
+    "timeline": {
+      "title": "Idővonal",
+      "addClip": "Klip hozzáadása",
+      "removeClip": "Klip eltávolítása"
+    },
+    "tools": {
+      "trim": "Vágás",
+      "merge": "Egyesítés",
+      "transitions": "Átmenetek",
+      "filters": "Szűrők",
+      "speed": "Sebesség",
+      "audio": "Hang"
+    },
+    "export": {
+      "title": "Exportálás",
+      "quality": "Minőség",
+      "format": "Formátum",
+      "exportVideo": "Videó exportálása"
+    },
+    "selectGameTitle": "Select a Game to Edit",
+    "selectGameDescription": "Choose a game from your recorded sessions to start editing",
+    "noGamesAvailable": "No games available. Record a game session first from the Dashboard.",
+    "selectGame": "Select Game",
+    "chooseGame": "Choose a game",
+    "selectGamePrompt": "Select a game to load its clips and start building your video timeline.",
+    "loadingClips": "Loading clips...",
+    "errorLoadingClips": "Error Loading Clips",
+    "backToGameSelection": "Back to Game Selection",
+    "retry": "Retry",
+    "changeGame": "Change Game",
+    "gameWithClips": "Game {{gameId}} • {{count}} clips available",
+    "clipsAvailable": "{{count}} clips available"
+  },
+  "autoEdit": {
+    "title": "Auto-szerkesztés",
+    "subtitle": "Mesterséges intelligenciával működő kiemelkedő videó generátor",
+    "proRequired": "PRO előfizetés szükséges",
+    "upgradeToPro": "Váltás PRO-ra",
+    "selectGame": "Válassz egy játékot kiemelkedő pillanatok generálásához",
+    "templates": {
+      "title": "Sablonok",
+      "epicPentakill": "Epikus Pentakill",
+      "highlightReel": "Kiemelkedő Pillanatok Összeállítása",
+      "cleanPlays": "Tiszta Játékok",
+      "custom": "Egyéni"
+    },
+    "settings": {
+      "title": "Beállítások",
+      "duration": "Cél időtartam",
+      "music": "Zenei stílus",
+      "transitions": "Átmenetek",
+      "effects": "Effektek"
+    },
+    "generate": "Videó generálása",
+    "generating": "Generálás...",
+    "preview": "Előnézet",
+    "export": "Exportálás"
+  },
+  "youtube": {
+    "title": "YouTube",
+    "subtitle": "Töltsd fel kiemelkedő pillanataidat a YouTube-ra",
+    "proRequired": "PRO előfizetés szükséges",
+    "upgradeToPro": "Váltás PRO-ra",
+    "connect": "YouTube fiók csatlakoztatása",
+    "disconnect": "Leválasztás",
+    "connected": "Csatlakozva mint {{name}}",
+    "upload": {
+      "title": "Videó feltöltése",
+      "selectVideo": "Videó kiválasztása",
+      "videoTitle": "Cím",
+      "description": "Leírás",
+      "tags": "Címkék",
+      "privacy": "Adatvédelem",
+      "privacyOptions": {
+        "public": "Nyilvános",
+        "unlisted": "Nem listázott",
+        "private": "Privát"
+      },
+      "thumbnail": "Bélyegkép",
+      "uploadButton": "Feltöltés YouTube-ra",
+      "uploading": "Feltöltés..."
+    },
+    "history": {
+      "title": "Feltöltési előzmények",
+      "noVideos": "Még nincsenek feltöltött videók",
+      "views": "{{count}} megtekintés",
+      "likes": "{{count}} kedvelés",
+      "openYoutube": "Megnyitás YouTube-on"
+    },
+    "quota": {
+      "title": "Napi kvóta",
+      "used": "Felhasznált: {{used}} / {{total}}",
+      "remaining": "{{count}} feltöltés maradt",
+      "resetTime": "Visszaállítás {{time}} múlva"
+    },
+    "tabs": {
+      "upload": "Upload",
+      "history": "History",
+      "account": "Account"
+    }
+  },
+  "settings": {
+    "title": "Beállítások",
+    "general": {
+      "title": "Általános",
+      "language": "Nyelv",
+      "selectLanguage": "Nyelv kiválasztása",
+      "theme": "Téma",
+      "themes": {
+        "light": "Világos",
+        "dark": "Sötét",
+        "system": "Rendszer"
+      },
+      "startWithWindows": "Indítás Windows-zal",
+      "minimizeToTray": "Minimalizálás a tálcára"
+    },
+    "recording": {
+      "title": "Felvétel",
+      "autoRecord": "Játékok automatikus felvétele",
+      "replayBuffer": "Visszajátszási puffer időtartama",
+      "seconds": "{{count}} másodperc",
+      "quality": "Felvételi minőség",
+      "qualities": {
+        "1080p60": "1080p 60fps",
+        "1080p30": "1080p 30fps",
+        "720p60": "720p 60fps",
+        "720p30": "720p 30fps"
+      },
+      "encoder": "Kódoló",
+      "encoders": {
+        "hardware": "Hardver (GPU)",
+        "software": "Szoftver (CPU)"
+      },
+      "bitrate": "Bitráta",
+      "mbps": "{{count}} Mbps"
+    },
+    "hotkeys": {
+      "title": "Gyorsbillentyűk",
+      "toggleRecording": "Felvétel váltása",
+      "save60s": "Utolsó 60mp mentése",
+      "save30s": "Utolsó 30mp mentése",
+      "pressKey": "Nyomj meg egy billentyűt..."
+    },
+    "storage": {
+      "title": "Tárhely",
+      "location": "Mentési hely",
+      "browse": "Tallózás",
+      "used": "Felhasználva: {{used}} GB",
+      "autoCleanup": "Régi fájlok automatikus törlése",
+      "keepDays": "Fájlok megőrzése {{count}} napig"
+    },
+    "account": {
+      "title": "Fiók",
+      "subscription": "Előfizetés",
+      "plan": {
+        "free": "INGYENES",
+        "pro": "PRO"
+      },
+      "upgradeToPro": "Váltás PRO-ra",
+      "manageBilling": "Számlázás kezelése",
+      "cancelSubscription": "Előfizetés lemondása"
+    },
+    "about": {
+      "title": "Névjegy",
+      "version": "Verzió {{version}}",
+      "checkUpdates": "Frissítések ellenőrzése",
+      "changelog": "Változásnapló",
+      "website": "Weboldal",
+      "support": "Támogatás",
+      "discord": "Discord közösség"
+    },
+    "license": {
+      "title": "License & Subscription",
+      "description": "Your current plan and subscription details",
+      "loginRequired": "Login Required",
+      "loginPrompt": "Please login to view and manage your subscription",
+      "loginButton": "Login or Sign Up",
+      "loadingLicense": "Loading license information...",
+      "currentPlan": "Current Plan",
+      "proPlanDescription": "Unlimited clips, priority support, and advanced features",
+      "freePlanDescription": "Free tier with basic recording features",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "expiresOn": "Expires On",
+      "daysRemaining": "Days Remaining",
+      "days": "days",
+      "accountEmail": "Account Email",
+      "manageSubscription": "Manage Subscription",
+      "whyUpgrade": "Why Upgrade to PRO?",
+      "features": {
+        "unlimitedClips": "Unlimited Clips",
+        "unlimitedClipsDesc": "Record as many highlights as you want",
+        "advancedEditor": "Advanced Editor",
+        "advancedEditorDesc": "Premium transitions and effects",
+        "prioritySupport": "Priority Support",
+        "prioritySupportDesc": "Get help faster",
+        "noWatermarks": "No Watermarks",
+        "noWatermarksDesc": "Export clean videos"
+      },
+      "pricing": "PRO Pricing:",
+      "pricingDetails": "₩9,900/month or ₩99,000/year (Save 17%)",
+      "loadError": "Failed to load license information"
+    },
+    "recordingConfig": {
+      "title": "Recording Configuration",
+      "description": "Configure automatic clip recording preferences",
+      "resetToDefaults": "Reset to Defaults",
+      "loadingSettings": "Loading settings...",
+      "savingSettings": "Saving...",
+      "loadError": "Failed to load settings",
+      "tabs": {
+        "events": "Events",
+        "modes": "Game Modes",
+        "video": "Video",
+        "audio": "Audio",
+        "timing": "Timing",
+        "hotkeys": "Hotkeys"
+      }
+    },
+    "accountInfo": {
+      "title": "Account Information",
+      "description": "Your account details",
+      "email": "Email",
+      "userId": "User ID",
+      "licenseTier": "License Tier"
+    }
+  },
+  "common": {
+    "save": "Mentés",
+    "cancel": "Mégse",
+    "delete": "Törlés",
+    "edit": "Szerkesztés",
+    "close": "Bezárás",
+    "ok": "OK",
+    "yes": "Igen",
+    "no": "Nem",
+    "loading": "Betöltés...",
+    "saving": "Mentés...",
+    "saved": "Mentve",
+    "error": "Hiba",
+    "success": "Sikeres",
+    "warning": "Figyelmeztetés",
+    "info": "Információ",
+    "confirm": "Megerősítés",
+    "back": "Vissza",
+    "next": "Következő",
+    "finish": "Befejezés",
+    "search": "Keresés",
+    "filter": "Szűrő",
+    "sort": "Rendezés",
+    "export": "Exportálás",
+    "import": "Importálás",
+    "upload": "Feltöltés",
+    "download": "Letöltés",
+    "share": "Megosztás",
+    "copy": "Másolás",
+    "paste": "Beillesztés",
+    "cut": "Kivágás",
+    "undo": "Visszavonás",
+    "redo": "Újra",
+    "selectAll": "Összes kijelölése",
+    "deselectAll": "Kijelölés megszüntetése"
+  },
+  "errors": {
+    "generic": "Hiba történt",
+    "networkError": "Hálózati hiba. Ellenőrizd a kapcsolatot.",
+    "authFailed": "Hitelesítés sikertelen",
+    "notAuthenticated": "Be kell jelentkezned",
+    "notAuthorized": "Nincs jogosultságod",
+    "notFound": "Nem található",
+    "serverError": "Szerver hiba. Próbáld később.",
+    "invalidInput": "Érvénytelen bemenet",
+    "uploadFailed": "Feltöltés sikertelen",
+    "processingFailed": "Feldolgozás sikertelen",
+    "lcuNotConnected": "League kliens nincs csatlakoztatva",
+    "recordingFailed": "Felvétel sikertelen",
+    "quotaExceeded": "YouTube kvóta túllépve"
+  },
+  "tooltips": {
+    "replayBuffer": "Folyamatosan rögzíti az utolsó {{seconds}} másodpercet. Nyomd meg a gyorsbillentyűt a mentéshez.",
+    "autoRecord": "Automatikus felvétel indítása játék kezdetekor",
+    "hardwareEncoder": "GPU használata kódoláshoz (gyorsabb, kevesebb CPU használat)",
+    "proFeature": "Ez a funkció PRO előfizetést igényel",
+    "lcuStatus": "Kapcsolat állapota a League of Legends klienshez",
+    "dailyQuota": "YouTube ~6 videó feltöltést engedélyez naponta"
+  },
+  "notifications": {
+    "gameStarted": "Játék elkezdődött - Felvétel engedélyezve",
+    "gameEnded": "Játék véget ért - {{count}} klip mentve",
+    "clipSaved": "Klip mentve: {{name}}",
+    "uploadComplete": "Feltöltés befejezve: {{title}}",
+    "uploadFailed": "Feltöltés sikertelen: {{error}}",
+    "updateAvailable": "Frissítés elérhető: v{{version}}"
+  }
+}

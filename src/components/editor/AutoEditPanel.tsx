@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearch } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import { useAutoEditStore } from '@/stores/autoEditStore';
 import { useAutoEdit } from '@/hooks/useAutoEdit';
 import { useStorage } from '@/hooks/useStorage';
+import { useAutoEditQuota } from '@/hooks/useAutoEditQuota';
 import { CanvasEditor } from './CanvasEditor';
 import { AudioMixer } from './AudioMixer';
+import { AutoEditQuotaBadge } from './AutoEditQuotaBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +36,8 @@ import {
 import { DurationOption, GameSelection } from '@/types/autoEdit';
 
 export function AutoEditPanel() {
+  const { t } = useTranslation();
+  const searchParams = useSearch({ from: '/auto-edit' }) as { gameId?: string };
   const [localLoading, setLocalLoading] = useState(false);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
@@ -66,11 +72,15 @@ export function AutoEditPanel() {
 
   const { getAllGames, isLoading: gamesLoading } = useStorage();
 
+  const { hasQuota, fetchQuota } = useAutoEditQuota();
+
   // Load available games on mount
   useEffect(() => {
     const loadGames = async () => {
       try {
         const games = await getAllGames();
+
+        const preSelectedGameId = searchParams.gameId;
 
         const gameSelections: GameSelection[] = games.map(game => ({
           game_id: game.game_id,
@@ -78,17 +88,22 @@ export function AutoEditPanel() {
           game_mode: game.game_mode,
           date: new Date(game.game_start_time).toLocaleDateString(),
           clip_count: 0, // TODO: Add clip count from backend
-          selected: false,
+          selected: preSelectedGameId === game.game_id, // Pre-select if gameId in URL
         }));
 
         setAvailableGames(gameSelections);
+
+        // Auto-toggle selection for pre-selected game
+        if (preSelectedGameId) {
+          toggleGameSelection(preSelectedGameId);
+        }
       } catch (err) {
         console.error('Failed to load games:', err);
       }
     };
 
     loadGames();
-  }, [getAllGames, setAvailableGames]);
+  }, [getAllGames, setAvailableGames, searchParams.gameId, toggleGameSelection]);
 
   // Reset technical details visibility when error changes
   useEffect(() => {
@@ -100,7 +115,13 @@ export function AutoEditPanel() {
   // Start generation
   const handleStartGeneration = useCallback(async () => {
     if (selectedGameIds.length === 0) {
-      alert('Please select at least one game');
+      alert(t('errors.selectAtLeastOneGame'));
+      return;
+    }
+
+    // Check quota before starting
+    if (!hasQuota()) {
+      alert(t('autoEdit.quotaExhaustedAlert'));
       return;
     }
 
@@ -111,6 +132,9 @@ export function AutoEditPanel() {
       const config = buildConfig();
       await startAutoEdit(config);
 
+      // Refresh quota after successful start
+      fetchQuota();
+
       // Start polling for progress
       startProgressPolling(1000);
     } catch (err) {
@@ -119,7 +143,7 @@ export function AutoEditPanel() {
     } finally {
       setLocalLoading(false);
     }
-  }, [selectedGameIds, buildConfig, startAutoEdit, startProgressPolling, setCurrentStep]);
+  }, [selectedGameIds, buildConfig, startAutoEdit, startProgressPolling, setCurrentStep, hasQuota, fetchQuota, t]);
 
   // Handle generation complete
   useEffect(() => {
@@ -148,18 +172,21 @@ export function AutoEditPanel() {
           <div className="flex items-center gap-3">
             <Sparkles className="w-6 h-6 text-primary" />
             <div>
-              <h2 className="text-lg font-semibold">Auto-Edit Shorts Generator</h2>
+              <h2 className="text-lg font-semibold">{t('autoEdit.title')}</h2>
               <p className="text-sm text-muted-foreground">
-                AI-powered YouTube Shorts creation from your best moments
+                {t('autoEdit.subtitle')}
               </p>
             </div>
           </div>
-          <Badge variant={currentStep === 'generating' ? 'default' : 'secondary'}>
-            {currentStep === 'configure' && 'Configure'}
-            {currentStep === 'preview' && 'Preview'}
-            {currentStep === 'generating' && 'Generating...'}
-            {currentStep === 'complete' && 'Complete'}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <AutoEditQuotaBadge />
+            <Badge variant={currentStep === 'generating' ? 'default' : 'secondary'}>
+              {currentStep === 'configure' && t('autoEdit.steps.configure')}
+              {currentStep === 'preview' && t('autoEdit.steps.preview')}
+              {currentStep === 'generating' && t('autoEdit.steps.generating')}
+              {currentStep === 'complete' && t('autoEdit.steps.complete')}
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -172,10 +199,10 @@ export function AutoEditPanel() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Video className="w-5 h-5" />
-                  Select Games
+                  {t('autoEdit.selectGames')}
                 </CardTitle>
                 <CardDescription>
-                  Choose one or more games to pull clips from
+                  {t('autoEdit.selectGamesDescription')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -187,7 +214,7 @@ export function AutoEditPanel() {
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      No games available. Record some games first from the Dashboard.
+                      {t('autoEdit.noGamesAvailable')}
                     </AlertDescription>
                   </Alert>
                 ) : (
@@ -210,7 +237,7 @@ export function AutoEditPanel() {
                                 {game.game_mode}
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                {game.date} • {game.clip_count} clips
+                                {game.date} • {t('autoEdit.clipsCount', { count: game.clip_count })}
                               </div>
                             </div>
                             {selectedGameIds.includes(game.game_id) && (
@@ -226,7 +253,7 @@ export function AutoEditPanel() {
                 {selectedGameIds.length > 0 && (
                   <div className="mt-4 p-3 bg-primary/10 rounded-lg">
                     <p className="text-sm font-medium">
-                      {selectedGameIds.length} game(s) selected
+                      {t('autoEdit.gamesSelected', { count: selectedGameIds.length })}
                     </p>
                   </div>
                 )}
@@ -238,10 +265,10 @@ export function AutoEditPanel() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="w-5 h-5" />
-                  Target Duration
+                  {t('autoEdit.targetDuration')}
                 </CardTitle>
                 <CardDescription>
-                  Choose your YouTube Shorts length
+                  {t('autoEdit.targetDurationDescription')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -261,9 +288,9 @@ export function AutoEditPanel() {
                           {duration}s
                         </div>
                         <div className="text-sm text-muted-foreground mt-1">
-                          {duration === 60 && 'Quick Short'}
-                          {duration === 120 && 'Standard'}
-                          {duration === 180 && 'Extended'}
+                          {duration === 60 && t('autoEdit.quickShort')}
+                          {duration === 120 && t('autoEdit.standard')}
+                          {duration === 180 && t('autoEdit.extended')}
                         </div>
                       </CardContent>
                     </Card>
@@ -277,11 +304,11 @@ export function AutoEditPanel() {
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="canvas">
                   <Palette className="w-4 h-4 mr-2" />
-                  Canvas Overlay
+                  {t('autoEdit.canvasOverlay')}
                 </TabsTrigger>
                 <TabsTrigger value="audio">
                   <Music className="w-4 h-4 mr-2" />
-                  Background Music
+                  {t('autoEdit.backgroundMusic')}
                 </TabsTrigger>
               </TabsList>
 
@@ -316,12 +343,12 @@ export function AutoEditPanel() {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Starting...
+                    {t('autoEdit.starting')}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5 mr-2" />
-                    Generate Short
+                    {t('autoEdit.generateShort')}
                   </>
                 )}
               </Button>
@@ -335,10 +362,10 @@ export function AutoEditPanel() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Generating Your Short
+                  {t('autoEdit.generatingYourShort')}
                 </CardTitle>
                 <CardDescription>
-                  Please wait while we create your YouTube Short...
+                  {t('autoEdit.pleaseWait')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -358,14 +385,19 @@ export function AutoEditPanel() {
                   <div className="flex items-center gap-2">
                     <Video className="w-4 h-4 text-muted-foreground" />
                     <span>
-                      {progress.clips_selected} / {progress.total_clips} clips
+                      {t('autoEdit.clipsProgress', {
+                        selected: progress.clips_selected,
+                        total: progress.total_clips
+                      })}
                     </span>
                   </div>
                   {progress.estimated_completion_seconds && (
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-muted-foreground" />
                       <span>
-                        ~{Math.ceil(progress.estimated_completion_seconds)}s remaining
+                        {t('autoEdit.timeRemaining', {
+                          seconds: Math.ceil(progress.estimated_completion_seconds)
+                        })}
                       </span>
                     </div>
                   )}
@@ -374,11 +406,11 @@ export function AutoEditPanel() {
                 {/* Stage Indicators */}
                 <div className="space-y-2">
                   {[
-                    { stage: 'SelectingClips', label: 'Selecting Best Clips' },
-                    { stage: 'PreparingClips', label: 'Preparing Clips' },
-                    { stage: 'Concatenating', label: 'Concatenating Videos' },
-                    { stage: 'ApplyingCanvas', label: 'Applying Canvas Overlay' },
-                    { stage: 'MixingAudio', label: 'Mixing Audio' },
+                    { stage: 'SelectingClips', label: t('autoEdit.stages.selectingClips') },
+                    { stage: 'PreparingClips', label: t('autoEdit.stages.preparingClips') },
+                    { stage: 'Concatenating', label: t('autoEdit.stages.concatenating') },
+                    { stage: 'ApplyingCanvas', label: t('autoEdit.stages.applyingCanvas') },
+                    { stage: 'MixingAudio', label: t('autoEdit.stages.mixingAudio') },
                   ].map(({ stage, label }) => (
                     <div
                       key={stage}
@@ -405,8 +437,7 @@ export function AutoEditPanel() {
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    This may take a few minutes depending on the number of clips and selected options.
-                    Do not close this window.
+                    {t('autoEdit.generationWarning')}
                   </AlertDescription>
                 </Alert>
               </CardContent>
@@ -420,33 +451,33 @@ export function AutoEditPanel() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-600">
                   <CheckCircle2 className="w-6 h-6" />
-                  Short Generated Successfully!
+                  {t('autoEdit.shortGeneratedSuccessfully')}
                 </CardTitle>
                 <CardDescription>
-                  Your YouTube Short is ready to use
+                  {t('autoEdit.shortReady')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Result Details */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <div className="text-sm text-muted-foreground">Duration</div>
+                    <div className="text-sm text-muted-foreground">{t('autoEdit.duration')}</div>
                     <div className="text-2xl font-bold">
                       {Math.round(result.duration)}s
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-sm text-muted-foreground">Clips Used</div>
+                    <div className="text-sm text-muted-foreground">{t('autoEdit.clipsUsed')}</div>
                     <div className="text-2xl font-bold">{result.clips_used}</div>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-sm text-muted-foreground">File Size</div>
+                    <div className="text-sm text-muted-foreground">{t('autoEdit.fileSize')}</div>
                     <div className="text-2xl font-bold">
                       {formatFileSize(result.file_size_bytes)}
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <div className="text-sm text-muted-foreground">Job ID</div>
+                    <div className="text-sm text-muted-foreground">{t('autoEdit.jobId')}</div>
                     <div className="text-xs font-mono truncate">
                       {result.job_id}
                     </div>
@@ -457,7 +488,7 @@ export function AutoEditPanel() {
 
                 {/* Output Path */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Output File</Label>
+                  <Label className="text-sm font-medium">{t('autoEdit.outputFile')}</Label>
                   <div className="p-3 bg-muted rounded-lg">
                     <code className="text-xs break-all">{result.output_path}</code>
                   </div>
@@ -468,23 +499,23 @@ export function AutoEditPanel() {
                   <Button
                     onClick={() => {
                       // TODO: Open file location
-                      alert('Open file location: ' + result.output_path);
+                      alert(t('errors.todoFeature', { action: 'Open file location: ' + result.output_path }));
                     }}
                     className="flex-1"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Open File Location
+                    {t('autoEdit.openFileLocation')}
                   </Button>
                   <Button
                     onClick={() => {
                       // TODO: Play video
-                      alert('Play video: ' + result.output_path);
+                      alert(t('errors.todoFeature', { action: 'Play video: ' + result.output_path }));
                     }}
                     variant="outline"
                     className="flex-1"
                   >
                     <Play className="w-4 h-4 mr-2" />
-                    Play Video
+                    {t('autoEdit.playVideo')}
                   </Button>
                 </div>
 
@@ -494,7 +525,7 @@ export function AutoEditPanel() {
                   className="w-full"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Create Another Short
+                  {t('autoEdit.createAnotherShort')}
                 </Button>
               </CardContent>
             </Card>
@@ -507,7 +538,7 @@ export function AutoEditPanel() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-destructive">
                   <XCircle className="w-5 h-5" />
-                  Video Generation Failed
+                  {t('autoEdit.videoGenerationFailed')}
                 </CardTitle>
                 <CardDescription className="text-base" data-testid="error-message">
                   {error.message}
@@ -518,7 +549,7 @@ export function AutoEditPanel() {
                 {/* Recovery Suggestions */}
                 <div data-testid="error-recovery-suggestions">
                   <Label className="text-sm font-medium mb-2 block">
-                    Try these solutions:
+                    {t('autoEdit.trySolutions')}
                   </Label>
                   <ul className="space-y-2">
                     {error.recovery_suggestions.map((suggestion, idx) => (
@@ -539,7 +570,7 @@ export function AutoEditPanel() {
                       onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
                       className="w-full justify-between"
                     >
-                      <span className="text-sm font-medium">Technical Details</span>
+                      <span className="text-sm font-medium">{t('autoEdit.technicalDetails')}</span>
                       {showTechnicalDetails ? (
                         <ChevronUp className="w-4 h-4" />
                       ) : (
@@ -568,7 +599,7 @@ export function AutoEditPanel() {
                     data-testid="retry-button"
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
-                    Retry Generation
+                    {t('autoEdit.retryGeneration')}
                   </Button>
 
                   <Button
@@ -578,7 +609,7 @@ export function AutoEditPanel() {
                     data-testid="reset-button"
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    Start Over
+                    {t('autoEdit.startOver')}
                   </Button>
                 </div>
               </CardContent>

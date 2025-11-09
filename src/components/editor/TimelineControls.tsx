@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/stores/editorStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ZoomIn, ZoomOut, RotateCcw, Trash2 } from 'lucide-react';
 
 export function TimelineControls() {
+  const { t } = useTranslation();
   const {
     timelineClips,
     totalDuration,
@@ -21,7 +23,7 @@ export function TimelineControls() {
   };
 
   const handleClearTimeline = () => {
-    if (confirm('Are you sure you want to clear the timeline? This cannot be undone.')) {
+    if (confirm(t('confirmations.clearTimeline'))) {
       clearTimeline();
     }
   };

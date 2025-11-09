@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // ========================================================================
 // Security Validation Utilities
 // ========================================================================
@@ -10,7 +11,7 @@
 //
 // All Tauri commands MUST use these validators before processing user input.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -114,7 +115,11 @@ pub fn validate_path(
 
 /// Validate input video path
 pub fn validate_video_input_path(path: &str) -> Result<PathBuf> {
-    validate_path(path, Some(&["mp4", "avi", "mkv", "mov", "flv", "webm"]), true)
+    validate_path(
+        path,
+        Some(&["mp4", "avi", "mkv", "mov", "flv", "webm"]),
+        true,
+    )
 }
 
 /// Validate output video path
@@ -125,12 +130,20 @@ pub fn validate_video_output_path(path: &str) -> Result<PathBuf> {
 
 /// Validate audio file path
 pub fn validate_audio_path(path: &str) -> Result<PathBuf> {
-    validate_path(path, Some(&["mp3", "wav", "m4a", "aac", "ogg", "flac"]), true)
+    validate_path(
+        path,
+        Some(&["mp3", "wav", "m4a", "aac", "ogg", "flac"]),
+        true,
+    )
 }
 
 /// Validate image file path
 pub fn validate_image_path(path: &str) -> Result<PathBuf> {
-    validate_path(path, Some(&["png", "jpg", "jpeg", "gif", "bmp", "svg"]), true)
+    validate_path(
+        path,
+        Some(&["png", "jpg", "jpeg", "gif", "bmp", "svg"]),
+        true,
+    )
 }
 
 /// Validate thumbnail output path
@@ -159,7 +172,10 @@ pub fn validate_id(id: &str, max_length: usize) -> Result<String> {
     }
 
     // Only allow alphanumeric, dashes, and underscores
-    if !id.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+    if !id
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+    {
         return Err(SecurityError::InvalidString {
             reason: "ID contains invalid characters (only alphanumeric, -, _ allowed)".to_string(),
         });
@@ -211,7 +227,10 @@ pub fn validate_duration(duration: f64) -> Result<f64> {
 pub fn validate_target_duration(duration: u32) -> Result<u32> {
     if duration != 60 && duration != 120 && duration != 180 {
         return Err(SecurityError::InvalidNumeric {
-            reason: format!("Invalid target duration: {}. Must be 60, 120, or 180 seconds", duration),
+            reason: format!(
+                "Invalid target duration: {}. Must be 60, 120, or 180 seconds",
+                duration
+            ),
         });
     }
 
@@ -243,21 +262,30 @@ mod tests {
     fn test_path_traversal_detection() {
         let result = validate_path("C:\\test\\..\\..\\etc\\passwd", None, false);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), SecurityError::PathTraversal { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            SecurityError::PathTraversal { .. }
+        ));
     }
 
     #[test]
     fn test_relative_path_rejection() {
         let result = validate_path("relative/path/file.mp4", None, false);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), SecurityError::NotAbsolutePath { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            SecurityError::NotAbsolutePath { .. }
+        ));
     }
 
     #[test]
     fn test_invalid_extension() {
         let result = validate_path("C:\\test\\file.exe", Some(&["mp4", "avi"]), false);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), SecurityError::InvalidExtension { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            SecurityError::InvalidExtension { .. }
+        ));
     }
 
     #[test]

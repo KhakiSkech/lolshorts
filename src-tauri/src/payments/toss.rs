@@ -1,7 +1,8 @@
+#![allow(clippy::if_same_then_else)]
 use crate::payments::{PaymentError, Result};
-use reqwest::{Client, header};
+use base64::{engine::general_purpose, Engine as _};
+use reqwest::{header, Client};
 use serde::{Deserialize, Serialize};
-use base64::{Engine as _, engine::general_purpose};
 
 /// Toss Payments API client
 pub struct TossPaymentsClient {
@@ -44,7 +45,8 @@ impl TossPaymentsClient {
             "authKey": auth_key
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header(header::AUTHORIZATION, self.auth_header())
             .header(header::CONTENT_TYPE, "application/json")
@@ -80,7 +82,8 @@ impl TossPaymentsClient {
             "customerName": null,  // Optional
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header(header::AUTHORIZATION, self.auth_header())
             .header(header::CONTENT_TYPE, "application/json")
@@ -108,7 +111,8 @@ impl TossPaymentsClient {
             "cancelReason": cancel_reason
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header(header::AUTHORIZATION, self.auth_header())
             .header(header::CONTENT_TYPE, "application/json")
@@ -128,7 +132,8 @@ impl TossPaymentsClient {
     pub async fn get_payment(&self, payment_key: &str) -> Result<PaymentResponse> {
         let url = format!("{}/payments/{}", self.base_url, payment_key);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .header(header::AUTHORIZATION, self.auth_header())
             .send()
@@ -140,6 +145,38 @@ impl TossPaymentsClient {
         }
 
         Ok(response.json().await?)
+    }
+
+    /// Delete billing key (cancel subscription)
+    pub async fn delete_billing_key(
+        &self,
+        billing_key: &str,
+        customer_key: &str,
+    ) -> Result<()> {
+        let url = format!("{}/billing/authorizations/{}", self.base_url, billing_key);
+
+        let request_body = serde_json::json!({
+            "customerKey": customer_key
+        });
+
+        let response = self
+            .client
+            .delete(&url)
+            .header(header::AUTHORIZATION, self.auth_header())
+            .header(header::CONTENT_TYPE, "application/json")
+            .json(&request_body)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await?;
+            return Err(PaymentError::PaymentFailed(format!(
+                "Failed to delete billing key: {}",
+                error_text
+            )));
+        }
+
+        Ok(())
     }
 }
 

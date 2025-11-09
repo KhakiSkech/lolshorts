@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // Platform-specific recording implementations
 #[cfg(target_os = "windows")]
 mod windows_backend;
@@ -6,15 +7,15 @@ mod windows_backend;
 mod macos_backend; // Will be implemented in Wave 5
 
 // Common types and interfaces
-pub mod live_client;
-pub mod commands;
-pub mod auto_clip_manager;
 pub mod audio;
+pub mod auto_clip_manager;
+pub mod commands;
+pub mod live_client;
 
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Instant;
-use serde::{Deserialize, Serialize};
-use anyhow::Result;
 
 // Re-export the platform-specific recorder as RecordingManager
 #[cfg(target_os = "windows")]

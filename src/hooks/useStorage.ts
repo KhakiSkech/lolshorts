@@ -53,7 +53,7 @@ export function useStorage() {
       const games = await invoke<string[]>('list_games');
       return games;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -68,7 +68,7 @@ export function useStorage() {
       const metadata = await invoke<GameMetadata>('get_game_metadata', { gameId });
       return metadata;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -86,7 +86,7 @@ export function useStorage() {
       );
       return games;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -100,7 +100,7 @@ export function useStorage() {
     try {
       await invoke('save_game_metadata', { gameId, metadata });
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -115,7 +115,7 @@ export function useStorage() {
       const events = await invoke<EventData[]>('get_game_events', { gameId });
       return events;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -129,7 +129,7 @@ export function useStorage() {
     try {
       await invoke('save_game_events', { gameId, events });
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -143,7 +143,7 @@ export function useStorage() {
     try {
       await invoke('save_clip_metadata', { gameId, clip });
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -157,7 +157,7 @@ export function useStorage() {
     try {
       await invoke('delete_game', { gameId });
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -172,7 +172,7 @@ export function useStorage() {
       const stats = await invoke<StorageStats>('get_storage_stats');
       return stats;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
       throw err;
     } finally {

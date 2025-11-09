@@ -80,7 +80,7 @@ impl Default for EventFilterSettings {
             record_multikills: true,
             record_first_blood: true,
 
-            record_deaths: false,  // 데스는 기본적으로 OFF
+            record_deaths: false, // 데스는 기본적으로 OFF
             record_shutdown: false,
 
             record_assists: false, // 어시스트는 기본적으로 OFF
@@ -98,7 +98,7 @@ impl Default for EventFilterSettings {
             record_game_end: true,
             record_steal: true,
 
-            min_priority: 2, // 우선순위 2 이상만
+            min_priority: 1, // Allow all events including single kills
         }
     }
 }
@@ -129,8 +129,8 @@ impl Default for GameModeSettings {
             record_quick_play: true,
             record_aram: true,
             record_arena: true,
-            record_special: false, // 특별 모드는 기본 OFF
-            record_custom: false,  // 커스텀은 기본 OFF
+            record_special: false,  // 특별 모드는 기본 OFF
+            record_custom: false,   // 커스텀은 기본 OFF
             record_practice: false, // 연습은 기본 OFF
         }
     }
@@ -161,7 +161,7 @@ pub enum Resolution {
 #[serde(rename_all = "snake_case")]
 pub enum FrameRate {
     Fps30,
-    Fps60,  // 추천
+    Fps60, // 추천
     Fps120,
     Fps144,
 }
@@ -169,11 +169,11 @@ pub enum FrameRate {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BitratePreset {
-    Low,           // 10 Mbps (720p60)
-    Medium,        // 20 Mbps (1080p60) - 추천
-    High,          // 40 Mbps (1440p60)
-    VeryHigh,      // 80 Mbps (4K60)
-    Custom(u32),   // 사용자 지정 (kbps)
+    Low,         // 10 Mbps (720p60)
+    Medium,      // 20 Mbps (1080p60) - 추천
+    High,        // 40 Mbps (1440p60)
+    VeryHigh,    // 80 Mbps (4K60)
+    Custom(u32), // 사용자 지정 (kbps)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -344,9 +344,9 @@ impl ClipTimingSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HotkeySettings {
-    pub manual_save_clip: String,  // "F8" 기본
-    pub toggle_recording: String,  // "F9" 기본
-    pub delete_last_clip: String,  // "F10" 기본
+    pub manual_save_clip: String, // "F8" 기본
+    pub toggle_recording: String, // "F9" 기본
+    pub delete_last_clip: String, // "F10" 기본
 }
 
 impl Default for HotkeySettings {
@@ -423,6 +423,9 @@ mod tests {
 
         // Deserialize back
         let deserialized: RecordingSettings = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.event_filter.min_priority, settings.event_filter.min_priority);
+        assert_eq!(
+            deserialized.event_filter.min_priority,
+            settings.event_filter.min_priority
+        );
     }
 }

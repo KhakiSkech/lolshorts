@@ -1,9 +1,10 @@
+#![allow(dead_code)]
 // Enhanced clip metadata structures for video editor integration
 // This extends the basic ClipMetadata with rich information for editing workflows
 
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 use super::models::EventType;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // Core ClipMetadataV2 Structure
@@ -27,18 +28,18 @@ pub struct ClipMetadataV2 {
 
     // === Temporal Information ===
     pub created_at: DateTime<Utc>,
-    pub game_time_start: f64,        // When in game (seconds)
-    pub game_time_end: f64,          // When in game (seconds)
-    pub clip_duration: f64,          // Total clip duration (seconds)
+    pub game_time_start: f64, // When in game (seconds)
+    pub game_time_end: f64,   // When in game (seconds)
+    pub clip_duration: f64,   // Total clip duration (seconds)
 
     // === Event Information ===
-    pub primary_event: EventInfo,    // Main event that triggered clip
+    pub primary_event: EventInfo,      // Main event that triggered clip
     pub merged_events: Vec<EventInfo>, // Additional events merged into this clip
-    pub event_window: EventWindow,   // How events were merged
+    pub event_window: EventWindow,     // How events were merged
 
     // === Priority & Filtering ===
-    pub priority: u8,                // 1-5 (5=pentakill)
-    pub tags: Vec<String>,           // ["pentakill", "yasuo", "ranked"]
+    pub priority: u8,      // 1-5 (5=pentakill)
+    pub tags: Vec<String>, // ["pentakill", "yasuo", "ranked"]
 
     // === Video Technical Details ===
     pub video_info: VideoInfo,
@@ -65,8 +66,8 @@ pub struct ClipMetadataV2 {
 pub struct EventInfo {
     pub event_id: u64,
     pub event_type: EventType,
-    pub timestamp: f64,              // Game time (seconds)
-    pub clip_timestamp: f64,         // Time within clip (seconds)
+    pub timestamp: f64,      // Game time (seconds)
+    pub clip_timestamp: f64, // Time within clip (seconds)
     pub priority: u8,
 
     // Participants
@@ -84,18 +85,18 @@ pub struct EventInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventWindow {
     pub merge_strategy: MergeStrategy,
-    pub time_threshold_secs: f64,    // 15 seconds default
-    pub events_merged: usize,        // How many events combined
-    pub pre_duration: f64,           // Seconds before first event
-    pub post_duration: f64,          // Seconds after last event
+    pub time_threshold_secs: f64, // 15 seconds default
+    pub events_merged: usize,     // How many events combined
+    pub pre_duration: f64,        // Seconds before first event
+    pub post_duration: f64,       // Seconds after last event
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MergeStrategy {
-    SingleEvent,                     // Just one event
-    ConsecutiveEvents,               // Multiple events within threshold
-    ManualSave,                      // User pressed hotkey (F8)
+    SingleEvent,       // Just one event
+    ConsecutiveEvents, // Multiple events within threshold
+    ManualSave,        // User pressed hotkey (F8)
 }
 
 // ============================================================================
@@ -109,17 +110,17 @@ pub struct VideoInfo {
     pub frame_rate: FrameRate,
     pub bitrate_kbps: u32,
     pub codec: VideoCodec,
-    pub encoder: String,             // "nvenc_h265", "x264", etc.
+    pub encoder: String, // "nvenc_h265", "x264", etc.
     pub file_size_bytes: u64,
     pub total_frames: u64,
 
     // Color information
-    pub color_space: String,         // "bt709", "bt2020"
-    pub pixel_format: String,        // "yuv420p", "yuv444p"
+    pub color_space: String,  // "bt709", "bt2020"
+    pub pixel_format: String, // "yuv420p", "yuv444p"
 
     // Encoding parameters
-    pub crf: Option<u8>,             // Quality (0-51, lower=better)
-    pub preset: Option<String>,      // "fast", "medium", "slow"
+    pub crf: Option<u8>,        // Quality (0-51, lower=better)
+    pub preset: Option<String>, // "fast", "medium", "slow"
 }
 
 impl Default for VideoInfo {
@@ -143,9 +144,9 @@ impl Default for VideoInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Resolution {
-    R1920x1080,   // 1080p
-    R2560x1440,   // 1440p
-    R3840x2160,   // 4K
+    R1920x1080, // 1080p
+    R2560x1440, // 1440p
+    R3840x2160, // 4K
     Custom { width: u32, height: u32 },
 }
 
@@ -175,10 +176,10 @@ pub enum VideoCodec {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioInfo {
     pub tracks: Vec<AudioTrack>,
-    pub sample_rate: u32,            // 48000 Hz typical
-    pub channels: u8,                // 2 for stereo
+    pub sample_rate: u32, // 48000 Hz typical
+    pub channels: u8,     // 2 for stereo
     pub bitrate_kbps: u32,
-    pub codec: String,               // "aac", "opus"
+    pub codec: String, // "aac", "opus"
 }
 
 impl Default for AudioInfo {
@@ -195,18 +196,18 @@ impl Default for AudioInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioTrack {
-    pub track_id: u8,                // 0, 1, 2...
+    pub track_id: u8, // 0, 1, 2...
     pub track_type: AudioTrackType,
-    pub volume_percent: u8,          // 0-200%
+    pub volume_percent: u8, // 0-200%
     pub device_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AudioTrackType {
-    SystemAudio,                     // Game + Discord + Music
-    Microphone,                      // User voice
-    Mixed,                           // Pre-mixed
+    SystemAudio, // Game + Discord + Music
+    Microphone,  // User voice
+    Mixed,       // Pre-mixed
 }
 
 // ============================================================================
@@ -214,37 +215,28 @@ pub enum AudioTrackType {
 // ============================================================================
 
 /// Timeline markers for editor scrubbing and navigation
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ClipTimeline {
     pub markers: Vec<TimelineMarker>,
     pub chapters: Vec<Chapter>,
 }
 
-impl Default for ClipTimeline {
-    fn default() -> Self {
-        Self {
-            markers: vec![],
-            chapters: vec![],
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineMarker {
-    pub timestamp: f64,              // Time in clip (seconds)
+    pub timestamp: f64, // Time in clip (seconds)
     pub marker_type: MarkerType,
     pub label: String,
-    pub color: Option<String>,       // Hex color for UI
+    pub color: Option<String>, // Hex color for UI
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MarkerType {
-    EventStart,                      // Event begins
-    EventPeak,                       // Climax of event (e.g., pentakill moment)
-    EventEnd,                        // Event ends
-    KillMoment,                      // Individual kill
-    ObjectiveTaken,                  // Dragon/Baron secured
+    EventStart,     // Event begins
+    EventPeak,      // Climax of event (e.g., pentakill moment)
+    EventEnd,       // Event ends
+    KillMoment,     // Individual kill
+    ObjectiveTaken, // Dragon/Baron secured
     Custom,
 }
 
@@ -293,9 +285,9 @@ impl Default for GameContext {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GameMode {
-    Classic,      // Summoner's Rift
-    Aram,         // Howling Abyss
-    Arena,        // 2v2v2v2
+    Classic, // Summoner's Rift
+    Aram,    // Howling Abyss
+    Arena,   // 2v2v2v2
     Custom,
 }
 
@@ -319,7 +311,7 @@ pub enum Team {
     Red,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TeamScore {
     pub kills: u32,
     pub towers: u32,
@@ -327,24 +319,13 @@ pub struct TeamScore {
     pub barons: u32,
 }
 
-impl Default for TeamScore {
-    fn default() -> Self {
-        Self {
-            kills: 0,
-            towers: 0,
-            dragons: 0,
-            barons: 0,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerState {
     pub level: u8,
     pub gold: u32,
-    pub items: Vec<u32>,             // Item IDs
-    pub kda: (u32, u32, u32),        // (kills, deaths, assists)
-    pub cs: u32,                     // Creep score
+    pub items: Vec<u32>,      // Item IDs
+    pub kda: (u32, u32, u32), // (kills, deaths, assists)
+    pub cs: u32,              // Creep score
 }
 
 impl Default for PlayerState {
@@ -368,7 +349,7 @@ impl Default for PlayerState {
 pub struct UserAnnotations {
     pub title: Option<String>,
     pub description: Option<String>,
-    pub rating: Option<u8>,          // 1-5 stars
+    pub rating: Option<u8>, // 1-5 stars
     pub favorite: bool,
     pub notes: Vec<Note>,
     pub custom_tags: Vec<String>,
@@ -465,7 +446,7 @@ impl ClipMetadataV2 {
         }
 
         if let Some(annotations) = &mut self.annotations {
-            annotations.rating = Some(rating.min(5).max(1));
+            annotations.rating = Some(rating.clamp(1, 5));
         }
     }
 
@@ -503,7 +484,11 @@ impl ClipMetadataV2 {
     /// Calculate total priority (sum of all events)
     pub fn total_priority(&self) -> u32 {
         self.primary_event.priority as u32
-            + self.merged_events.iter().map(|e| e.priority as u32).sum::<u32>()
+            + self
+                .merged_events
+                .iter()
+                .map(|e| e.priority as u32)
+                .sum::<u32>()
     }
 }
 
@@ -511,7 +496,6 @@ impl ClipMetadataV2 {
 // Migration from V1 to V2
 // ============================================================================
 
-#[cfg(feature = "migration")]
 impl From<super::models::ClipMetadata> for ClipMetadataV2 {
     fn from(old: super::models::ClipMetadata) -> Self {
         let clip_id = Self::generate_clip_id(&old.file_path);

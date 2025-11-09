@@ -4,9 +4,12 @@ import { Dashboard } from "@/pages/Dashboard";
 import { Games } from "@/pages/Games";
 import { Editor } from "@/pages/Editor";
 import { AutoEdit } from "@/pages/AutoEdit";
+import { Results } from "@/pages/Results";
+import { YouTube } from "@/pages/YouTube";
 import { Settings } from "@/pages/Settings";
 import { PaymentSuccess } from "@/pages/PaymentSuccess";
 import { PaymentFail } from "@/pages/PaymentFail";
+import "./i18n"; // Initialize i18n with auto language detection
 
 // Define root route
 const rootRoute = new RootRoute({
@@ -42,6 +45,18 @@ const autoEditRoute = new Route({
   component: AutoEdit,
 });
 
+const resultsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/results",
+  component: Results,
+});
+
+const youtubeRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/youtube",
+  component: YouTube,
+});
+
 const settingsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/settings",
@@ -66,6 +81,8 @@ const routeTree = rootRoute.addChildren([
   gamesRoute,
   editorRoute,
   autoEditRoute,
+  resultsRoute,
+  youtubeRoute,
   settingsRoute,
   paymentSuccessRoute,
   paymentFailRoute,

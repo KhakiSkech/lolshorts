@@ -5,10 +5,9 @@
 /// - Audio input configuration for microphone and system audio
 /// - Volume control and mixing parameters
 /// - FFmpeg command builder for audio capture
-
-use anyhow::{Result, Context as AnyhowContext};
-use std::process::Command;
+use anyhow::{Context as AnyhowContext, Result};
 use serde::{Deserialize, Serialize};
+use std::process::Command;
 
 /// Audio device information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,9 +97,13 @@ impl AudioConfig {
             input_args.push("dshow".to_string());
             input_args.push("-i".to_string());
 
-            let mic_device = self.microphone_device.as_ref()
+            let mic_device = self
+                .microphone_device
+                .as_ref()
                 .map(|d| format!("audio={}", d))
-                .unwrap_or_else(|| "audio=@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_in".to_string());
+                .unwrap_or_else(|| {
+                    "audio=@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_in".to_string()
+                });
             input_args.push(mic_device);
 
             // Apply volume to microphone
@@ -116,7 +119,9 @@ impl AudioConfig {
             input_args.push("dshow".to_string());
             input_args.push("-i".to_string());
 
-            let sys_device = self.system_audio_device.as_ref()
+            let sys_device = self
+                .system_audio_device
+                .as_ref()
                 .map(|d| format!("audio={}", d))
                 .unwrap_or_else(|| "audio=Stereo Mix".to_string());
             input_args.push(sys_device);
@@ -130,11 +135,12 @@ impl AudioConfig {
         // Build filter_complex for mixing
         let filter_args = if mix_inputs.len() > 1 {
             // Mix multiple audio sources
-            filter_parts.push(format!("{}amix=inputs={}[aout]", mix_inputs.join(""), mix_inputs.len()));
-            vec![
-                "-filter_complex".to_string(),
-                filter_parts.join(";"),
-            ]
+            filter_parts.push(format!(
+                "{}amix=inputs={}[aout]",
+                mix_inputs.join(""),
+                mix_inputs.len()
+            ));
+            vec!["-filter_complex".to_string(), filter_parts.join(";")]
         } else if mix_inputs.len() == 1 {
             // Single audio source, just apply volume
             vec![
@@ -143,7 +149,12 @@ impl AudioConfig {
                 "-map".to_string(),
                 "0:v".to_string(),
                 "-map".to_string(),
-                if self.record_microphone { "[mic]" } else { "[sys]" }.to_string(),
+                if self.record_microphone {
+                    "[mic]"
+                } else {
+                    "[sys]"
+                }
+                .to_string(),
             ]
         } else {
             vec![]
@@ -168,11 +179,7 @@ pub fn list_audio_devices() -> Result<Vec<AudioDevice>> {
     tracing::debug!("Listing DirectShow audio devices...");
 
     let output = Command::new("ffmpeg")
-        .args(&[
-            "-list_devices", "true",
-            "-f", "dshow",
-            "-i", "dummy"
-        ])
+        .args(["-list_devices", "true", "-f", "dshow", "-i", "dummy"])
         .output()
         .context("Failed to execute ffmpeg for device listing")?;
 
@@ -202,16 +209,14 @@ pub fn list_audio_devices() -> Result<Vec<AudioDevice>> {
                     // Categorize by common device name patterns
                     let device_type = if name.to_lowercase().contains("mic")
                         || name.to_lowercase().contains("microphone")
-                        || name.to_lowercase().contains("input") {
+                        || name.to_lowercase().contains("input")
+                    {
                         AudioDeviceType::Microphone
                     } else {
                         AudioDeviceType::SystemAudio
                     };
 
-                    devices.push(AudioDevice {
-                        name,
-                        device_type,
-                    });
+                    devices.push(AudioDevice { name, device_type });
                 }
             }
         }

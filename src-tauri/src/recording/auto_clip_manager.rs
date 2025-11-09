@@ -1,17 +1,21 @@
+#![allow(clippy::unnecessary_cast)]
+use anyhow::{Context as AnyhowContext, Result};
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::{Mutex as TokioMutex, RwLock as TokioRwLock};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
-use anyhow::{Result, Context as AnyhowContext};
-use tracing::{info, debug, warn, error};
+use tracing::{debug, error, info, warn};
 
 use super::live_client::{EventTrigger, LiveClientMonitor};
 use super::windows_backend::WindowsRecorder;
 use super::GameEvent; // Use the recording module's GameEvent
 use crate::settings::models::RecordingSettings;
-use crate::storage::{Storage, models::{ClipMetadata, EventData, EventType}};
+use crate::storage::{
+    models::{ClipMetadata, EventData, EventType},
+    Storage,
+};
 
 /// Queued event with timestamp for merging logic
 #[derive(Debug, Clone)]
@@ -26,9 +30,9 @@ struct QueuedEvent {
 struct EventWindow {
     primary_trigger: EventTrigger,
     events: Vec<GameEvent>,
-    start_time: f32,  // Game time in seconds
-    end_time: f32,    // Game time in seconds
-    priority: u8,     // Highest priority in window
+    start_time: f32, // Game time in seconds
+    end_time: f32,   // Game time in seconds
+    priority: u8,    // Highest priority in window
 }
 
 /// Auto Clip Manager - Bridges event detection with automatic clip saving
@@ -126,8 +130,7 @@ impl AutoClipManager {
         info!("Starting event monitoring...");
 
         // Create a new LiveClientMonitor
-        let mut monitor = LiveClientMonitor::new()
-            .context("Failed to create LiveClientMonitor")?;
+        let mut monitor = LiveClientMonitor::new().context("Failed to create LiveClientMonitor")?;
 
         // Clone Arc references for the monitoring task
         let event_queue = Arc::clone(&self.event_queue);
@@ -143,37 +146,41 @@ impl AutoClipManager {
             info!("Event monitoring task started");
 
             // Create callback closure that processes events
-            let callback = move |trigger: EventTrigger, live_event: super::live_client::GameEvent| {
-                // Convert live_client::GameEvent to recording::GameEvent
-                let event = convert_live_event(live_event, &trigger);
+            let callback =
+                move |trigger: EventTrigger, live_event: super::live_client::GameEvent| {
+                    // Convert live_client::GameEvent to recording::GameEvent
+                    let event = convert_live_event(live_event, &trigger);
 
-                // Clone Arc references for the async block
-                let event_queue = Arc::clone(&event_queue);
-                let settings = Arc::clone(&settings);
-                let recorder = Arc::clone(&recorder);
-                let storage = Arc::clone(&storage);
-                let current_game_id = Arc::clone(&current_game_id);
-                let processing_lock = Arc::clone(&processing_lock);
+                    // Clone Arc references for the async block
+                    let event_queue = Arc::clone(&event_queue);
+                    let settings = Arc::clone(&settings);
+                    let recorder = Arc::clone(&recorder);
+                    let storage = Arc::clone(&storage);
+                    let current_game_id = Arc::clone(&current_game_id);
+                    let processing_lock = Arc::clone(&processing_lock);
 
-                // Spawn a task to process the event asynchronously
-                tokio::spawn(async move {
-                    // Create a temporary AutoClipManager instance for processing
-                    let temp_manager = AutoClipManager {
-                        recorder,
-                        storage,
-                        settings,
-                        event_queue,
-                        current_game_id,
-                        processing_lock,
-                        monitor_task: Arc::new(TokioMutex::new(None)),
-                        cancel_token: CancellationToken::new(),
-                    };
+                    // Spawn a task to process the event asynchronously
+                    tokio::spawn(async move {
+                        // Create a temporary AutoClipManager instance for processing
+                        let temp_manager = AutoClipManager {
+                            recorder,
+                            storage,
+                            settings,
+                            event_queue,
+                            current_game_id,
+                            processing_lock,
+                            monitor_task: Arc::new(TokioMutex::new(None)),
+                            cancel_token: CancellationToken::new(),
+                        };
 
-                    if let Err(e) = temp_manager.process_event(trigger.clone(), event.clone()).await {
-                        error!("Failed to process event {:?}: {}", trigger, e);
-                    }
-                });
-            };
+                        if let Err(e) = temp_manager
+                            .process_event(trigger.clone(), event.clone())
+                            .await
+                        {
+                            error!("Failed to process event {:?}: {}", trigger, e);
+                        }
+                    });
+                };
 
             // Run the monitor until cancelled
             let monitoring = monitor.start_monitoring(callback);
@@ -266,7 +273,7 @@ impl AutoClipManager {
     }
 
     /// Check if event should be recorded based on settings
-    async fn should_record_event(&self, trigger: &EventTrigger, event: &GameEvent) -> Result<bool> {
+    async fn should_record_event(&self, trigger: &EventTrigger, _event: &GameEvent) -> Result<bool> {
         let settings = self.settings.read().await;
 
         // Check priority threshold
@@ -343,20 +350,19 @@ impl AutoClipManager {
     /// Merge consecutive events into a single window
     fn merge_events(&self, events: &[QueuedEvent]) -> EventWindow {
         // Find highest priority event
-        let primary_event = events
-            .iter()
-            .max_by_key(|e| e.trigger.priority())
-            .unwrap();
+        let primary_event = events.iter().max_by_key(|e| e.trigger.priority()).unwrap();
 
         let priority = primary_event.trigger.priority();
 
         // Calculate time range
-        let start_time = events.iter()
+        let start_time = events
+            .iter()
             .map(|e| e.event.event_time)
             .min_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap();
 
-        let end_time = events.iter()
+        let end_time = events
+            .iter()
             .map(|e| e.event.event_time)
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap();
@@ -394,22 +400,19 @@ impl AutoClipManager {
         let clip_id = format!("{}_{}", event.event_name, event.event_time as u32);
 
         // Save clip via WindowsRecorder
-        let clip_path = self.recorder
+        let clip_path = self
+            .recorder
             .read()
             .await
-            .save_clip(
-                &event,
-                clip_id.clone(),
-                trigger.priority(),
-                total_duration,
-            )
+            .save_clip(&event, clip_id.clone(), trigger.priority(), total_duration)
             .await
             .context("Failed to save clip via recorder")?;
 
         info!("Clip saved: {:?}", clip_path);
 
         // Save metadata to storage
-        self.save_clip_metadata(&clip_id, &event, trigger.priority(), &clip_path).await?;
+        self.save_clip_metadata(&clip_id, &event, trigger.priority(), &clip_path)
+            .await?;
 
         Ok(())
     }
@@ -441,10 +444,14 @@ impl AutoClipManager {
 
         // Use primary event for clip generation
         let primary_event = &window.events[0];
-        let clip_id = format!("merged_{}_{}", window.start_time as u32, window.end_time as u32);
+        let clip_id = format!(
+            "merged_{}_{}",
+            window.start_time as u32, window.end_time as u32
+        );
 
         // Save clip via WindowsRecorder
-        let clip_path = self.recorder
+        let clip_path = self
+            .recorder
             .read()
             .await
             .save_clip(
@@ -459,12 +466,14 @@ impl AutoClipManager {
         info!("Merged clip saved: {:?}", clip_path);
 
         // Save metadata to storage
-        self.save_clip_metadata(&clip_id, primary_event, window.priority, &clip_path).await?;
+        self.save_clip_metadata(&clip_id, primary_event, window.priority, &clip_path)
+            .await?;
 
         // Save all events in the window to storage
         let game_id = self.current_game_id.read().await;
         if let Some(ref game_id) = *game_id {
-            let event_data: Vec<EventData> = window.events
+            let event_data: Vec<EventData> = window
+                .events
                 .iter()
                 .map(|e| {
                     // Collect participants (killer + assisters)
@@ -494,7 +503,11 @@ impl AutoClipManager {
     }
 
     /// Calculate clip window (pre/post durations) based on settings and event type
-    fn calculate_clip_window(&self, trigger: &EventTrigger, settings: &RecordingSettings) -> ClipWindow {
+    fn calculate_clip_window(
+        &self,
+        trigger: &EventTrigger,
+        settings: &RecordingSettings,
+    ) -> ClipWindow {
         // Map EventTrigger to settings event type string
         let event_type = match trigger {
             EventTrigger::Multikill(_) => "multikill",
@@ -568,7 +581,10 @@ fn trigger_to_event_type(trigger: &EventTrigger) -> EventType {
 }
 
 /// Convert live_client::GameEvent to recording::GameEvent
-fn convert_live_event(live_event: super::live_client::GameEvent, trigger: &EventTrigger) -> GameEvent {
+fn convert_live_event(
+    live_event: super::live_client::GameEvent,
+    trigger: &EventTrigger,
+) -> GameEvent {
     GameEvent {
         event_id: live_event.event_id as u64,
         event_name: live_event.event_name,
@@ -584,12 +600,9 @@ fn convert_live_event(live_event: super::live_client::GameEvent, trigger: &Event
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
-    use crate::settings::models::{
-        RecordingSettings, EventFilterSettings, ClipTimingSettings,
-    };
+    use crate::settings::models::RecordingSettings;
 
-    fn create_test_event(event_name: &str, event_time: f32) -> GameEvent {
+    fn create_test_event(event_name: &str, event_time: f64) -> GameEvent {
         GameEvent {
             event_id: 1,
             event_name: event_name.to_string(),
@@ -626,7 +639,7 @@ mod tests {
         // Create manager (will need test doubles for dependencies)
         let temp_dir = std::env::temp_dir().join("lolshorts_test_acm");
         let recorder = Arc::new(TokioRwLock::new(
-            WindowsRecorder::new(temp_dir.clone()).unwrap()
+            WindowsRecorder::new(temp_dir.clone()).unwrap(),
         ));
         let storage = Arc::new(Storage::new(&temp_dir).unwrap());
         let settings = Arc::new(TokioRwLock::new(RecordingSettings::default()));
@@ -649,7 +662,7 @@ mod tests {
     async fn test_event_filtering() {
         let temp_dir = std::env::temp_dir().join("lolshorts_test_filter");
         let recorder = Arc::new(TokioRwLock::new(
-            WindowsRecorder::new(temp_dir.clone()).unwrap()
+            WindowsRecorder::new(temp_dir.clone()).unwrap(),
         ));
         let storage = Arc::new(Storage::new(&temp_dir).unwrap());
 
@@ -659,20 +672,22 @@ mod tests {
         settings.event_filter.record_multikills = true;
         settings.event_filter.min_priority = 2;
 
-        let manager = AutoClipManager::new(
-            recorder,
-            storage,
-            Arc::new(TokioRwLock::new(settings)),
-        );
+        let manager = AutoClipManager::new(recorder, storage, Arc::new(TokioRwLock::new(settings)));
 
         // Single kill should be filtered out
         let single_kill = create_test_event("ChampionKill", 100.0);
-        let should_record = manager.should_record_event(&EventTrigger::ChampionKill, &single_kill).await.unwrap();
+        let should_record = manager
+            .should_record_event(&EventTrigger::ChampionKill, &single_kill)
+            .await
+            .unwrap();
         assert!(!should_record);
 
         // Double kill should pass (multikills enabled, priority 2)
         let double_kill = create_test_event("ChampionKill", 105.0);
-        let should_record = manager.should_record_event(&EventTrigger::Multikill(2), &double_kill).await.unwrap();
+        let should_record = manager
+            .should_record_event(&EventTrigger::Multikill(2), &double_kill)
+            .await
+            .unwrap();
         assert!(should_record);
 
         // Cleanup

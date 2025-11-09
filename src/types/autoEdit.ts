@@ -147,3 +147,53 @@ export interface VideoError {
   recovery_suggestions: string[];   // Actionable steps for recovery
   technical_details?: string;       // Optional technical information
 }
+
+// ========================================================================
+// Quota Management Types
+// ========================================================================
+
+export interface AutoEditQuotaInfo {
+  tier: string;           // User's subscription tier (FREE or PRO)
+  is_pro: boolean;        // Whether user is PRO tier
+  usage: number;          // Number of auto-edits used this month
+  limit: number;          // Monthly limit (5 for FREE, u32::MAX for PRO)
+  remaining: number;      // Remaining auto-edits this month
+  month: string;          // Current month (YYYY-MM)
+}
+
+// ========================================================================
+// Auto-Edit Results Storage Types
+// ========================================================================
+
+export type UploadStatus =
+  | 'NotUploaded'
+  | 'Queued'
+  | 'Uploading'
+  | 'Processing'
+  | 'Completed'
+  | 'Failed';
+
+export interface YouTubeUploadStatus {
+  video_id: string | null;
+  status: UploadStatus;
+  upload_started_at: string | null;
+  upload_completed_at: string | null;
+  progress: number;
+  error: string | null;
+}
+
+export interface AutoEditResultMetadata {
+  result_id: string;
+  job_id: string;
+  output_path: string;
+  thumbnail_path: string | null;
+  created_at: string;
+  duration: number;
+  clip_count: number;
+  game_ids: string[];
+  target_duration: number;
+  canvas_template_name: string | null;
+  has_background_music: boolean;
+  youtube_status: YouTubeUploadStatus | null;
+  file_size_bytes: number;
+}

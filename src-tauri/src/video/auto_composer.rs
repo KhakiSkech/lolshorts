@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -233,7 +234,9 @@ impl AutoComposer {
         )
         .await;
 
-        let prepared_clips = self.prepare_clips(&selected_clips, config.target_duration).await?;
+        let prepared_clips = self
+            .prepare_clips(&selected_clips, config.target_duration)
+            .await?;
 
         // Step 4: Concatenate clips (60% progress)
         self.update_progress(
@@ -283,12 +286,8 @@ impl AutoComposer {
 
         // Step 8: Complete (100% progress)
         let elapsed = start_time.elapsed().as_secs_f64();
-        self.update_progress_complete(
-            &job_id,
-            final_path.to_string_lossy().to_string(),
-            elapsed,
-        )
-        .await;
+        self.update_progress_complete(&job_id, final_path.to_string_lossy().to_string(), elapsed)
+            .await;
 
         let result = AutoEditResult {
             output_path: final_path.to_string_lossy().to_string(),
@@ -296,6 +295,40 @@ impl AutoComposer {
             total_duration,
             clip_count: prepared_clips.len(),
         };
+
+        // Step 9: Save result metadata for Results tab
+        let file_size = std::fs::metadata(&final_path)
+            .map(|m| m.len())
+            .unwrap_or(0);
+
+        let result_metadata = crate::storage::AutoEditResultMetadata {
+            result_id: job_id.clone(),
+            job_id: job_id.clone(),
+            output_path: final_path.to_string_lossy().to_string(),
+            thumbnail_path: None, // TODO: Generate thumbnail
+            created_at: chrono::Utc::now(),
+            duration: total_duration,
+            clip_count: prepared_clips.len(),
+            game_ids: config.game_ids.clone(),
+            target_duration: config.target_duration,
+            canvas_template_name: config.canvas_template.as_ref().map(|t| t.name.clone()),
+            has_background_music: config.background_music.is_some(),
+            youtube_status: Some(crate::storage::YouTubeUploadStatus {
+                video_id: None,
+                status: crate::storage::UploadStatus::NotUploaded,
+                upload_started_at: None,
+                upload_completed_at: None,
+                progress: 0.0,
+                error: None,
+            }),
+            file_size_bytes: file_size,
+        };
+
+        // Save to storage
+        if let Err(e) = self.storage.save_auto_edit_result(&result_metadata) {
+            warn!("Failed to save auto-edit result metadata: {}", e);
+            // Don't fail the operation if metadata save fails
+        }
 
         info!(
             "Auto-composition completed in {:.2}s: {:?}",
@@ -312,7 +345,10 @@ impl AutoComposer {
     /// 2. Otherwise, sort clips by priority (5 → 1)
     /// 3. Select clips until target duration is reached
     /// 4. Apply intelligent trimming if needed
-    async fn select_clips(
+    ///
+    /// # Note
+    /// This method is public for integration testing purposes
+    pub async fn select_clips(
         &self,
         all_clips: &[ClipInfo],
         config: &AutoEditConfig,
@@ -362,6 +398,9 @@ impl AutoComposer {
             // If no clips fit, take the highest priority clip and trim it
             if let Some(best_clip) = sorted_clips.first() {
                 selected.push(best_clip.clone());
+            } else {
+                // No clips available at all
+                return Err(VideoError::NoClipsFound);
             }
         }
 
@@ -391,10 +430,7 @@ impl AutoComposer {
             })?;
 
         // Calculate total duration
-        let total_duration: f64 = clips
-            .iter()
-            .map(|c| c.duration.unwrap_or(10.0))
-            .sum();
+        let total_duration: f64 = clips.iter().map(|c| c.duration.unwrap_or(10.0)).sum();
 
         let target = target_duration as f64;
         let buffer_target = target * 0.9; // Leave 10% buffer for transitions
@@ -409,10 +445,7 @@ impl AutoComposer {
         // If within target, validate and return original paths
         if total_duration <= buffer_target {
             info!("Total duration within target, using original clips");
-            let paths: Vec<PathBuf> = clips
-                .iter()
-                .map(|c| PathBuf::from(&c.file_path))
-                .collect();
+            let paths: Vec<PathBuf> = clips.iter().map(|c| PathBuf::from(&c.file_path)).collect();
 
             // Validate all files exist
             for path in &paths {
@@ -518,11 +551,11 @@ impl AutoComposer {
         canvas: &CanvasTemplate,
     ) -> Result<PathBuf> {
         let output_dir = std::env::temp_dir().join("lolshorts_auto_edit");
-        tokio::fs::create_dir_all(&output_dir)
-            .await
-            .map_err(|e| VideoError::CanvasApplicationError {
+        tokio::fs::create_dir_all(&output_dir).await.map_err(|e| {
+            VideoError::CanvasApplicationError {
                 reason: format!("Failed to create temp directory: {}", e),
-            })?;
+            }
+        })?;
 
         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
         let output_path = output_dir.join(format!("with_canvas_{}.mp4", timestamp));
@@ -541,10 +574,7 @@ impl AutoComposer {
             BackgroundLayer::Color { value } => {
                 // Create solid color background
                 info!("Canvas background: solid color {}", value);
-                filter_parts.push(format!(
-                    "color=c={}:s={}x{}:d=1[bg]",
-                    value, WIDTH, HEIGHT
-                ));
+                filter_parts.push(format!("color=c={}:s={}x{}:d=1[bg]", value, WIDTH, HEIGHT));
                 filter_parts.push("[0:v][bg]overlay=shortest=1".to_string());
             }
             BackgroundLayer::Gradient { value } => {
@@ -599,10 +629,7 @@ impl AutoComposer {
                 let x = (position.x * WIDTH as f32 / 100.0) as u32;
                 let y = (position.y * HEIGHT as f32 / 100.0) as u32;
 
-                info!(
-                    "Text overlay {}: '{}' at ({}, {})",
-                    idx, content, x, y
-                );
+                info!("Text overlay {}: '{}' at ({}, {})", idx, content, x, y);
 
                 // Build drawtext filter
                 let mut drawtext = format!(
@@ -617,10 +644,7 @@ impl AutoComposer {
 
                 // Add outline if specified
                 if let Some(outline_color) = outline {
-                    drawtext.push_str(&format!(
-                        ":borderw=2:bordercolor={}",
-                        outline_color
-                    ));
+                    drawtext.push_str(&format!(":borderw=2:bordercolor={}", outline_color));
                 }
 
                 filter_parts.push(drawtext);
@@ -658,10 +682,7 @@ impl AutoComposer {
                      [img{}]scale={}:{}[scaled_img{}]",
                     path, idx, idx, width, height, idx
                 ));
-                filter_parts.push(format!(
-                    "overlay={}:{}[out{}]",
-                    x, y, idx
-                ));
+                filter_parts.push(format!("overlay={}:{}[out{}]", x, y, idx));
             }
         }
 
@@ -678,11 +699,13 @@ impl AutoComposer {
 
         // Execute FFmpeg command
         let mut command = tokio::process::Command::new("ffmpeg");
-        command.args(&[
+        command.args([
             "-i",
-            video_path.to_str().ok_or_else(|| VideoError::FileAccessError {
-                path: video_path.display().to_string(),
-            })?,
+            video_path
+                .to_str()
+                .ok_or_else(|| VideoError::FileAccessError {
+                    path: video_path.display().to_string(),
+                })?,
             "-filter_complex",
             &filter_complex,
             "-c:v",
@@ -694,16 +717,18 @@ impl AutoComposer {
             "-c:a",
             "copy", // Copy audio unchanged
             "-y",
-            output_path.to_str().ok_or_else(|| VideoError::FileAccessError {
-                path: output_path.display().to_string(),
-            })?,
+            output_path
+                .to_str()
+                .ok_or_else(|| VideoError::FileAccessError {
+                    path: output_path.display().to_string(),
+                })?,
         ]);
 
-        execute_ffmpeg_command(&mut command)
-            .await
-            .map_err(|e| VideoError::CanvasApplicationError {
+        execute_ffmpeg_command(&mut command).await.map_err(|e| {
+            VideoError::CanvasApplicationError {
                 reason: e.to_string(),
-            })?;
+            }
+        })?;
 
         info!("Successfully applied canvas overlay");
         Ok(output_path)
@@ -742,7 +767,10 @@ impl AutoComposer {
             });
         }
 
-        info!("Mixing audio: game={}%, music={}%", levels.game_audio, levels.background_music);
+        info!(
+            "Mixing audio: game={}%, music={}%",
+            levels.game_audio, levels.background_music
+        );
 
         // Convert 0-100 volume to FFmpeg volume (0.0-2.0)
         // 100% = 1.0, 50% = 0.5, 200% = 2.0
@@ -778,11 +806,7 @@ impl AutoComposer {
                  volume={},\
                  afade=t=in:st=0:d={},\
                  afade=t=out:st={}:d={}[bg_music];",
-                video_duration,
-                music_volume,
-                fade_duration,
-                fade_out_start,
-                fade_duration
+                video_duration, music_volume, fade_duration, fade_out_start, fade_duration
             ));
         } else {
             // No looping - music plays once
@@ -790,10 +814,7 @@ impl AutoComposer {
                 "[1:a]volume={},\
                  afade=t=in:st=0:d={},\
                  afade=t=out:st={}:d={}[bg_music];",
-                music_volume,
-                fade_duration,
-                fade_out_start,
-                fade_duration
+                music_volume, fade_duration, fade_out_start, fade_duration
             ));
         }
 
@@ -804,15 +825,19 @@ impl AutoComposer {
 
         // Execute FFmpeg command
         let mut command = tokio::process::Command::new("ffmpeg");
-        command.args(&[
+        command.args([
             "-i",
-            video_path.to_str().ok_or_else(|| VideoError::FileAccessError {
-                path: video_path.display().to_string(),
-            })?,
+            video_path
+                .to_str()
+                .ok_or_else(|| VideoError::FileAccessError {
+                    path: video_path.display().to_string(),
+                })?,
             "-i",
-            music_path.to_str().ok_or_else(|| VideoError::FileAccessError {
-                path: music_path.display().to_string(),
-            })?,
+            music_path
+                .to_str()
+                .ok_or_else(|| VideoError::FileAccessError {
+                    path: music_path.display().to_string(),
+                })?,
             "-filter_complex",
             &audio_filter,
             "-map",
@@ -827,9 +852,11 @@ impl AutoComposer {
             "192k",
             "-shortest", // End when shortest input ends
             "-y",
-            output_path.to_str().ok_or_else(|| VideoError::FileAccessError {
-                path: output_path.display().to_string(),
-            })?,
+            output_path
+                .to_str()
+                .ok_or_else(|| VideoError::FileAccessError {
+                    path: output_path.display().to_string(),
+                })?,
         ]);
 
         execute_ffmpeg_command(&mut command)
@@ -849,18 +876,13 @@ impl AutoComposer {
 
         for game_id in game_ids {
             // Load clips for this game
-            let storage_clips = self
-                .storage
-                .load_clip_metadata(game_id)
-                .map_err(|e| VideoError::ProcessingError {
+            let storage_clips = self.storage.load_clip_metadata(game_id).map_err(|e| {
+                VideoError::ProcessingError {
                     message: format!("Failed to load clips for game {}: {}", game_id, e),
-                })?;
+                }
+            })?;
 
-            info!(
-                "Loaded {} clips from game {}",
-                storage_clips.len(),
-                game_id
-            );
+            info!("Loaded {} clips from game {}", storage_clips.len(), game_id);
 
             // Convert ClipMetadata to ClipInfo
             for clip in storage_clips {
@@ -875,9 +897,7 @@ impl AutoComposer {
                         format!("Multikill({})", n)
                     }
                     crate::storage::models::EventType::TurretKill => "TurretKill".to_string(),
-                    crate::storage::models::EventType::InhibitorKill => {
-                        "InhibitorKill".to_string()
-                    }
+                    crate::storage::models::EventType::InhibitorKill => "InhibitorKill".to_string(),
                     crate::storage::models::EventType::DragonKill => "DragonKill".to_string(),
                     crate::storage::models::EventType::BaronKill => "BaronKill".to_string(),
                     crate::storage::models::EventType::Ace => "Ace".to_string(),
@@ -993,11 +1013,11 @@ mod tests {
         let composer = AutoComposer::new(processor, storage);
 
         let clips = vec![
-            create_test_clip(1, 1, 10.0, "Kill"),         // Priority 1
-            create_test_clip(2, 3, 15.0, "Triple Kill"),  // Priority 3
-            create_test_clip(3, 5, 12.0, "Pentakill"),    // Priority 5
-            create_test_clip(4, 2, 8.0, "Double Kill"),   // Priority 2
-            create_test_clip(5, 4, 10.0, "Quadrakill"),   // Priority 4
+            create_test_clip(1, 1, 10.0, "Kill"),        // Priority 1
+            create_test_clip(2, 3, 15.0, "Triple Kill"), // Priority 3
+            create_test_clip(3, 5, 12.0, "Pentakill"),   // Priority 5
+            create_test_clip(4, 2, 8.0, "Double Kill"),  // Priority 2
+            create_test_clip(5, 4, 10.0, "Quadrakill"),  // Priority 4
         ];
 
         let config = AutoEditConfig {

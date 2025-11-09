@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from 'react-i18next';
 import { invoke } from "@tauri-apps/api/core";
 import {
   Dialog,
@@ -45,6 +46,7 @@ export function SubscriptionManagement({
   currentTier,
   expiresAt
 }: SubscriptionManagementProps) {
+  const { t } = useTranslation();
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export function SubscriptionManagement({
       setShowCancelConfirm(false);
 
       // Show success message
-      alert("Subscription cancelled successfully. You will retain PRO access until the end of your billing period.");
+      alert(t('settings.account.cancelSuccess'));
     } catch (err) {
       console.error("Failed to cancel subscription:", err);
       setError(err as string);

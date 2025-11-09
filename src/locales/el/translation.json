@@ -1,0 +1,433 @@
+{
+  "app": {
+    "name": "LoLShorts",
+    "tagline": "Δημιουργός Καλύτερων Στιγμών"
+  },
+  "nav": {
+    "dashboard": "Πίνακας Ελέγχου",
+    "games": "Παιχνίδια",
+    "editor": "Επεξεργαστής",
+    "autoEdit": "Αυτόματη Επεξεργασία",
+    "youtube": "YouTube",
+    "settings": "Ρυθμίσεις",
+    "pro": "PRO"
+  },
+  "auth": {
+    "login": "Σύνδεση",
+    "signup": "Εγγραφή",
+    "logout": "Αποσύνδεση",
+    "loginSignup": "Σύνδεση / Εγγραφή",
+    "email": "Email",
+    "password": "Κωδικός",
+    "confirmPassword": "Επιβεβαίωση Κωδικού",
+    "forgotPassword": "Ξεχάσατε τον κωδικό;",
+    "noAccount": "Δεν έχετε λογαριασμό;",
+    "hasAccount": "Έχετε ήδη λογαριασμό;",
+    "createAccount": "Δημιουργία Λογαριασμού",
+    "loginWithGoogle": "Σύνδεση με Google",
+    "loginWithDiscord": "Σύνδεση με Discord"
+  },
+  "dashboard": {
+    "title": "Πίνακας Ελέγχου",
+    "welcome": "Καλώς ήρθες πίσω, {{name}}!",
+    "lcuStatus": {
+      "title": "League of Legends",
+      "connected": "Συνδεδεμένο",
+      "disconnected": "Αποσυνδεδεμένο",
+      "connecting": "Σύνδεση...",
+      "error": "Σφάλμα",
+      "messages": {
+        "connected": "Συνδεδεμένο στο League client",
+        "disconnected": "Συνδεθείτε στο League client για να ξεκινήσετε",
+        "autoReconnect": "Αυτόματη επανασύνδεση κάθε {{seconds}} δευτερόλεπτα",
+        "startLeague": "Βεβαιωθείτε ότι το League of Legends client είναι ενεργό"
+      }
+    },
+    "gameStatus": {
+      "title": "Τρέχον Παιχνίδι",
+      "inGame": "Σε Παιχνίδι",
+      "noGame": "Κανένα Παιχνίδι",
+      "champion": "Παίζει {{champion}}",
+      "messages": {
+        "notInGame": "Δεν είστε σε παιχνίδι",
+        "connectFirst": "Συνδεθείτε πρώτα στο League"
+      }
+    },
+    "recordingStatus": {
+      "title": "Εγγραφή",
+      "idle": "Αδρανές",
+      "recording": "Εγγραφή",
+      "processing": "Επεξεργασία",
+      "paused": "Σε Παύση",
+      "messages": {
+        "autoStart": "Θα ξεκινήσει αυτόματα όταν αρχίσει το παιχνίδι",
+        "loginRequired": "Απαιτείται σύνδεση για αυτόματη εγγραφή",
+        "recording": "Εγγραφή σε εξέλιξη",
+        "duration": "Διάρκεια: {{duration}}"
+      }
+    },
+    "stats": {
+      "title": "Γρήγορα Στατιστικά",
+      "subtitle": "Τα στατιστικά εγγραφής σας",
+      "totalGames": "Συνολικά Παιχνίδια:",
+      "totalClips": "Συνολικά Clips:",
+      "storageUsed": "Χώρος που Χρησιμοποιείται:",
+      "comingSoon": "Έρχεται Σύντομα"
+    },
+    "gettingStarted": {
+      "title": "Ξεκινώντας",
+      "subtitle": "Απλή ρύθμιση - αυτόματη εγγραφή",
+      "steps": {
+        "login": "Συνδεθείτε ή δημιουργήστε λογαριασμό",
+        "startLeague": "Εκκινήστε το League of Legends client (θα ξεκινήσει αυτόματη σύνδεση)",
+        "enterGame": "Μπείτε σε ένα παιχνίδι (οποιαδήποτε λειτουργία)",
+        "autoRecord": "Η εγγραφή ξεκινά αυτόματα όταν αρχίζει το παιχνίδι",
+        "playNormal": "Παίξτε κανονικά - οι καλύτερες στιγμές θα εντοπίζονται αυτόματα με βάση kills, στόχους και multikills",
+        "afterGame": "Μετά το παιχνίδι, η εγγραφή σταματά αυτόματα και τα clips αποθηκεύονται για επεξεργασία"
+      }
+    }
+  },
+  "games": {
+    "title": "Games",
+    "recordedGames": "Recorded Games",
+    "refresh": "Refresh",
+    "noGames": "No games recorded yet",
+    "noGamesRecorded": "No Games Recorded Yet",
+    "playGame": "Play a League of Legends game to start recording",
+    "startRecordingPrompt": "Start recording games from the Dashboard to see them here.",
+    "loadingGames": "Loading games...",
+    "loadingGameData": "Loading game data...",
+    "deleteConfirm": "Are you sure you want to delete this game and all its clips?",
+    "deleteFailed": "Failed to delete game",
+    "filters": {
+      "all": "All Games",
+      "withClips": "With Clips",
+      "favorites": "Favorites"
+    },
+    "sorting": {
+      "newest": "Newest First",
+      "oldest": "Oldest First",
+      "mostClips": "Most Clips"
+    },
+    "stats": {
+      "totalGames": "Total Games",
+      "totalClips": "Total Clips",
+      "storageUsed": "Storage Used"
+    },
+    "game": {
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "remake": "Remake",
+      "date": "Date",
+      "duration": "Duration",
+      "kda": "KDA",
+      "recorded": "Recorded",
+      "clips": "{{count}} Clips",
+      "kdaFormat": "{{kills}}/{{deaths}}/{{assists}}",
+      "viewClips": "View Clips",
+      "delete": "Delete Game"
+    }
+  },
+  "editor": {
+    "title": "Επεξεργαστής Βίντεο",
+    "subtitle": "Επεξεργαστείτε και προσαρμόστε τα clips σας",
+    "proRequired": "Απαιτείται συνδρομή PRO",
+    "upgradeToPro": "Αναβάθμιση σε PRO",
+    "noClips": "Δεν υπάρχουν διαθέσιμα clips",
+    "selectClips": "Επιλέξτε clips από τα παιχνίδια σας για να ξεκινήσετε την επεξεργασία",
+    "timeline": {
+      "title": "Χρονολόγιο",
+      "addClip": "Προσθήκη Clip",
+      "removeClip": "Αφαίρεση Clip"
+    },
+    "tools": {
+      "trim": "Περικοπή",
+      "merge": "Συγχώνευση",
+      "transitions": "Μεταβάσεις",
+      "filters": "Φίλτρα",
+      "speed": "Ταχύτητα",
+      "audio": "Ήχος"
+    },
+    "export": {
+      "title": "Εξαγωγή",
+      "quality": "Ποιότητα",
+      "format": "Μορφή",
+      "exportVideo": "Εξαγωγή Βίντεο"
+    },
+    "selectGameTitle": "Select a Game to Edit",
+    "selectGameDescription": "Choose a game from your recorded sessions to start editing",
+    "noGamesAvailable": "No games available. Record a game session first from the Dashboard.",
+    "selectGame": "Select Game",
+    "chooseGame": "Choose a game",
+    "selectGamePrompt": "Select a game to load its clips and start building your video timeline.",
+    "loadingClips": "Loading clips...",
+    "errorLoadingClips": "Error Loading Clips",
+    "backToGameSelection": "Back to Game Selection",
+    "retry": "Retry",
+    "changeGame": "Change Game",
+    "gameWithClips": "Game {{gameId}} • {{count}} clips available",
+    "clipsAvailable": "{{count}} clips available"
+  },
+  "autoEdit": {
+    "title": "Αυτόματη Επεξεργασία",
+    "subtitle": "Γεννήτρια βίντεο καλύτερων στιγμών με AI",
+    "proRequired": "Απαιτείται συνδρομή PRO",
+    "upgradeToPro": "Αναβάθμιση σε PRO",
+    "selectGame": "Επιλέξτε ένα παιχνίδι για να δημιουργήσετε καλύτερες στιγμές",
+    "templates": {
+      "title": "Πρότυπα",
+      "epicPentakill": "Επικό Pentakill",
+      "highlightReel": "Συλλογή Καλύτερων Στιγμών",
+      "cleanPlays": "Καθαρά Παιχνίδια",
+      "custom": "Προσαρμοσμένο"
+    },
+    "settings": {
+      "title": "Ρυθμίσεις",
+      "duration": "Στοχευμένη Διάρκεια",
+      "music": "Στυλ Μουσικής",
+      "transitions": "Μεταβάσεις",
+      "effects": "Εφέ"
+    },
+    "generate": "Δημιουργία Βίντεο",
+    "generating": "Δημιουργία...",
+    "preview": "Προεπισκόπηση",
+    "export": "Εξαγωγή"
+  },
+  "youtube": {
+    "title": "YouTube",
+    "subtitle": "Ανεβάστε τις καλύτερες στιγμές σας στο YouTube",
+    "proRequired": "Απαιτείται συνδρομή PRO",
+    "upgradeToPro": "Αναβάθμιση σε PRO",
+    "connect": "Σύνδεση Λογαριασμού YouTube",
+    "disconnect": "Αποσύνδεση",
+    "connected": "Συνδεδεμένο ως {{name}}",
+    "upload": {
+      "title": "Μεταφόρτωση Βίντεο",
+      "selectVideo": "Επιλογή Βίντεο",
+      "videoTitle": "Τίτλος",
+      "description": "Περιγραφή",
+      "tags": "Ετικέτες",
+      "privacy": "Απόρρητο",
+      "privacyOptions": {
+        "public": "Δημόσιο",
+        "unlisted": "Μη Καταχωρημένο",
+        "private": "Ιδιωτικό"
+      },
+      "thumbnail": "Μικρογραφία",
+      "uploadButton": "Μεταφόρτωση στο YouTube",
+      "uploading": "Μεταφόρτωση..."
+    },
+    "history": {
+      "title": "Ιστορικό Μεταφορτώσεων",
+      "noVideos": "Δεν υπάρχουν ακόμα μεταφορτωμένα βίντεο",
+      "views": "{{count}} προβολές",
+      "likes": "{{count}} likes",
+      "openYoutube": "Άνοιγμα στο YouTube"
+    },
+    "quota": {
+      "title": "Ημερήσια Ποσόστωση",
+      "used": "Χρησιμοποιήθηκε: {{used}} / {{total}}",
+      "remaining": "Απομένουν {{count}} μεταφορτώσεις",
+      "resetTime": "Επαναφορά σε {{time}}"
+    },
+    "tabs": {
+      "upload": "Upload",
+      "history": "History",
+      "account": "Account"
+    }
+  },
+  "settings": {
+    "title": "Ρυθμίσεις",
+    "general": {
+      "title": "Γενικά",
+      "language": "Γλώσσα",
+      "selectLanguage": "Επιλογή Γλώσσας",
+      "theme": "Θέμα",
+      "themes": {
+        "light": "Φωτεινό",
+        "dark": "Σκοτεινό",
+        "system": "Σύστημα"
+      },
+      "startWithWindows": "Εκκίνηση με Windows",
+      "minimizeToTray": "Ελαχιστοποίηση στη Γραμμή Εργασιών"
+    },
+    "recording": {
+      "title": "Εγγραφή",
+      "autoRecord": "Αυτόματη εγγραφή παιχνιδιών",
+      "replayBuffer": "Διάρκεια buffer επανάληψης",
+      "seconds": "{{count}} δευτερόλεπτα",
+      "quality": "Ποιότητα εγγραφής",
+      "qualities": {
+        "1080p60": "1080p 60fps",
+        "1080p30": "1080p 30fps",
+        "720p60": "720p 60fps",
+        "720p30": "720p 30fps"
+      },
+      "encoder": "Κωδικοποιητής",
+      "encoders": {
+        "hardware": "Υλικό (GPU)",
+        "software": "Λογισμικό (CPU)"
+      },
+      "bitrate": "Bitrate",
+      "mbps": "{{count}} Mbps"
+    },
+    "hotkeys": {
+      "title": "Συντομεύσεις",
+      "toggleRecording": "Εναλλαγή Εγγραφής",
+      "save60s": "Αποθήκευση Τελευταίων 60δ",
+      "save30s": "Αποθήκευση Τελευταίων 30δ",
+      "pressKey": "Πατήστε ένα πλήκτρο..."
+    },
+    "storage": {
+      "title": "Αποθήκευση",
+      "location": "Τοποθεσία αποθήκευσης",
+      "browse": "Αναζήτηση",
+      "used": "Χρησιμοποιήθηκε: {{used}} GB",
+      "autoCleanup": "Αυτόματος καθαρισμός παλιών αρχείων",
+      "keepDays": "Διατήρηση αρχείων για {{count}} ημέρες"
+    },
+    "account": {
+      "title": "Λογαριασμός",
+      "subscription": "Συνδρομή",
+      "plan": {
+        "free": "ΔΩΡΕΑΝ",
+        "pro": "PRO"
+      },
+      "upgradeToPro": "Αναβάθμιση σε PRO",
+      "manageBilling": "Διαχείριση Χρέωσης",
+      "cancelSubscription": "Ακύρωση Συνδρομής"
+    },
+    "about": {
+      "title": "Σχετικά",
+      "version": "Έκδοση {{version}}",
+      "checkUpdates": "Έλεγχος Ενημερώσεων",
+      "changelog": "Αρχείο Αλλαγών",
+      "website": "Ιστοσελίδα",
+      "support": "Υποστήριξη",
+      "discord": "Κοινότητα Discord"
+    },
+    "license": {
+      "title": "License & Subscription",
+      "description": "Your current plan and subscription details",
+      "loginRequired": "Login Required",
+      "loginPrompt": "Please login to view and manage your subscription",
+      "loginButton": "Login or Sign Up",
+      "loadingLicense": "Loading license information...",
+      "currentPlan": "Current Plan",
+      "proPlanDescription": "Unlimited clips, priority support, and advanced features",
+      "freePlanDescription": "Free tier with basic recording features",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "expiresOn": "Expires On",
+      "daysRemaining": "Days Remaining",
+      "days": "days",
+      "accountEmail": "Account Email",
+      "manageSubscription": "Manage Subscription",
+      "whyUpgrade": "Why Upgrade to PRO?",
+      "features": {
+        "unlimitedClips": "Unlimited Clips",
+        "unlimitedClipsDesc": "Record as many highlights as you want",
+        "advancedEditor": "Advanced Editor",
+        "advancedEditorDesc": "Premium transitions and effects",
+        "prioritySupport": "Priority Support",
+        "prioritySupportDesc": "Get help faster",
+        "noWatermarks": "No Watermarks",
+        "noWatermarksDesc": "Export clean videos"
+      },
+      "pricing": "PRO Pricing:",
+      "pricingDetails": "₩9,900/month or ₩99,000/year (Save 17%)",
+      "loadError": "Failed to load license information"
+    },
+    "recordingConfig": {
+      "title": "Recording Configuration",
+      "description": "Configure automatic clip recording preferences",
+      "resetToDefaults": "Reset to Defaults",
+      "loadingSettings": "Loading settings...",
+      "savingSettings": "Saving...",
+      "loadError": "Failed to load settings",
+      "tabs": {
+        "events": "Events",
+        "modes": "Game Modes",
+        "video": "Video",
+        "audio": "Audio",
+        "timing": "Timing",
+        "hotkeys": "Hotkeys"
+      }
+    },
+    "accountInfo": {
+      "title": "Account Information",
+      "description": "Your account details",
+      "email": "Email",
+      "userId": "User ID",
+      "licenseTier": "License Tier"
+    }
+  },
+  "common": {
+    "save": "Αποθήκευση",
+    "cancel": "Ακύρωση",
+    "delete": "Διαγραφή",
+    "edit": "Επεξεργασία",
+    "close": "Κλείσιμο",
+    "ok": "OK",
+    "yes": "Ναι",
+    "no": "Όχι",
+    "loading": "Φόρτωση...",
+    "saving": "Αποθήκευση...",
+    "saved": "Αποθηκεύτηκε",
+    "error": "Σφάλμα",
+    "success": "Επιτυχία",
+    "warning": "Προειδοποίηση",
+    "info": "Πληροφορίες",
+    "confirm": "Επιβεβαίωση",
+    "back": "Πίσω",
+    "next": "Επόμενο",
+    "finish": "Ολοκλήρωση",
+    "search": "Αναζήτηση",
+    "filter": "Φίλτρο",
+    "sort": "Ταξινόμηση",
+    "export": "Εξαγωγή",
+    "import": "Εισαγωγή",
+    "upload": "Μεταφόρτωση",
+    "download": "Λήψη",
+    "share": "Κοινοποίηση",
+    "copy": "Αντιγραφή",
+    "paste": "Επικόλληση",
+    "cut": "Αποκοπή",
+    "undo": "Αναίρεση",
+    "redo": "Επανάληψη",
+    "selectAll": "Επιλογή Όλων",
+    "deselectAll": "Αποεπιλογή Όλων"
+  },
+  "errors": {
+    "generic": "Προέκυψε σφάλμα",
+    "networkError": "Σφάλμα δικτύου. Ελέγξτε τη σύνδεσή σας.",
+    "authFailed": "Η αυθεντικοποίηση απέτυχε",
+    "notAuthenticated": "Πρέπει να είστε συνδεδεμένοι",
+    "notAuthorized": "Δεν έχετε άδεια",
+    "notFound": "Δεν βρέθηκε",
+    "serverError": "Σφάλμα διακομιστή. Δοκιμάστε αργότερα.",
+    "invalidInput": "Μη έγκυρη εισαγωγή",
+    "uploadFailed": "Η μεταφόρτωση απέτυχε",
+    "processingFailed": "Η επεξεργασία απέτυχε",
+    "lcuNotConnected": "Το League client δεν είναι συνδεδεμένο",
+    "recordingFailed": "Η εγγραφή απέτυχε",
+    "quotaExceeded": "Η ποσόστωση YouTube ξεπεράστηκε"
+  },
+  "tooltips": {
+    "replayBuffer": "Εγγράφει συνεχώς τα τελευταία {{seconds}} δευτερόλεπτα. Πατήστε τη συντόμευση για αποθήκευση.",
+    "autoRecord": "Αυτόματη έναρξη εγγραφής όταν αρχίζει ένα παιχνίδι",
+    "hardwareEncoder": "Χρήση GPU για κωδικοποίηση (ταχύτερο, λιγότερη χρήση CPU)",
+    "proFeature": "Αυτή η λειτουργία απαιτεί συνδρομή PRO",
+    "lcuStatus": "Κατάσταση σύνδεσης με το League of Legends client",
+    "dailyQuota": "Το YouTube επιτρέπει ~6 μεταφορτώσεις βίντεο την ημέρα"
+  },
+  "notifications": {
+    "gameStarted": "Το παιχνίδι ξεκίνησε - Ενεργοποιήθηκε η εγγραφή",
+    "gameEnded": "Το παιχνίδι τελείωσε - αποθηκεύτηκαν {{count}} clips",
+    "clipSaved": "Το clip αποθηκεύτηκε: {{name}}",
+    "uploadComplete": "Η μεταφόρτωση ολοκληρώθηκε: {{title}}",
+    "uploadFailed": "Η μεταφόρτωση απέτυχε: {{error}}",
+    "updateAvailable": "Διαθέσιμη ενημέρωση: v{{version}}"
+  }
+}

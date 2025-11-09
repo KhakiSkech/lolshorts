@@ -1,0 +1,847 @@
+{
+  "app": {
+    "name": "LoLShorts",
+    "tagline": "하이라이트 메이커"
+  },
+  "nav": {
+    "dashboard": "대시보드",
+    "games": "게임",
+    "editor": "편집",
+    "autoEdit": "자동 편집",
+    "results": "결과 보기",
+    "youtube": "유튜브",
+    "settings": "설정",
+    "pro": "Pro"
+  },
+  "auth": {
+    "login": "로그인",
+    "signup": "회원가입",
+    "logout": "로그아웃",
+    "loginSignup": "로그인 / 회원가입",
+    "upgradeToPro": "PRO로 업그레이드",
+    "email": "이메일",
+    "password": "비밀번호",
+    "confirmPassword": "비밀번호 확인",
+    "forgotPassword": "비밀번호를 잊으셨나요?",
+    "noAccount": "계정이 없으신가요?",
+    "hasAccount": "이미 계정이 있으신가요?",
+    "createAccount": "계정 만들기",
+    "loginWithGoogle": "Google로 로그인",
+    "loginWithDiscord": "Discord로 로그인"
+  },
+  "dashboard": {
+    "title": "대시보드",
+    "welcome": "환영합니다, {{name}}님!",
+    "lcuStatus": {
+      "title": "리그 오브 레전드",
+      "connected": "연결됨",
+      "disconnected": "연결 안 됨",
+      "connecting": "연결 중...",
+      "error": "오류",
+      "messages": {
+        "connected": "리그 클라이언트 연결됨",
+        "disconnected": "시작하려면 리그 클라이언트에 연결하세요",
+        "autoReconnect": "{{seconds}}초마다 자동 재연결",
+        "startLeague": "리그 오브 레전드 클라이언트가 실행 중인지 확인하세요",
+        "readyToDetect": "✓ 게임 감지 준비 완료",
+        "autoMonitoring": "게임 세션 자동 모니터링 중"
+      }
+    },
+    "gameStatus": {
+      "title": "현재 게임",
+      "inGame": "🎮 게임 중",
+      "noGame": "⚫ 게임 없음",
+      "sessionDetected": "게임 세션 감지됨",
+      "champion": "{{champion}} 플레이 중",
+      "fields": {
+        "champion": "챔피언:",
+        "gameMode": "게임 모드:",
+        "gameTime": "게임 시간:",
+        "gameId": "게임 ID:"
+      },
+      "messages": {
+        "notInGame": "게임에 참여하지 않음",
+        "connectFirst": "먼저 리그에 연결하세요",
+        "waiting": "게임 시작 대기 중..."
+      }
+    },
+    "recordingStatus": {
+      "title": "녹화",
+      "idle": "⚫ 대기 중",
+      "recording": "🔴 녹화 중",
+      "processing": "⏳ 처리 중",
+      "paused": "일시 정지",
+      "messages": {
+        "autoStart": "게임 시작 시 자동 시작",
+        "autoRecording": "게임플레이 자동 녹화 중",
+        "recording": "녹화 진행 중",
+        "recordingHighlights": "🔴 녹화 진행 중 - 하이라이트 자동 캡처 중",
+        "ready": "✓ 준비 완료 - 게임 입장 시 자동으로 녹화가 시작됩니다",
+        "connectFirst": "먼저 League of Legends 클라이언트에 연결하세요",
+        "duration": "시간: {{duration}}"
+      }
+    },
+    "stats": {
+      "title": "빠른 통계",
+      "subtitle": "녹화 통계",
+      "totalGames": "총 게임 수:",
+      "totalClips": "총 클립 수:",
+      "storageUsed": "사용된 저장 공간:",
+      "comingSoon": "준비 중"
+    },
+    "gettingStarted": {
+      "title": "시작하기",
+      "subtitle": "간단한 설정 - 자동 녹화",
+      "steps": {
+        "login": "로그인 또는 계정 만들기",
+        "startLeague": "리그 오브 레전드 클라이언트 시작 (자동 연결 시작)",
+        "enterGame": "게임 입장 (모든 게임 모드)",
+        "autoRecord": "게임 시작 시 자동으로 녹화 시작",
+        "playNormal": "평소처럼 플레이 - 킬, 오브젝트, 멀티킬을 기반으로 하이라이트가 자동으로 감지됩니다",
+        "afterGame": "게임 종료 후 녹화가 자동으로 중지되고 편집을 위해 클립이 저장됩니다"
+      }
+    }
+  },
+  "games": {
+    "title": "게임",
+    "recordedGames": "녹화된 게임",
+    "refresh": "새로고침",
+    "noGames": "아직 녹화된 게임이 없습니다",
+    "noGamesRecorded": "녹화된 게임이 없습니다",
+    "playGame": "녹화를 시작하려면 리그 오브 레전드 게임을 플레이하세요",
+    "startRecordingPrompt": "게임을 녹화하려면 대시보드에서 녹화를 시작하세요.",
+    "loadingGames": "게임 로딩 중...",
+    "loadingGameData": "게임 데이터 로딩 중...",
+    "deleteConfirm": "이 게임과 모든 클립을 삭제하시겠습니까?",
+    "deleteFailed": "게임 삭제 실패",
+    "filters": {
+      "all": "모든 게임",
+      "withClips": "클립 포함",
+      "favorites": "즐겨찾기"
+    },
+    "sorting": {
+      "newest": "최신순",
+      "oldest": "오래된순",
+      "mostClips": "클립 많은순"
+    },
+    "stats": {
+      "totalGames": "총 게임 수",
+      "totalClips": "총 클립 수",
+      "storageUsed": "사용된 저장 공간"
+    },
+    "game": {
+      "victory": "승리",
+      "defeat": "패배",
+      "remake": "리메이크",
+      "date": "날짜",
+      "duration": "시간",
+      "kda": "KDA",
+      "recorded": "녹화됨",
+      "clips": "{{count}}개 클립",
+      "kdaFormat": "{{kills}}/{{deaths}}/{{assists}}",
+      "viewClips": "클립 보기",
+      "autoEdit": "자동 편집",
+      "delete": "게임 삭제"
+    }
+  },
+  "editor": {
+    "title": "비디오 편집기",
+    "subtitle": "클립을 편집하고 커스터마이즈하세요",
+    "selectGameTitle": "편집할 게임 선택",
+    "selectGameDescription": "녹화된 세션에서 게임을 선택하여 편집을 시작하세요",
+    "noGamesAvailable": "사용 가능한 게임이 없습니다. 대시보드에서 먼저 게임 세션을 녹화하세요.",
+    "selectGame": "게임 선택",
+    "chooseGame": "게임을 선택하세요",
+    "selectGamePrompt": "게임을 선택하여 클립을 로드하고 비디오 타임라인을 구성하세요.",
+    "loadingClips": "클립 로딩 중...",
+    "errorLoadingClips": "클립 로딩 오류",
+    "backToGameSelection": "게임 선택으로 돌아가기",
+    "retry": "다시 시도",
+    "changeGame": "게임 변경",
+    "gameWithClips": "게임 {{gameId}} • {{count}}개 클립 사용 가능",
+    "clipsAvailable": "{{count}}개 클립 사용 가능",
+    "proRequired": "PRO 구독 필요",
+    "upgradeToPro": "PRO로 업그레이드",
+    "noClips": "사용 가능한 클립이 없습니다",
+    "selectClips": "편집을 시작하려면 게임에서 클립을 선택하세요",
+    "timeline": {
+      "title": "타임라인",
+      "addClip": "클립 추가",
+      "removeClip": "클립 제거"
+    },
+    "tools": {
+      "trim": "자르기",
+      "merge": "합치기",
+      "transitions": "전환 효과",
+      "filters": "필터",
+      "speed": "속도",
+      "audio": "오디오"
+    },
+    "export": {
+      "title": "내보내기",
+      "quality": "화질",
+      "format": "형식",
+      "exportVideo": "비디오 내보내기"
+    }
+  },
+  "autoEdit": {
+    "title": "자동 편집",
+    "subtitle": "AI 기반 하이라이트 비디오 생성기",
+    "selectGames": "게임 선택",
+    "selectGamesDescription": "클립을 가져올 게임을 하나 이상 선택하세요",
+    "noGamesAvailable": "사용 가능한 게임이 없습니다. 먼저 대시보드에서 게임을 녹화하세요.",
+    "gamesSelected": "{{count}}개 게임 선택됨",
+    "clipsCount": "{{count}}개 클립",
+    "targetDuration": "목표 길이",
+    "targetDurationDescription": "유튜브 쇼츠 길이를 선택하세요",
+    "quickShort": "빠른 쇼츠",
+    "standard": "표준",
+    "extended": "확장",
+    "canvasOverlay": "캔버스 오버레이",
+    "backgroundMusic": "배경 음악",
+    "starting": "시작 중...",
+    "generateShort": "쇼츠 생성",
+    "generatingYourShort": "쇼츠 생성 중",
+    "pleaseWait": "유튜브 쇼츠를 생성하는 동안 잠시 기다려 주세요...",
+    "clipsProgress": "{{selected}} / {{total}} 클립",
+    "timeRemaining": "~{{seconds}}초 남음",
+    "generationWarning": "클립 수와 선택한 옵션에 따라 몇 분 정도 소요될 수 있습니다. 이 창을 닫지 마세요.",
+    "doNotClose": "클립 수와 선택한 옵션에 따라 몇 분 정도 소요될 수 있습니다. 이 창을 닫지 마세요.",
+    "shortGeneratedSuccessfully": "쇼츠 생성 완료!",
+    "shortReady": "유튜브 쇼츠가 준비되었습니다",
+    "duration": "길이",
+    "clipsUsed": "사용된 클립",
+    "fileSize": "파일 크기",
+    "jobId": "작업 ID",
+    "outputFile": "출력 파일",
+    "openFileLocation": "파일 위치 열기",
+    "playVideo": "비디오 재생",
+    "createAnotherShort": "다른 쇼츠 만들기",
+    "videoGenerationFailed": "비디오 생성 실패",
+    "trySolutions": "다음 해결 방법을 시도해보세요:",
+    "technicalDetails": "기술 세부 정보",
+    "retryGeneration": "생성 재시도",
+    "startOver": "처음부터 다시 시작",
+    "steps": {
+      "configure": "설정",
+      "preview": "미리보기",
+      "generating": "생성 중...",
+      "complete": "완료"
+    },
+    "stages": {
+      "selectingClips": "최고의 클립 선택 중",
+      "preparingClips": "클립 준비 중",
+      "concatenating": "비디오 결합 중",
+      "applyingCanvas": "캔버스 오버레이 적용 중",
+      "mixingAudio": "오디오 믹싱 중"
+    }
+  },
+  "results": {
+    "title": "결과 보기",
+    "description": "생성된 자동 편집 비디오를 보고 관리하세요",
+    "refresh": "새로고침",
+    "confirmDelete": "이 결과를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+    "notUploaded": "업로드 안 됨",
+    "queued": "대기 중",
+    "uploading": "업로드 중",
+    "processing": "처리 중",
+    "completed": "완료됨",
+    "failed": "실패",
+    "unknown": "알 수 없음",
+    "empty": {
+      "title": "결과가 없습니다",
+      "description": "첫 번째 자동 편집 비디오를 생성하여 여기에서 결과를 확인하세요"
+    },
+    "short": "쇼츠",
+    "duration": "길이",
+    "clips": "클립",
+    "fileSize": "파일 크기",
+    "template": "템플릿",
+    "withMusic": "음악 포함",
+    "play": "재생",
+    "delete": "삭제"
+  },
+  "youtube": {
+    "title": "유튜브",
+    "subtitle": "하이라이트를 유튜브에 업로드하세요",
+    "tabs": {
+      "upload": "업로드",
+      "history": "업로드 기록",
+      "account": "계정"
+    },
+    "auth": {
+      "youtubeAccount": "유튜브 계정",
+      "connectDescription": "비디오를 업로드하려면 유튜브 계정을 연결하세요",
+      "connected": "연결됨",
+      "disconnected": "연결 안 됨",
+      "signedInAs": "로그인됨:",
+      "tokenExpires": "토큰 만료:",
+      "signOut": "로그아웃",
+      "accountConnected": "유튜브 계정이 연결되었습니다. 이제 LoLShorts에서 직접 비디오를 업로드할 수 있습니다.",
+      "connectPrompt": "비디오 업로드를 활성화하려면 유튜브 계정을 연결하세요. Google 인증 페이지로 리디렉션됩니다.",
+      "openingBrowser": "브라우저 열기 중...",
+      "connectYouTubeAccount": "유튜브 계정 연결",
+      "connectingAutomatically": "자동으로 연결 중...",
+      "waitingForAuthorization": "브라우저에서 인증 대기 중입니다. 인증 과정을 완료해 주세요. 완료되면 앱이 자동으로 연결됩니다.",
+      "automaticAuth": "인증은 자동으로 처리됩니다. 브라우저에서 승인하기만 하면 앱이 계정을 연결합니다.",
+      "authInstructions": "브라우저에서 인증을 완료한 후, 콜백 URL에서 인증 코드를 붙여넣어 주세요.\n\n콜백 URL은 다음과 같습니다:\nhttp://localhost:8080/oauth2/callback?code=YOUR_CODE&state=YOUR_STATE",
+      "revokeAccess": "연결하면 LoLShorts가 비디오를 업로드할 수 있도록 승인합니다..."
+    },
+    "upload": {
+      "uploadVideo": "비디오 업로드",
+      "uploadToYouTube": "유튜브에 업로드",
+      "uploadDescription": "편집한 리그 오브 레전드 하이라이트를 업로드하세요",
+      "uploadYourHighlights": "편집한 리그 오브 레전드 하이라이트를 업로드하세요",
+      "videoFile": "비디오 파일 *",
+      "selectVideoFile": "비디오 파일 선택...",
+      "browse": "찾아보기",
+      "customThumbnail": "맞춤 썸네일 (선택사항)",
+      "selectThumbnailImage": "썸네일 이미지 선택...",
+      "thumbnailRecommendation": "권장: 1280x720 픽셀 (JPG 또는 PNG)",
+      "title": "제목",
+      "titlePlaceholder": "에픽 펜타킬 - 리그 오브 레전드",
+      "charactersCount": "{{count}}/{{max}} 자",
+      "description": "설명",
+      "descriptionPlaceholder": "게임플레이 하이라이트를 설명하세요...",
+      "tags": "태그",
+      "tagsPlaceholder": "리그 오브 레전드, 펜타킬, 게임, 쇼츠",
+      "privacy": "공개 범위",
+      "privacyOptions": {
+        "public": "공개",
+        "unlisted": "일부 공개",
+        "private": "비공개"
+      },
+      "public": "공개",
+      "unlisted": "일부 공개",
+      "private": "비공개",
+      "category": "카테고리",
+      "gaming": "게임",
+      "requiredFields": "* 필수 항목. 업로드 후 비디오 처리에 몇 분이 소요될 수 있습니다.",
+      "connectAccountFirst": "먼저 유튜브 계정을 연결하세요",
+      "connectRequired": "비디오를 업로드하려면 유튜브 계정을 연결해야 합니다.",
+      "uploadButton": "유튜브에 업로드",
+      "uploading": "업로드 중...",
+      "uploadProgress": "업로드 진행률",
+      "uploadSuccessful": "비디오 업로드 성공! 처리에 몇 분이 소요될 수 있습니다.",
+      "uploadFailed": "업로드 실패"
+    },
+    "history": {
+      "uploadHistory": "업로드 기록",
+      "recentVideos": "최근 업로드한 비디오",
+      "refresh": "새로고침",
+      "loadingHistory": "기록 로딩 중...",
+      "noUploads": "아직 업로드가 없습니다",
+      "uploadFirstVideo": "첫 번째 비디오를 업로드하면 여기에 표시됩니다",
+      "title": "제목",
+      "uploaded": "업로드됨",
+      "noDescription": "설명 없음",
+      "viewOnYouTube": "유튜브에서 보기",
+      "connectAccountFirst": "먼저 유튜브 계정을 연결하세요",
+      "connectRequired": "업로드 기록을 보려면 유튜브 계정을 연결해야 합니다."
+    }
+  },
+  "statusDashboard": {
+    "recordingStatus": "녹화 상태",
+    "autoCapture": {
+      "active": "자동 캡처 활성화 - 게임 이벤트 모니터링 중",
+      "pressF8": "자동 캡처를 시작하려면 F8을 누르세요"
+    },
+    "bufferDuration": "버퍼 길이",
+    "bufferSegments": "버퍼 세그먼트",
+    "performanceMetrics": "성능 지표",
+    "fps": "FPS",
+    "ffmpegCpu": "FFmpeg CPU",
+    "memory": "메모리",
+    "bitrate": "비트레이트",
+    "frameDropsDetected": "프레임 드롭 감지됨",
+    "frameDropsMessage": "현재 세그먼트에서 {{count}}프레임 드롭",
+    "systemResources": "시스템 리소스",
+    "totalCpu": "전체 CPU",
+    "availableRam": "사용 가능한 RAM",
+    "availableDisk": "사용 가능한 디스크",
+    "gpu": "GPU",
+    "lowDiskSpace": "디스크 공간 부족",
+    "lowDiskSpaceMessage": "5GB 미만 사용 가능. 녹화가 실패할 수 있습니다.",
+    "hotkeyReference": "단축키 참조",
+    "toggleAutoCapture": "자동 캡처 토글:",
+    "save60sReplay": "60초 리플레이 저장:",
+    "save30sReplay": "30초 리플레이 저장:",
+    "healthy": "정상",
+    "warning": "경고",
+    "critical": "심각"
+  },
+  "settings": {
+    "title": "설정",
+    "license": {
+      "title": "라이선스 & 구독",
+      "description": "현재 플랜 및 구독 정보",
+      "loginRequired": "로그인 필요",
+      "loginPrompt": "구독을 확인하고 관리하려면 로그인하세요",
+      "loginButton": "로그인 또는 회원가입",
+      "loadingLicense": "라이선스 정보 로딩 중...",
+      "currentPlan": "현재 플랜",
+      "proPlanDescription": "무제한 클립, 우선 지원, 고급 기능",
+      "freePlanDescription": "기본 녹화 기능이 포함된 무료 플랜",
+      "status": "상태",
+      "active": "활성",
+      "inactive": "비활성",
+      "expiresOn": "만료일",
+      "daysRemaining": "남은 일수",
+      "days": "일",
+      "accountEmail": "계정 이메일",
+      "manageSubscription": "구독 관리",
+      "whyUpgrade": "왜 PRO로 업그레이드해야 하나요?",
+      "features": {
+        "unlimitedClips": "무제한 클립",
+        "unlimitedClipsDesc": "원하는 만큼 하이라이트를 녹화하세요",
+        "advancedEditor": "고급 편집기",
+        "advancedEditorDesc": "프리미엄 트랜지션 및 효과",
+        "prioritySupport": "우선 지원",
+        "prioritySupportDesc": "더 빠른 도움 받기",
+        "noWatermarks": "워터마크 없음",
+        "noWatermarksDesc": "깨끗한 비디오 내보내기"
+      },
+      "pricing": "PRO 가격:",
+      "pricingDetails": "₩9,900/월 또는 ₩99,000/년 (17% 절약)",
+      "loadError": "라이선스 정보를 불러오지 못했습니다"
+    },
+    "recordingConfig": {
+      "title": "녹화 구성",
+      "description": "자동 클립 녹화 설정",
+      "resetToDefaults": "기본값으로 재설정",
+      "loadingSettings": "설정 로딩 중...",
+      "savingSettings": "저장 중...",
+      "loadError": "설정을 불러오지 못했습니다",
+      "tabs": {
+        "events": "이벤트",
+        "modes": "게임 모드",
+        "video": "비디오",
+        "audio": "오디오",
+        "timing": "타이밍",
+        "hotkeys": "단축키"
+      },
+      "eventFilter": {
+        "quickPresets": "빠른 프리셋",
+        "highlightsOnly": "하이라이트만",
+        "everything": "모두",
+        "minimal": "최소 (에픽만)",
+        "priorityFilter": "우선순위 필터",
+        "priorityFilterDescription": "중요도 수준별 이벤트 필터링 (1 = 모두, 5 = 에픽만)",
+        "minimumPriority": "최소 우선순위",
+        "priorityLabels": {
+          "allEvents": "모든 이벤트",
+          "importantEvents": "중요한 이벤트",
+          "highPriority": "높은 우선순위",
+          "criticalMoments": "결정적 순간",
+          "epicPlaysOnly": "에픽 플레이만",
+          "custom": "맞춤"
+        },
+        "priorityScale": {
+          "all": "모두",
+          "important": "중요",
+          "high": "높음",
+          "critical": "결정적",
+          "epic": "에픽"
+        },
+        "killEvents": {
+          "title": "킬 이벤트",
+          "description": "킬, 데스, 어시스트 녹화",
+          "kills": "킬",
+          "multikills": "멀티킬 (더블, 트리플, 쿼드라, 펜타)",
+          "firstBlood": "퍼스트 블러드",
+          "deaths": "데스",
+          "shutdown": "학살 저지 (적 연속 킬 종료)",
+          "assists": "어시스트",
+          "ace": "에이스 (팀이 모든 적 처치)"
+        },
+        "objectiveEvents": {
+          "title": "오브젝트 이벤트",
+          "description": "드래곤, 바론, 전령, 스틸 시도 녹화",
+          "dragon": "드래곤",
+          "baronNashor": "바론",
+          "elderDragon": "장로 드래곤",
+          "riftHerald": "전령",
+          "objectiveSteals": "오브젝트 스틸"
+        },
+        "structureEvents": {
+          "title": "구조물 이벤트",
+          "description": "포탑, 억제기, 넥서스 파괴 녹화",
+          "turrets": "포탑",
+          "inhibitors": "억제기",
+          "nexus": "넥서스",
+          "gameEnd": "게임 종료"
+        }
+      },
+      "gameModes": {
+        "quickPresets": "빠른 프리셋",
+        "competitiveModes": "경쟁 모드",
+        "rankedOnly": "랭크만",
+        "allModes": "모든 모드",
+        "rankedModes": {
+          "title": "랭크 모드",
+          "description": "경쟁 랭크 게임플레이",
+          "rankedSoloDuo": "솔로 랭크",
+          "rankedSoloDuoDesc": "경쟁 5대5 솔로/듀오 큐",
+          "rankedFlex": "자유 랭크",
+          "rankedFlexDesc": "경쟁 5대5 자유 랭크 큐"
+        },
+        "normalModes": {
+          "title": "일반 모드",
+          "description": "캐주얼 게임플레이 모드",
+          "normalDraftBlind": "일반 (선택/빠른 대전)",
+          "normalDraftBlindDesc": "클래식 5대5 소환사의 협곡",
+          "quickPlay": "빠른 대전",
+          "quickPlayDesc": "빠른 속도의 캐주얼 매치"
+        },
+        "alternativeModes": {
+          "title": "대체 모드",
+          "description": "칼바람, 아레나, 특별 게임 모드",
+          "aram": "칼바람",
+          "aramDesc": "칼바람 나락 올 랜덤 올 미드",
+          "arena": "아레나",
+          "arenaDesc": "2대2대2대2 배틀 아레나 모드",
+          "specialEvents": "특별 이벤트",
+          "specialEventsDesc": "URF, 단일 챔피언, 기타 로테이션 모드"
+        },
+        "practiceModes": {
+          "title": "연습 모드",
+          "description": "사용자 지정 게임 및 연습 도구",
+          "customGames": "사용자 지정 게임",
+          "customGamesDesc": "플레이어가 생성한 사용자 지정 매치",
+          "practiceTool": "연습 도구",
+          "practiceToolDesc": "솔로 연습 환경"
+        }
+      },
+      "audioSettings": {
+        "microphoneRecording": {
+          "title": "마이크 녹음",
+          "description": "게임플레이 중 음성 코멘터리 녹음",
+          "enableMicrophone": "마이크 녹음 활성화",
+          "microphoneDevice": "마이크 장치",
+          "defaultDevice": "기본 장치",
+          "selectDevice": "장치 선택",
+          "microphoneVolume": "마이크 볼륨",
+          "muted": "음소거",
+          "boost": "200% (부스트)"
+        },
+        "systemAudioRecording": {
+          "title": "시스템 오디오 녹음",
+          "description": "게임 사운드, 음악, 기타 시스템 오디오 녹음",
+          "enableSystemAudio": "시스템 오디오 녹음 활성화",
+          "systemAudioDevice": "시스템 오디오 장치",
+          "defaultDevice": "기본 장치",
+          "selectDevice": "장치 선택",
+          "systemAudioVolume": "시스템 오디오 볼륨",
+          "muted": "음소거",
+          "boost": "200% (부스트)"
+        },
+        "audioQuality": {
+          "title": "오디오 품질",
+          "description": "녹음의 샘플레이트와 비트레이트 설정",
+          "sampleRate": "샘플레이트",
+          "sampleRateLabels": {
+            "hz44100": "44.1 kHz (CD 품질)",
+            "hz48000": "48 kHz (프로페셔널)"
+          },
+          "audioBitrate": "오디오 비트레이트",
+          "bitrateLabels": {
+            "kbps128": "128 kbps (표준)",
+            "kbps192": "192 kbps (높음)",
+            "kbps256": "256 kbps (매우 높음)",
+            "kbps320": "320 kbps (최대)"
+          },
+          "recommended": "권장"
+        },
+        "currentConfiguration": {
+          "title": "현재 오디오 구성",
+          "microphone": "마이크",
+          "systemAudio": "시스템 오디오",
+          "enabled": "활성화됨",
+          "volume": "볼륨",
+          "device": "장치",
+          "microphoneEnabled": "마이크: 활성화됨 ({{volume}}% 볼륨)",
+          "microphoneDevice": "장치: {{device}}",
+          "systemAudioEnabled": "시스템 오디오: 활성화됨 ({{volume}}% 볼륨)",
+          "systemAudioDevice": "장치: {{device}}",
+          "quality": "품질",
+          "default": "기본"
+        }
+      },
+      "clipTiming": {
+        "defaultDuration": {
+          "title": "기본 클립 길이",
+          "description": "모든 이벤트에 적용되는 기본 타이밍 (맞춤 설정하지 않은 경우)",
+          "beforeEvent": "이벤트 전 (프리롤)",
+          "afterEvent": "이벤트 후 (포스트롤)",
+          "totalLength": "총 길이",
+          "before": "전",
+          "after": "후"
+        },
+        "eventSpecific": {
+          "title": "이벤트별 타이밍",
+          "description": "특정 이벤트 유형에 대한 클립 길이 맞춤 설정",
+          "beforeEvent": "이벤트 전",
+          "afterEvent": "이벤트 후",
+          "multikills": {
+            "title": "멀티킬",
+            "description": "더블, 트리플, 쿼드라, 펜타킬"
+          },
+          "objectiveSteals": {
+            "title": "오브젝트 스틸",
+            "description": "바론, 드래곤, 전령 스틸"
+          },
+          "regularKills": {
+            "title": "일반 킬",
+            "description": "단일 챔피언 킬"
+          }
+        },
+        "eventMerging": {
+          "title": "이벤트 병합",
+          "description": "연속된 이벤트를 단일 클립으로 결합",
+          "mergeConsecutive": "연속 이벤트 병합",
+          "mergeConsecutiveDesc": "가까운 시간에 발생한 이벤트를 하나의 클립으로 결합",
+          "mergeTimeWindow": "병합 시간 창",
+          "mergeExplanation": "{{seconds}}초 이내의 이벤트가 단일 클립으로 결합됩니다"
+        }
+      },
+      "hotkeys": {
+        "globalHotkeys": {
+          "title": "전역 단축키",
+          "description": "이 단축키는 리그 오브 레전드가 포커스되어 있을 때도 작동합니다. 단축키 필드를 클릭하고 원하는 키 조합을 눌러 변경하세요."
+        },
+        "manualSaveClip": {
+          "title": "수동으로 클립 저장",
+          "description": "최근 10-30초를 즉시 클립으로 저장",
+          "placeholder": "단축키 설정하려면 클릭",
+          "pressAnyKey": "아무 키나 누르세요...",
+          "defaultF8": "기본값: F8 (기본값으로 복원하려면 누르세요)"
+        },
+        "toggleRecording": {
+          "title": "녹화 전환",
+          "description": "자동 녹화 시작 또는 중지",
+          "defaultF9": "기본값: F9 (기본값으로 복원하려면 누르세요)"
+        },
+        "deleteLastClip": {
+          "title": "마지막 클립 삭제",
+          "description": "가장 최근에 저장된 클립 제거",
+          "defaultF10": "기본값: F10 (기본값으로 복원하려면 누르세요)"
+        },
+        "resetAllHotkeys": "모든 단축키를 기본값으로 재설정"
+      },
+      "videoSettings": {
+        "resolution": {
+          "title": "해상도",
+          "description": "비디오 출력 해상도 (높을수록 = 더 나은 품질, 더 큰 파일)",
+          "labels": {
+            "r1920x1080": "1920x1080 (1080p)",
+            "r2560x1440": "2560x1440 (1440p)",
+            "r3840x2160": "3840x2160 (4K)"
+          },
+          "recommended": "권장"
+        },
+        "frameRate": {
+          "title": "프레임레이트",
+          "description": "초당 프레임 수 (높을수록 = 더 부드러움, 더 큰 파일)",
+          "labels": {
+            "fps30": "30 FPS",
+            "fps60": "60 FPS",
+            "fps120": "120 FPS",
+            "fps144": "144 FPS"
+          },
+          "recommended": "권장"
+        },
+        "bitratePreset": {
+          "title": "비트레이트 프리셋",
+          "description": "비디오 품질 프리셋 (높을수록 = 더 나은 품질, 더 큰 파일)",
+          "labels": {
+            "low": "낮음 (10 Mbps) - 720p60",
+            "medium": "중간 (20 Mbps) - 1080p60",
+            "high": "높음 (40 Mbps) - 1440p60",
+            "veryHigh": "매우 높음 (80 Mbps) - 4K60"
+          },
+          "estimatedSize": "예상 파일 크기"
+        },
+        "videoCodec": {
+          "title": "비디오 코덱",
+          "description": "압축 방법 (효율성을 위해 H.265 권장)",
+          "labels": {
+            "h264": "H.264 (최고 호환성)",
+            "h265": "H.265 (최고 효율성)",
+            "av1": "AV1 (실험적)"
+          },
+          "recommended": "권장"
+        },
+        "encoderPreference": {
+          "title": "인코더 선호도",
+          "description": "하드웨어 가속 (자동이 사용 가능한 최고를 감지)",
+          "labels": {
+            "auto": "자동 (권장)",
+            "nvenc": "NVENC (NVIDIA GPU)",
+            "qsv": "QSV (Intel GPU)",
+            "amf": "AMF (AMD GPU)",
+            "software": "소프트웨어 (CPU)"
+          },
+          "recommended": "권장"
+        },
+        "currentConfiguration": {
+          "title": "현재 구성",
+          "resolution": "해상도",
+          "frameRate": "프레임레이트",
+          "codec": "코덱",
+          "encoder": "인코더",
+          "estimatedSize": "예상 크기"
+        }
+      }
+    },
+    "accountInfo": {
+      "title": "계정 정보",
+      "description": "계정 세부 정보",
+      "email": "이메일",
+      "userId": "사용자 ID",
+      "licenseTier": "라이선스 등급"
+    },
+    "general": {
+      "title": "일반",
+      "language": "언어",
+      "selectLanguage": "언어 선택",
+      "theme": "테마",
+      "themes": {
+        "light": "라이트",
+        "dark": "다크",
+        "system": "시스템"
+      },
+      "startWithWindows": "Windows 시작 시 실행",
+      "minimizeToTray": "트레이로 최소화"
+    },
+    "recording": {
+      "title": "녹화",
+      "autoRecord": "자동 게임 녹화",
+      "replayBuffer": "리플레이 버퍼 길이",
+      "seconds": "{{count}}초",
+      "quality": "녹화 화질",
+      "qualities": {
+        "1080p60": "1080p 60fps",
+        "1080p30": "1080p 30fps",
+        "720p60": "720p 60fps",
+        "720p30": "720p 30fps"
+      },
+      "encoder": "인코더",
+      "encoders": {
+        "hardware": "하드웨어 (GPU)",
+        "software": "소프트웨어 (CPU)"
+      },
+      "bitrate": "비트레이트",
+      "mbps": "{{count}} Mbps"
+    },
+    "hotkeys": {
+      "title": "단축키",
+      "toggleRecording": "녹화 토글",
+      "save60s": "마지막 60초 저장",
+      "save30s": "마지막 30초 저장",
+      "pressKey": "키를 누르세요..."
+    },
+    "storage": {
+      "title": "저장소",
+      "location": "저장 위치",
+      "browse": "찾아보기",
+      "used": "사용: {{used}} GB",
+      "autoCleanup": "오래된 파일 자동 정리",
+      "keepDays": "{{count}}일 동안 파일 보관"
+    },
+    "account": {
+      "title": "계정",
+      "subscription": "구독",
+      "plan": {
+        "free": "무료",
+        "pro": "Pro"
+      },
+      "upgradeToPro": "PRO로 업그레이드",
+      "manageBilling": "결제 관리",
+      "cancelSubscription": "구독 취소",
+      "cancelSuccess": "구독이 성공적으로 취소되었습니다. 결제 기간이 끝날 때까지 PRO 액세스를 유지합니다."
+    },
+    "about": {
+      "title": "정보",
+      "version": "버전 {{version}}",
+      "checkUpdates": "업데이트 확인",
+      "changelog": "변경 사항",
+      "website": "웹사이트",
+      "support": "지원",
+      "discord": "Discord 커뮤니티"
+    }
+  },
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "close": "닫기",
+    "ok": "확인",
+    "yes": "예",
+    "no": "아니오",
+    "loading": "로딩 중...",
+    "saving": "저장 중...",
+    "saved": "저장됨",
+    "error": "오류",
+    "success": "성공",
+    "warning": "경고",
+    "info": "정보",
+    "confirm": "확인",
+    "back": "뒤로",
+    "next": "다음",
+    "finish": "완료",
+    "search": "검색",
+    "filter": "필터",
+    "sort": "정렬",
+    "export": "내보내기",
+    "import": "가져오기",
+    "upload": "업로드",
+    "download": "다운로드",
+    "share": "공유",
+    "copy": "복사",
+    "paste": "붙여넣기",
+    "cut": "잘라내기",
+    "undo": "실행 취소",
+    "redo": "다시 실행",
+    "selectAll": "모두 선택",
+    "deselectAll": "모두 선택 해제"
+  },
+  "errors": {
+    "generic": "오류가 발생했습니다",
+    "networkError": "네트워크 오류. 연결을 확인하세요.",
+    "authFailed": "인증 실패",
+    "notAuthenticated": "로그인이 필요합니다",
+    "notAuthorized": "권한이 없습니다",
+    "notFound": "찾을 수 없음",
+    "serverError": "서버 오류. 나중에 다시 시도하세요.",
+    "invalidInput": "잘못된 입력",
+    "uploadFailed": "업로드 실패",
+    "processingFailed": "처리 실패",
+    "lcuNotConnected": "리그 클라이언트가 연결되지 않았습니다",
+    "recordingFailed": "녹화 실패",
+    "quotaExceeded": "유튜브 할당량 초과",
+    "fileSelectionFailed": "파일 선택에 실패했습니다. 다시 시도해 주세요.",
+    "selectAtLeastOneGame": "게임을 하나 이상 선택해 주세요",
+    "todoFeature": "TODO: {{action}}"
+  },
+  "confirmations": {
+    "cancelExport": "내보내기가 진행 중입니다. 취소하시겠습니까?",
+    "clearTimeline": "타임라인을 지우시겠습니까? 이 작업은 취소할 수 없습니다."
+  },
+  "tooltips": {
+    "replayBuffer": "마지막 {{seconds}}초를 지속적으로 녹화합니다. 단축키를 눌러 저장하세요.",
+    "autoRecord": "게임 시작 시 자동으로 녹화 시작",
+    "hardwareEncoder": "GPU를 사용하여 인코딩 (더 빠름, CPU 사용량 감소)",
+    "proFeature": "이 기능은 PRO 구독이 필요합니다",
+    "lcuStatus": "리그 오브 레전드 클라이언트 연결 상태",
+    "dailyQuota": "유튜브는 하루에 약 6개의 비디오 업로드를 허용합니다"
+  },
+  "notifications": {
+    "gameStarted": "게임 시작 - 녹화 활성화",
+    "gameEnded": "게임 종료 - {{count}}개 클립 저장됨",
+    "clipSaved": "클립 저장됨: {{name}}",
+    "uploadComplete": "업로드 완료: {{title}}",
+    "uploadFailed": "업로드 실패: {{error}}",
+    "updateAvailable": "업데이트 사용 가능: v{{version}}"
+  }
+}

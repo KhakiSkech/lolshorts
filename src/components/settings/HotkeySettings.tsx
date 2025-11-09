@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ interface HotkeySettingsProps {
 }
 
 export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
+  const { t } = useTranslation();
   const [recording, setRecording] = useState<keyof HotkeySettings | null>(null);
 
   const updateHotkey = (key: keyof HotkeySettings, value: string) => {
@@ -64,7 +66,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
 
   const getHotkeyDisplay = (key: keyof HotkeySettings): string => {
     if (recording === key) {
-      return "Press any key...";
+      return t('settings.recordingConfig.hotkeys.pressAnyKey');
     }
     return settings[key];
   };
@@ -77,10 +79,9 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
           <div className="flex items-start gap-3">
             <Keyboard className="w-5 h-5 text-muted-foreground mt-0.5" />
             <div className="space-y-1 text-sm">
-              <p className="font-semibold">Global Hotkeys</p>
+              <p className="font-semibold">{t('settings.recordingConfig.hotkeys.globalHotkeys.title')}</p>
               <p className="text-muted-foreground">
-                These hotkeys work even when League of Legends is in focus. Click on a hotkey field
-                and press your desired key combination to change it.
+                {t('settings.recordingConfig.hotkeys.globalHotkeys.description')}
               </p>
             </div>
           </div>
@@ -90,9 +91,9 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
       {/* Manual Save Clip */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Save Clip Manually</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.hotkeys.manualSaveClip.title')}</CardTitle>
           <CardDescription>
-            Instantly save the last 10-30 seconds as a clip
+            {t('settings.recordingConfig.hotkeys.manualSaveClip.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -105,7 +106,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => handleKeyDown(e, "manual_save_clip")}
                 readOnly
                 className={recording === "manual_save_clip" ? "border-primary" : ""}
-                placeholder="Click to set hotkey"
+                placeholder={t('settings.recordingConfig.hotkeys.clickToSet')}
               />
             </div>
             {settings.manual_save_clip !== "F8" && (
@@ -119,7 +120,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Default: F8 (Press to restore default)
+            {t('settings.recordingConfig.hotkeys.manualSaveClip.defaultKey')}
           </p>
         </CardContent>
       </Card>
@@ -127,9 +128,9 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
       {/* Toggle Recording */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Toggle Recording</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.hotkeys.toggleRecording.title')}</CardTitle>
           <CardDescription>
-            Start or stop automatic recording
+            {t('settings.recordingConfig.hotkeys.toggleRecording.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -142,7 +143,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => handleKeyDown(e, "toggle_recording")}
                 readOnly
                 className={recording === "toggle_recording" ? "border-primary" : ""}
-                placeholder="Click to set hotkey"
+                placeholder={t('settings.recordingConfig.hotkeys.clickToSet')}
               />
             </div>
             {settings.toggle_recording !== "F9" && (
@@ -156,7 +157,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Default: F9 (Press to restore default)
+            {t('settings.recordingConfig.hotkeys.toggleRecording.defaultKey')}
           </p>
         </CardContent>
       </Card>
@@ -164,9 +165,9 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
       {/* Delete Last Clip */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Delete Last Clip</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.hotkeys.deleteLastClip.title')}</CardTitle>
           <CardDescription>
-            Remove the most recently saved clip
+            {t('settings.recordingConfig.hotkeys.deleteLastClip.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -179,7 +180,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => handleKeyDown(e, "delete_last_clip")}
                 readOnly
                 className={recording === "delete_last_clip" ? "border-primary" : ""}
-                placeholder="Click to set hotkey"
+                placeholder={t('settings.recordingConfig.hotkeys.clickToSet')}
               />
             </div>
             {settings.delete_last_clip !== "F10" && (
@@ -193,7 +194,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Default: F10 (Press to restore default)
+            {t('settings.recordingConfig.hotkeys.deleteLastClip.defaultKey')}
           </p>
         </CardContent>
       </Card>
@@ -202,7 +203,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
       <div className="pt-4">
         <Button variant="outline" onClick={resetToDefaults}>
           <RotateCcw className="w-4 h-4 mr-2" />
-          Reset All Hotkeys to Defaults
+          {t('settings.recordingConfig.hotkeys.resetAll')}
         </Button>
       </div>
     </div>

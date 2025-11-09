@@ -47,7 +47,9 @@ impl AuthManager {
         let supabase_client = SupabaseClient::from_env().ok();
 
         if supabase_client.is_none() {
-            tracing::warn!("Supabase client not initialized - authentication features will be limited");
+            tracing::warn!(
+                "Supabase client not initialized - authentication features will be limited"
+            );
         }
 
         Self {

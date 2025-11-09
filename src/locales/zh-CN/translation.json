@@ -1,0 +1,433 @@
+{
+  "app": {
+    "name": "LoLShorts",
+    "tagline": "精彩集锦制作器"
+  },
+  "nav": {
+    "dashboard": "控制台",
+    "games": "对局",
+    "editor": "编辑器",
+    "autoEdit": "自动编辑",
+    "youtube": "YouTube",
+    "settings": "设置",
+    "pro": "PRO"
+  },
+  "auth": {
+    "login": "登录",
+    "signup": "注册",
+    "logout": "退出",
+    "loginSignup": "登录 / 注册",
+    "email": "邮箱",
+    "password": "密码",
+    "confirmPassword": "确认密码",
+    "forgotPassword": "忘记密码？",
+    "noAccount": "还没有账号？",
+    "hasAccount": "已有账号？",
+    "createAccount": "创建账号",
+    "loginWithGoogle": "使用Google登录",
+    "loginWithDiscord": "使用Discord登录"
+  },
+  "dashboard": {
+    "title": "控制台",
+    "welcome": "欢迎回来，{{name}}！",
+    "lcuStatus": {
+      "title": "英雄联盟",
+      "connected": "已连接",
+      "disconnected": "未连接",
+      "connecting": "连接中...",
+      "error": "错误",
+      "messages": {
+        "connected": "已连接到英雄联盟客户端",
+        "disconnected": "连接英雄联盟客户端以开始",
+        "autoReconnect": "每{{seconds}}秒自动重连",
+        "startLeague": "确保英雄联盟客户端正在运行"
+      }
+    },
+    "gameStatus": {
+      "title": "当前对局",
+      "inGame": "游戏中",
+      "noGame": "无对局",
+      "champion": "正在使用{{champion}}",
+      "messages": {
+        "notInGame": "不在游戏中",
+        "connectFirst": "请先连接英雄联盟"
+      }
+    },
+    "recordingStatus": {
+      "title": "录制",
+      "idle": "空闲",
+      "recording": "录制中",
+      "processing": "处理中",
+      "paused": "已暂停",
+      "messages": {
+        "autoStart": "游戏开始时将自动录制",
+        "loginRequired": "需要登录才能启用自动录制",
+        "recording": "录制进行中",
+        "duration": "时长：{{duration}}"
+      }
+    },
+    "stats": {
+      "title": "快速统计",
+      "subtitle": "您的录制统计",
+      "totalGames": "总对局数：",
+      "totalClips": "总片段数：",
+      "storageUsed": "已用空间：",
+      "comingSoon": "即将推出"
+    },
+    "gettingStarted": {
+      "title": "开始使用",
+      "subtitle": "简单设置 - 自动录制",
+      "steps": {
+        "login": "登录或创建账号",
+        "startLeague": "启动英雄联盟客户端（自动连接将开始）",
+        "enterGame": "进入游戏（任何游戏模式）",
+        "autoRecord": "游戏开始时自动录制",
+        "playNormal": "正常游戏 - 根据击杀、目标和多杀自动检测精彩时刻",
+        "afterGame": "游戏结束后，录制自动停止并保存片段以供编辑"
+      }
+    }
+  },
+  "games": {
+    "title": "Games",
+    "recordedGames": "Recorded Games",
+    "refresh": "Refresh",
+    "noGames": "No games recorded yet",
+    "noGamesRecorded": "No Games Recorded Yet",
+    "playGame": "Play a League of Legends game to start recording",
+    "startRecordingPrompt": "Start recording games from the Dashboard to see them here.",
+    "loadingGames": "Loading games...",
+    "loadingGameData": "Loading game data...",
+    "deleteConfirm": "Are you sure you want to delete this game and all its clips?",
+    "deleteFailed": "Failed to delete game",
+    "filters": {
+      "all": "All Games",
+      "withClips": "With Clips",
+      "favorites": "Favorites"
+    },
+    "sorting": {
+      "newest": "Newest First",
+      "oldest": "Oldest First",
+      "mostClips": "Most Clips"
+    },
+    "stats": {
+      "totalGames": "Total Games",
+      "totalClips": "Total Clips",
+      "storageUsed": "Storage Used"
+    },
+    "game": {
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "remake": "Remake",
+      "date": "Date",
+      "duration": "Duration",
+      "kda": "KDA",
+      "recorded": "Recorded",
+      "clips": "{{count}} Clips",
+      "kdaFormat": "{{kills}}/{{deaths}}/{{assists}}",
+      "viewClips": "View Clips",
+      "delete": "Delete Game"
+    }
+  },
+  "editor": {
+    "title": "Video Editor",
+    "subtitle": "Edit and customize your clips",
+    "selectGameTitle": "Select a Game to Edit",
+    "selectGameDescription": "Choose a game from your recorded sessions to start editing",
+    "noGamesAvailable": "No games available. Record a game session first from the Dashboard.",
+    "selectGame": "Select Game",
+    "chooseGame": "Choose a game",
+    "selectGamePrompt": "Select a game to load its clips and start building your video timeline.",
+    "loadingClips": "Loading clips...",
+    "errorLoadingClips": "Error Loading Clips",
+    "backToGameSelection": "Back to Game Selection",
+    "retry": "Retry",
+    "changeGame": "Change Game",
+    "gameWithClips": "Game {{gameId}} • {{count}} clips available",
+    "clipsAvailable": "{{count}} clips available",
+    "proRequired": "PRO subscription required",
+    "upgradeToPro": "Upgrade to PRO",
+    "noClips": "No clips available",
+    "selectClips": "Select clips from your games to start editing",
+    "timeline": {
+      "title": "Timeline",
+      "addClip": "Add Clip",
+      "removeClip": "Remove Clip"
+    },
+    "tools": {
+      "trim": "Trim",
+      "merge": "Merge",
+      "transitions": "Transitions",
+      "filters": "Filters",
+      "speed": "Speed",
+      "audio": "Audio"
+    },
+    "export": {
+      "title": "Export",
+      "quality": "Quality",
+      "format": "Format",
+      "exportVideo": "Export Video"
+    }
+  },
+  "autoEdit": {
+    "title": "自动编辑",
+    "subtitle": "AI驱动的精彩视频生成器",
+    "proRequired": "需要PRO订阅",
+    "upgradeToPro": "升级到PRO",
+    "selectGame": "选择对局以生成精彩集锦",
+    "templates": {
+      "title": "模板",
+      "epicPentakill": "史诗五杀",
+      "highlightReel": "精彩集锦",
+      "cleanPlays": "完美操作",
+      "custom": "自定义"
+    },
+    "settings": {
+      "title": "设置",
+      "duration": "目标时长",
+      "music": "音乐风格",
+      "transitions": "转场",
+      "effects": "特效"
+    },
+    "generate": "生成视频",
+    "generating": "生成中...",
+    "preview": "预览",
+    "export": "导出"
+  },
+  "youtube": {
+    "title": "YouTube",
+    "subtitle": "Upload your highlights to YouTube",
+    "proRequired": "PRO subscription required",
+    "upgradeToPro": "Upgrade to PRO",
+    "connect": "Connect YouTube Account",
+    "disconnect": "Disconnect",
+    "connected": "Connected as {{name}}",
+    "tabs": {
+      "upload": "Upload",
+      "history": "History",
+      "account": "Account"
+    },
+    "upload": {
+      "title": "上传视频",
+      "selectVideo": "选择视频",
+      "videoTitle": "标题",
+      "description": "描述",
+      "tags": "标签",
+      "privacy": "隐私",
+      "privacyOptions": {
+        "public": "公开",
+        "unlisted": "不公开列出",
+        "private": "私密"
+      },
+      "thumbnail": "缩略图",
+      "uploadButton": "上传到YouTube",
+      "uploading": "上传中..."
+    },
+    "history": {
+      "title": "上传历史",
+      "noVideos": "还没有上传的视频",
+      "views": "{{count}}次观看",
+      "likes": "{{count}}个赞",
+      "openYoutube": "在YouTube上打开"
+    },
+    "quota": {
+      "title": "每日配额",
+      "used": "已用：{{used}} / {{total}}",
+      "remaining": "剩余{{count}}次上传",
+      "resetTime": "{{time}}后重置"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "license": {
+      "title": "License & Subscription",
+      "description": "Your current plan and subscription details",
+      "loginRequired": "Login Required",
+      "loginPrompt": "Please login to view and manage your subscription",
+      "loginButton": "Login or Sign Up",
+      "loadingLicense": "Loading license information...",
+      "currentPlan": "Current Plan",
+      "proPlanDescription": "Unlimited clips, priority support, and advanced features",
+      "freePlanDescription": "Free tier with basic recording features",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "expiresOn": "Expires On",
+      "daysRemaining": "Days Remaining",
+      "days": "days",
+      "accountEmail": "Account Email",
+      "manageSubscription": "Manage Subscription",
+      "whyUpgrade": "Why Upgrade to PRO?",
+      "features": {
+        "unlimitedClips": "Unlimited Clips",
+        "unlimitedClipsDesc": "Record as many highlights as you want",
+        "advancedEditor": "Advanced Editor",
+        "advancedEditorDesc": "Premium transitions and effects",
+        "prioritySupport": "Priority Support",
+        "prioritySupportDesc": "Get help faster",
+        "noWatermarks": "No Watermarks",
+        "noWatermarksDesc": "Export clean videos"
+      },
+      "pricing": "PRO Pricing:",
+      "pricingDetails": "₩9,900/month or ₩99,000/year (Save 17%)",
+      "loadError": "Failed to load license information"
+    },
+    "recordingConfig": {
+      "title": "Recording Configuration",
+      "description": "Configure automatic clip recording preferences",
+      "resetToDefaults": "Reset to Defaults",
+      "loadingSettings": "Loading settings...",
+      "savingSettings": "Saving...",
+      "loadError": "Failed to load settings",
+      "tabs": {
+        "events": "Events",
+        "modes": "Game Modes",
+        "video": "Video",
+        "audio": "Audio",
+        "timing": "Timing",
+        "hotkeys": "Hotkeys"
+      }
+    },
+    "accountInfo": {
+      "title": "Account Information",
+      "description": "Your account details",
+      "email": "Email",
+      "userId": "User ID",
+      "licenseTier": "License Tier"
+    },
+    "general": {
+      "title": "常规",
+      "language": "语言",
+      "selectLanguage": "选择语言",
+      "theme": "主题",
+      "themes": {
+        "light": "浅色",
+        "dark": "深色",
+        "system": "跟随系统"
+      },
+      "startWithWindows": "开机自启",
+      "minimizeToTray": "最小化到托盘"
+    },
+    "recording": {
+      "title": "录制",
+      "autoRecord": "自动录制对局",
+      "replayBuffer": "回放缓冲时长",
+      "seconds": "{{count}}秒",
+      "quality": "录制质量",
+      "qualities": {
+        "1080p60": "1080p 60帧",
+        "1080p30": "1080p 30帧",
+        "720p60": "720p 60帧",
+        "720p30": "720p 30帧"
+      },
+      "encoder": "编码器",
+      "encoders": {
+        "hardware": "硬件（GPU）",
+        "software": "软件（CPU）"
+      },
+      "bitrate": "比特率",
+      "mbps": "{{count}} Mbps"
+    },
+    "hotkeys": {
+      "title": "快捷键",
+      "toggleRecording": "切换录制",
+      "save60s": "保存最近60秒",
+      "save30s": "保存最近30秒",
+      "pressKey": "按下按键..."
+    },
+    "storage": {
+      "title": "存储",
+      "location": "保存位置",
+      "browse": "浏览",
+      "used": "已用：{{used}} GB",
+      "autoCleanup": "自动清理旧文件",
+      "keepDays": "保留{{count}}天"
+    },
+    "account": {
+      "title": "账号",
+      "subscription": "订阅",
+      "plan": {
+        "free": "免费版",
+        "pro": "PRO版"
+      },
+      "upgradeToPro": "升级到PRO",
+      "manageBilling": "管理账单",
+      "cancelSubscription": "取消订阅"
+    },
+    "about": {
+      "title": "关于",
+      "version": "版本 {{version}}",
+      "checkUpdates": "检查更新",
+      "changelog": "更新日志",
+      "website": "官网",
+      "support": "支持",
+      "discord": "Discord社区"
+    }
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "ok": "确定",
+    "yes": "是",
+    "no": "否",
+    "loading": "加载中...",
+    "saving": "保存中...",
+    "saved": "已保存",
+    "error": "错误",
+    "success": "成功",
+    "warning": "警告",
+    "info": "信息",
+    "confirm": "确认",
+    "back": "返回",
+    "next": "下一步",
+    "finish": "完成",
+    "search": "搜索",
+    "filter": "筛选",
+    "sort": "排序",
+    "export": "导出",
+    "import": "导入",
+    "upload": "上传",
+    "download": "下载",
+    "share": "分享",
+    "copy": "复制",
+    "paste": "粘贴",
+    "cut": "剪切",
+    "undo": "撤销",
+    "redo": "重做",
+    "selectAll": "全选",
+    "deselectAll": "取消全选"
+  },
+  "errors": {
+    "generic": "发生错误",
+    "networkError": "网络错误。请检查您的连接。",
+    "authFailed": "认证失败",
+    "notAuthenticated": "您必须登录",
+    "notAuthorized": "您没有权限",
+    "notFound": "未找到",
+    "serverError": "服务器错误。请稍后重试。",
+    "invalidInput": "无效输入",
+    "uploadFailed": "上传失败",
+    "processingFailed": "处理失败",
+    "lcuNotConnected": "英雄联盟客户端未连接",
+    "recordingFailed": "录制失败",
+    "quotaExceeded": "YouTube配额已超限"
+  },
+  "tooltips": {
+    "replayBuffer": "持续录制最近{{seconds}}秒。按快捷键保存。",
+    "autoRecord": "游戏开始时自动录制",
+    "hardwareEncoder": "使用GPU编码（更快，CPU占用更少）",
+    "proFeature": "此功能需要PRO订阅",
+    "lcuStatus": "与英雄联盟客户端的连接状态",
+    "dailyQuota": "YouTube每天允许约6个视频上传"
+  },
+  "notifications": {
+    "gameStarted": "游戏开始 - 录制已启用",
+    "gameEnded": "游戏结束 - 已保存{{count}}个片段",
+    "clipSaved": "片段已保存：{{name}}",
+    "uploadComplete": "上传完成：{{title}}",
+    "uploadFailed": "上传失败：{{error}}",
+    "updateAvailable": "可用更新：v{{version}}"
+  }
+}

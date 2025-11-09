@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/stores/editorStore';
 import { useEditor } from '@/hooks/useEditor';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -18,6 +19,7 @@ interface ExportModalProps {
 }
 
 export function ExportModal({ isOpen, onClose }: ExportModalProps) {
+  const { t } = useTranslation();
   const {
     timelineClips,
     totalDuration,
@@ -97,7 +99,7 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
 
   const handleClose = () => {
     if (exportStatus === 'exporting') {
-      if (!confirm('Export is in progress. Are you sure you want to cancel?')) {
+      if (!confirm(t('confirmations.cancelExport'))) {
         return;
       }
     }

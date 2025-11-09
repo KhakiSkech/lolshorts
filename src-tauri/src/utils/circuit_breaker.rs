@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+use anyhow::{anyhow, Result};
 /// Circuit Breaker pattern for production resilience
 ///
 /// Prevents cascading failures from external dependencies (LCU, Live Client API, Supabase)
@@ -7,12 +9,10 @@
 /// - Closed: Normal operation, requests pass through
 /// - Open: Failure threshold exceeded, requests fail fast
 /// - HalfOpen: Testing recovery, limited requests allowed
-
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use anyhow::{Result, anyhow};
-use tracing::{warn, info, debug};
+use tracing::{debug, info, warn};
 
 /// Circuit breaker state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -138,7 +138,10 @@ impl CircuitBreaker {
                     }
                 }
                 CircuitState::HalfOpen => {
-                    debug!("Circuit breaker '{}' in HALF_OPEN - testing recovery", self.name);
+                    debug!(
+                        "Circuit breaker '{}' in HALF_OPEN - testing recovery",
+                        self.name
+                    );
                 }
                 CircuitState::Closed => {
                     // Clean up old failures outside the window
@@ -206,7 +209,10 @@ impl CircuitBreaker {
                     state.success_count = 0;
                     state.last_failure_time = None;
                     state.last_state_change = Instant::now();
-                    info!("Circuit breaker '{}' transitioned to CLOSED (recovery successful)", self.name);
+                    info!(
+                        "Circuit breaker '{}' transitioned to CLOSED (recovery successful)",
+                        self.name
+                    );
                 }
             }
             CircuitState::Closed => {
@@ -215,7 +221,10 @@ impl CircuitBreaker {
             }
             CircuitState::Open => {
                 // Should not happen - already checked above
-                warn!("Circuit breaker '{}': unexpected success in OPEN state", self.name);
+                warn!(
+                    "Circuit breaker '{}': unexpected success in OPEN state",
+                    self.name
+                );
             }
         }
     }
@@ -267,7 +276,10 @@ impl CircuitBreaker {
             state.state = CircuitState::HalfOpen;
             state.success_count = 0;
             state.last_state_change = Instant::now();
-            info!("Circuit breaker '{}' transitioned to HALF_OPEN (testing recovery)", self.name);
+            info!(
+                "Circuit breaker '{}' transitioned to HALF_OPEN (testing recovery)",
+                self.name
+            );
         }
     }
 }
@@ -290,7 +302,7 @@ mod tests {
         // First 3 failures should open circuit
         for i in 0..3 {
             let result = breaker
-                .call(|| async { Err(anyhow!("Simulated failure")) })
+                .call(|| async { Err::<(), _>(anyhow!("Simulated failure")) })
                 .await;
             assert!(result.is_err());
 
@@ -321,7 +333,9 @@ mod tests {
 
         // Open circuit with failures
         for _ in 0..2 {
-            let _ = breaker.call(|| async { Err(anyhow!("Fail")) }).await;
+            let _ = breaker
+                .call(|| async { Err::<(), _>(anyhow!("Fail")) })
+                .await;
         }
         assert_eq!(breaker.get_state().await, CircuitState::Open);
 
@@ -351,7 +365,9 @@ mod tests {
         let breaker = CircuitBreaker::new("test_service", config);
 
         // Open circuit
-        let _ = breaker.call(|| async { Err(anyhow!("Fail")) }).await;
+        let _ = breaker
+            .call(|| async { Err::<(), _>(anyhow!("Fail")) })
+            .await;
         assert_eq!(breaker.get_state().await, CircuitState::Open);
 
         // Manual reset

@@ -35,6 +35,9 @@ src-tauri/WixTools/
 # Testing
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
+__mocks__/
 
 # Legacy Archive
 LEGACY-ARCHIVE/
@@ -55,6 +58,13 @@ compile_and_test.bat
 test_lcu.ps1
 verify_setup.ps1
 token-usage.html
+
+# Claude Code Documentation (gitignored by default, add selectively)
+claudedocs/
+
+# Temporary build artifacts
+*.tmp.*
+clippy_output.txt
 
 # OS
 Thumbs.db

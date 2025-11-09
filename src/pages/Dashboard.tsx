@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/auth";
 import { AuthModal } from "@/components/auth";
+import { formatStorage } from "@/lib/utils";
 
 interface GameInfo {
   game_id: string;
@@ -12,13 +14,21 @@ interface GameInfo {
   game_time: number;
 }
 
+interface StorageStats {
+  total_games: number;
+  total_clips: number;
+  total_size_bytes: number;
+}
+
 export function Dashboard() {
+  const { t } = useTranslation();
   const { isAuthenticated, checkAuth } = useAuthStore();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState<"Idle" | "Recording" | "Processing">("Idle");
   const [lcuConnected, setLcuConnected] = useState<boolean>(false);
   const [currentGame, setCurrentGame] = useState<GameInfo | null>(null);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const [stats, setStats] = useState<StorageStats | null>(null);
 
   useEffect(() => {
     // Check authentication status on mount
@@ -44,12 +54,15 @@ export function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fetch storage stats on mount
+  useEffect(() => {
+    invoke<StorageStats>("get_dashboard_stats")
+      .then((data) => setStats(data))
+      .catch((error) => console.error("Failed to fetch storage stats:", error));
+  }, []);
+
   // Auto-recording: Start when game detected, stop when game ends
   useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-
     // Game started - auto start recording
     if (currentGame && recordingStatus === "Idle") {
       console.log("Game detected, auto-starting recording...");
@@ -62,7 +75,7 @@ export function Dashboard() {
       handleStopRecording();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentGame, isAuthenticated]);
+  }, [currentGame]);
 
   const checkLcuStatus = async () => {
     try {
@@ -101,55 +114,39 @@ export function Dashboard() {
   };
 
   const handleStartRecording = async () => {
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      return;
-    }
-
     try {
       await invoke("start_recording");
       setRecordingStatus("Recording");
     } catch (error) {
       console.error("Failed to start recording:", error);
-      if ((error as string).includes("authenticated")) {
-        setShowAuthModal(true);
-      }
     }
   };
 
   const handleStopRecording = async () => {
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      return;
-    }
-
     try {
       await invoke("stop_recording");
       setRecordingStatus("Idle");
     } catch (error) {
       console.error("Failed to stop recording:", error);
-      if ((error as string).includes("authenticated")) {
-        setShowAuthModal(true);
-      }
     }
   };
 
   return (
     <div>
-      <h2 className="text-3xl font-bold mb-6">Dashboard</h2>
+      <h2 className="text-3xl font-bold mb-6">{t('dashboard.title')}</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* League of Legends Connection Status */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              League of Legends
+              {t('dashboard.lcuStatus.title')}
               <Badge variant={lcuConnected ? "default" : "destructive"}>
-                {lcuConnected ? "🟢 Connected" : "🔴 Disconnected"}
+                {lcuConnected ? `🟢 ${t('dashboard.lcuStatus.connected')}` : `🔴 ${t('dashboard.lcuStatus.disconnected')}`}
               </Badge>
             </CardTitle>
             <CardDescription>
-              {lcuConnected ? "Client connected successfully" : "Connect to League client to start"}
+              {lcuConnected ? t('dashboard.lcuStatus.messages.connected') : t('dashboard.lcuStatus.messages.disconnected')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -159,23 +156,23 @@ export function Dashboard() {
                   {isConnecting && (
                     <div className="flex items-center gap-2">
                       <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-                      <p className="text-sm text-muted-foreground">Connecting...</p>
+                      <p className="text-sm text-muted-foreground">{t('dashboard.lcuStatus.connecting')}</p>
                     </div>
                   )}
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">
-                      • Auto-reconnecting every 3 seconds
+                      • {t('dashboard.lcuStatus.messages.autoReconnect', { seconds: 3 })}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      • Make sure League of Legends client is running
+                      • {t('dashboard.lcuStatus.messages.startLeague')}
                     </p>
                   </div>
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-green-600 font-medium">✓ Ready to detect games</p>
+                  <p className="text-sm text-green-600 font-medium">{t('dashboard.lcuStatus.messages.readyToDetect')}</p>
                   <p className="text-xs text-muted-foreground">
-                    Auto-monitoring for game sessions
+                    {t('dashboard.lcuStatus.messages.autoMonitoring')}
                   </p>
                 </>
               )}
@@ -187,38 +184,38 @@ export function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Current Game
+              {t('dashboard.gameStatus.title')}
               <Badge variant={currentGame ? "default" : "secondary"}>
-                {currentGame ? "🎮 In Game" : "⚫ No Game"}
+                {currentGame ? t('dashboard.gameStatus.inGame') : t('dashboard.gameStatus.noGame')}
               </Badge>
             </CardTitle>
             <CardDescription>
-              {currentGame ? "Game session detected" : "Not in a game"}
+              {currentGame ? t('dashboard.gameStatus.sessionDetected') : t('dashboard.gameStatus.messages.notInGame')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {currentGame ? (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Champion:</span>
+                  <span className="text-muted-foreground">{t('dashboard.gameStatus.fields.champion')}</span>
                   <span className="font-medium">{currentGame.champion}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Game Mode:</span>
+                  <span className="text-muted-foreground">{t('dashboard.gameStatus.fields.gameMode')}</span>
                   <span className="font-medium">{currentGame.game_mode}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Game Time:</span>
+                  <span className="text-muted-foreground">{t('dashboard.gameStatus.fields.gameTime')}</span>
                   <span className="font-medium">{Math.floor(currentGame.game_time / 60)}:{String(Math.floor(currentGame.game_time % 60)).padStart(2, '0')}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Game ID:</span>
+                  <span className="text-muted-foreground">{t('dashboard.gameStatus.fields.gameId')}</span>
                   <span className="font-mono text-xs">{currentGame.game_id}</span>
                 </div>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                {lcuConnected ? "Waiting for game to start..." : "Connect to League first"}
+                {lcuConnected ? t('dashboard.gameStatus.messages.waiting') : t('dashboard.gameStatus.messages.connectFirst')}
               </p>
             )}
           </CardContent>
@@ -228,37 +225,32 @@ export function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Recording
+              {t('dashboard.recordingStatus.title')}
               <Badge variant={recordingStatus === "Recording" ? "destructive" : "secondary"}>
-                {recordingStatus === "Recording" ? "🔴 Recording" : recordingStatus === "Processing" ? "⏳ Processing" : "⚫ Idle"}
+                {recordingStatus === "Recording" ? t('dashboard.recordingStatus.recording') : recordingStatus === "Processing" ? t('dashboard.recordingStatus.processing') : t('dashboard.recordingStatus.idle')}
               </Badge>
             </CardTitle>
             <CardDescription>
               {recordingStatus === "Recording"
-                ? "Auto-recording gameplay"
-                : "Will auto-start when game begins"}
+                ? t('dashboard.recordingStatus.messages.autoRecording')
+                : t('dashboard.recordingStatus.messages.autoStart')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {isAuthenticated && lcuConnected && !currentGame && (
+              {lcuConnected && !currentGame && (
                 <p className="text-sm text-muted-foreground">
-                  ✓ Ready - Recording will start automatically when you enter a game
+                  {t('dashboard.recordingStatus.messages.ready')}
                 </p>
               )}
-              {isAuthenticated && currentGame && recordingStatus === "Recording" && (
+              {currentGame && recordingStatus === "Recording" && (
                 <p className="text-sm text-green-600 font-medium">
-                  🔴 Recording in progress - Auto-capturing highlights
+                  {t('dashboard.recordingStatus.messages.recordingHighlights')}
                 </p>
               )}
-              {!isAuthenticated && (
+              {!lcuConnected && (
                 <p className="text-sm text-muted-foreground">
-                  Login required to enable auto-recording
-                </p>
-              )}
-              {isAuthenticated && !lcuConnected && (
-                <p className="text-sm text-muted-foreground">
-                  Connect to League first to enable auto-recording
+                  {t('dashboard.recordingStatus.messages.connectFirst')}
                 </p>
               )}
             </div>
@@ -268,22 +260,28 @@ export function Dashboard() {
         {/* Quick Stats */}
         <Card>
           <CardHeader>
-            <CardTitle>Quick Stats</CardTitle>
-            <CardDescription>Your recording statistics</CardDescription>
+            <CardTitle>{t('dashboard.stats.title')}</CardTitle>
+            <CardDescription>{t('dashboard.stats.subtitle')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Games:</span>
-                <span className="font-medium">Coming soon</span>
+                <span className="text-muted-foreground">{t('dashboard.stats.totalGames')}</span>
+                <span className="font-medium">
+                  {stats ? stats.total_games : t('dashboard.stats.comingSoon')}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Clips:</span>
-                <span className="font-medium">Coming soon</span>
+                <span className="text-muted-foreground">{t('dashboard.stats.totalClips')}</span>
+                <span className="font-medium">
+                  {stats ? stats.total_clips : t('dashboard.stats.comingSoon')}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Storage Used:</span>
-                <span className="font-medium">Coming soon</span>
+                <span className="text-muted-foreground">{t('dashboard.stats.storageUsed')}</span>
+                <span className="font-medium">
+                  {stats ? formatStorage(stats.total_size_bytes) : t('dashboard.stats.comingSoon')}
+                </span>
               </div>
             </div>
           </CardContent>
@@ -293,28 +291,25 @@ export function Dashboard() {
       {/* Getting Started Guide */}
       <Card>
         <CardHeader>
-          <CardTitle>Getting Started</CardTitle>
-          <CardDescription>Simple setup - automatic recording</CardDescription>
+          <CardTitle>{t('dashboard.gettingStarted.title')}</CardTitle>
+          <CardDescription>{t('dashboard.gettingStarted.subtitle')}</CardDescription>
         </CardHeader>
         <CardContent>
           <ol className="list-decimal list-inside space-y-2 text-sm">
-            <li className={isAuthenticated ? "text-muted-foreground line-through" : "font-medium"}>
-              Login or create an account
-            </li>
-            <li className={lcuConnected ? "text-muted-foreground line-through" : isAuthenticated ? "font-medium" : "text-muted-foreground"}>
-              Start League of Legends client (auto-connection will begin)
+            <li className={lcuConnected ? "text-muted-foreground line-through" : "font-medium"}>
+              {t('dashboard.gettingStarted.steps.startLeague')}
             </li>
             <li className={currentGame ? "text-muted-foreground line-through" : lcuConnected ? "font-medium" : "text-muted-foreground"}>
-              Enter a game (any game mode)
+              {t('dashboard.gettingStarted.steps.enterGame')}
             </li>
             <li className={recordingStatus === "Recording" ? "text-muted-foreground line-through" : currentGame ? "font-medium" : "text-muted-foreground"}>
-              Recording starts automatically when game begins
+              {t('dashboard.gettingStarted.steps.autoRecord')}
             </li>
             <li className="text-muted-foreground">
-              Play normally - highlights will be automatically detected based on kills, objectives, and multikills
+              {t('dashboard.gettingStarted.steps.playNormal')}
             </li>
             <li className="text-muted-foreground">
-              After the game, recording stops automatically and clips are saved for editing
+              {t('dashboard.gettingStarted.steps.afterGame')}
             </li>
           </ol>
         </CardContent>

@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useStorage, GameMetadata } from "@/hooks/useStorage";
-import { Film, Trash2, Play, Calendar, Clock, Trophy } from "lucide-react";
+import { Film, Trash2, Play, Calendar, Clock, Trophy, Sparkles } from "lucide-react";
 
 export function Games() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const { listGames, getGameMetadata, deleteGame, getStorageStats, isLoading, error } = useStorage();
   const [gameIds, setGameIds] = useState<string[]>([]);
   const [gamesData, setGamesData] = useState<Map<string, GameMetadata>>(new Map());
@@ -47,7 +51,7 @@ export function Games() {
   };
 
   const handleDeleteGame = async (gameId: string) => {
-    if (!confirm("Are you sure you want to delete this game and all its clips?")) {
+    if (!confirm(t('games.deleteConfirm'))) {
       return;
     }
 
@@ -57,16 +61,18 @@ export function Games() {
       await loadStats();
     } catch (err) {
       console.error("Failed to delete game:", err);
-      alert("Failed to delete game: " + err);
+      alert(t('games.deleteFailed') + ": " + err);
     }
   };
 
+  const handleAutoEdit = (gameId: string) => {
+    // Navigate to auto-edit page with pre-selected game
+    navigate({ to: '/auto-edit', search: { gameId } });
+  };
+
   const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+    const gb = bytes / (1024 * 1024 * 1024);
+    return gb.toFixed(2) + " GB";
   };
 
   const formatDuration = (seconds: number): string => {
@@ -84,7 +90,7 @@ export function Games() {
   if (isLoading && gameIds.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Loading games...</p>
+        <p className="text-muted-foreground">{t('games.loadingGames')}</p>
       </div>
     );
   }
@@ -92,9 +98,9 @@ export function Games() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold">Recorded Games</h2>
+        <h2 className="text-3xl font-bold">{t('games.recordedGames')}</h2>
         <Button onClick={loadGames} variant="outline" size="sm">
-          Refresh
+          {t('games.refresh')}
         </Button>
       </div>
 
@@ -102,19 +108,19 @@ export function Games() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardDescription>Total Games</CardDescription>
+            <CardDescription>{t('games.stats.totalGames')}</CardDescription>
             <CardTitle className="text-3xl">{stats.total_games}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardDescription>Total Clips</CardDescription>
+            <CardDescription>{t('games.stats.totalClips')}</CardDescription>
             <CardTitle className="text-3xl">{stats.total_clips}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardDescription>Storage Used</CardDescription>
+            <CardDescription>{t('games.stats.storageUsed')}</CardDescription>
             <CardTitle className="text-3xl">{formatBytes(stats.total_size_bytes)}</CardTitle>
           </CardHeader>
         </Card>
@@ -122,7 +128,7 @@ export function Games() {
 
       {error && (
         <div className="p-4 mb-6 bg-destructive/10 border border-destructive rounded-lg">
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="text-sm text-destructive">{String(error)}</p>
         </div>
       )}
 
@@ -131,9 +137,9 @@ export function Games() {
         <Card>
           <CardContent className="py-12 text-center">
             <Film className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No Games Recorded Yet</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('games.noGamesRecorded')}</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Start recording games from the Dashboard to see them here.
+              {t('games.startRecordingPrompt')}
             </p>
           </CardContent>
         </Card>
@@ -146,7 +152,7 @@ export function Games() {
               return (
                 <Card key={gameId}>
                   <CardContent className="py-6">
-                    <p className="text-sm text-muted-foreground">Loading game data...</p>
+                    <p className="text-sm text-muted-foreground">{t('games.loadingGameData')}</p>
                   </CardContent>
                 </Card>
               );
@@ -171,7 +177,19 @@ export function Games() {
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm">
                         <Play className="w-4 h-4 mr-2" />
-                        View Clips
+                        {t('games.game.viewClips')}
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleAutoEdit(gameId)}
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        {t('games.game.autoEdit')}
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          PRO
+                        </Badge>
                       </Button>
                       <Button
                         variant="destructive"
@@ -188,7 +206,7 @@ export function Games() {
                     <div>
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        Date
+                        {t('games.game.date')}
                       </p>
                       <p className="font-medium">
                         {new Date(game.game_start_time).toLocaleDateString()}
@@ -197,18 +215,18 @@ export function Games() {
                     <div>
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        Duration
+                        {t('games.game.duration')}
                       </p>
                       <p className="font-medium">{formatDuration(game.game_duration)}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">KDA</p>
+                      <p className="text-muted-foreground">{t('games.game.kda')}</p>
                       <p className="font-medium">
                         {game.kills} / {game.deaths} / {game.assists}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Recorded</p>
+                      <p className="text-muted-foreground">{t('games.game.recorded')}</p>
                       <p className="font-medium">
                         {new Date(game.created_at).toLocaleString()}
                       </p>

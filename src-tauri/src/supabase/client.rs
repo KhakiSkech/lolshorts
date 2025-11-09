@@ -62,7 +62,8 @@ impl SupabaseClient {
         // Check if email confirmation should be disabled (for development)
         let disable_email_confirm = std::env::var("SUPABASE_DISABLE_EMAIL_CONFIRM")
             .unwrap_or_else(|_| "false".to_string())
-            .to_lowercase() == "true";
+            .to_lowercase()
+            == "true";
 
         let mut url = format!("{}/auth/v1/signup", self.config.project_url);
 
@@ -98,16 +99,11 @@ impl SupabaseClient {
                 SupabaseError::InvalidResponse(e.to_string())
             })?;
 
-            error!(
-                "Sign up failed for {}: {}",
-                email, error_response.error
-            );
+            error!("Sign up failed for {}: {}", email, error_response.error);
             Err(SupabaseError::AuthFailed(format!(
                 "{}: {}",
                 error_response.error,
-                error_response
-                    .error_description
-                    .unwrap_or_default()
+                error_response.error_description.unwrap_or_default()
             )))
         }
     }
@@ -299,10 +295,15 @@ impl SupabaseClient {
     }
 
     /// Get user's license from database
-    pub async fn get_user_license(&self, user_id: &str, access_token: &str) -> Result<Option<License>> {
+    pub async fn get_user_license(
+        &self,
+        user_id: &str,
+        access_token: &str,
+    ) -> Result<Option<License>> {
         let url = format!("{}/rest/v1/licenses", self.config.project_url);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .header("apikey", &self.config.anon_key)
             .header("Authorization", format!("Bearer {}", access_token))
@@ -320,9 +321,178 @@ impl SupabaseClient {
             Ok(licenses.into_iter().next())
         } else {
             let status = response.status();
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             tracing::error!("Failed to fetch license: {} - {}", status, error_text);
-            Err(SupabaseError::ApiError(format!("Failed to fetch license: {}", status)))
+            Err(SupabaseError::ApiError(format!(
+                "Failed to fetch license: {}",
+                status
+            )))
+        }
+    }
+
+    /// Generic database query method
+    ///
+    /// # Arguments
+    /// * `table` - The table name to query
+    /// * `select` - Columns to select (e.g., "*" or "id,name,email")
+    /// * `filters` - Query filters as (column, value) tuples (e.g., [("status", "eq.active")])
+    /// * `access_token` - User's access token for authentication
+    ///
+    /// # Returns
+    /// JSON value containing the query results
+    pub async fn query(
+        &self,
+        table: &str,
+        select: &str,
+        filters: &[(&str, &str)],
+        access_token: &str,
+    ) -> Result<serde_json::Value> {
+        let url = format!("{}/rest/v1/{}", self.config.project_url, table);
+
+        let mut request = self
+            .client
+            .get(&url)
+            .header("apikey", &self.config.anon_key)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .header("Content-Type", "application/json")
+            .query(&[("select", select)]);
+
+        // Add filters
+        for (key, value) in filters {
+            request = request.query(&[(key, value)]);
+        }
+
+        let response = request.send().await?;
+
+        if response.status().is_success() {
+            let data: serde_json::Value = response.json().await.map_err(|e| {
+                error!("Failed to parse query response: {}", e);
+                SupabaseError::InvalidResponse(e.to_string())
+            })?;
+
+            debug!("Query successful on table: {}", table);
+            Ok(data)
+        } else {
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+
+            error!("Query failed on {}: {} - {}", table, status, error_text);
+            Err(SupabaseError::ApiError(error_text))
+        }
+    }
+
+    /// Generic database insert method
+    ///
+    /// # Arguments
+    /// * `table` - The table name to insert into
+    /// * `data` - The data to insert as a JSON-serializable value
+    /// * `access_token` - User's access token for authentication
+    ///
+    /// # Returns
+    /// JSON value containing the inserted record(s)
+    pub async fn insert<T: serde::Serialize>(
+        &self,
+        table: &str,
+        data: &T,
+        access_token: &str,
+    ) -> Result<serde_json::Value> {
+        let url = format!("{}/rest/v1/{}", self.config.project_url, table);
+
+        let response = self
+            .client
+            .post(&url)
+            .header("apikey", &self.config.anon_key)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=representation") // Return inserted data
+            .json(data)
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                error!("Failed to parse insert response: {}", e);
+                SupabaseError::InvalidResponse(e.to_string())
+            })?;
+
+            info!("Insert successful on table: {}", table);
+            Ok(result)
+        } else {
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+
+            error!("Insert failed on {}: {} - {}", table, status, error_text);
+            Err(SupabaseError::ApiError(format!(
+                "Insert failed: {}",
+                error_text
+            )))
+        }
+    }
+
+    /// Generic database update method
+    ///
+    /// # Arguments
+    /// * `table` - The table name to update
+    /// * `data` - The data to update as a JSON-serializable value
+    /// * `filters` - Query filters to identify which rows to update (e.g., [("id", "eq.123")])
+    /// * `access_token` - User's access token for authentication
+    ///
+    /// # Returns
+    /// JSON value containing the updated record(s)
+    pub async fn update<T: serde::Serialize>(
+        &self,
+        table: &str,
+        data: &T,
+        filters: &[(&str, &str)],
+        access_token: &str,
+    ) -> Result<serde_json::Value> {
+        let url = format!("{}/rest/v1/{}", self.config.project_url, table);
+
+        let mut request = self
+            .client
+            .patch(&url)
+            .header("apikey", &self.config.anon_key)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=representation") // Return updated data
+            .json(data);
+
+        // Add filters
+        for (key, value) in filters {
+            request = request.query(&[(key, value)]);
+        }
+
+        let response = request.send().await?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                error!("Failed to parse update response: {}", e);
+                SupabaseError::InvalidResponse(e.to_string())
+            })?;
+
+            info!("Update successful on table: {}", table);
+            Ok(result)
+        } else {
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+
+            error!("Update failed on {}: {} - {}", table, status, error_text);
+            Err(SupabaseError::ApiError(format!(
+                "Update failed: {}",
+                error_text
+            )))
         }
     }
 }

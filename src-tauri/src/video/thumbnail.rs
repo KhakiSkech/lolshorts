@@ -1,4 +1,6 @@
-use crate::video::{VideoProcessor, Result};
+#![allow(dead_code)]
+
+use crate::video::{Result, VideoProcessor};
 use std::path::{Path, PathBuf};
 
 /// Auto-generate thumbnail for a clip at the midpoint
@@ -13,7 +15,8 @@ pub async fn auto_generate_thumbnail(
     let midpoint = duration / 2.0;
 
     // Generate thumbnail filename based on clip filename
-    let clip_name = clip_path.as_ref()
+    let clip_name = clip_path
+        .as_ref()
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("clip");
@@ -22,11 +25,9 @@ pub async fn auto_generate_thumbnail(
     let thumbnail_path = output_dir.as_ref().join(thumbnail_name);
 
     // Generate thumbnail at midpoint
-    processor.generate_thumbnail(
-        clip_path,
-        &thumbnail_path,
-        midpoint
-    ).await?;
+    processor
+        .generate_thumbnail(clip_path, &thumbnail_path, midpoint)
+        .await?;
 
     Ok(thumbnail_path)
 }
@@ -44,19 +45,15 @@ pub async fn generate_event_thumbnail(
     let thumbnail_path = output_dir.as_ref().join(thumbnail_name);
 
     // Generate thumbnail at event timestamp
-    processor.generate_thumbnail(
-        clip_path,
-        &thumbnail_path,
-        event_time
-    ).await?;
+    processor
+        .generate_thumbnail(clip_path, &thumbnail_path, event_time)
+        .await?;
 
     Ok(thumbnail_path)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[tokio::test]
     async fn test_thumbnail_generation() {
         // This test requires a valid video file to run

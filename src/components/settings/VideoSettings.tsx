@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   Select,
   SelectContent,
@@ -29,6 +30,7 @@ interface VideoSettingsProps {
 }
 
 export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
+  const { t } = useTranslation();
   const updateSetting = <K extends keyof VideoSettings>(
     key: K,
     value: VideoSettings[K]
@@ -38,49 +40,49 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
 
   const getResolutionLabel = (res: Resolution): string => {
     const labels: Record<Resolution, string> = {
-      r1920x1080: "1920x1080 (1080p)",
-      r2560x1440: "2560x1440 (1440p)",
-      r3840x2160: "3840x2160 (4K)",
+      r1920x1080: t('settings.recordingConfig.videoSettings.resolution.labels.r1920x1080'),
+      r2560x1440: t('settings.recordingConfig.videoSettings.resolution.labels.r2560x1440'),
+      r3840x2160: t('settings.recordingConfig.videoSettings.resolution.labels.r3840x2160'),
     };
     return labels[res];
   };
 
   const getFrameRateLabel = (fps: FrameRate): string => {
     const labels: Record<FrameRate, string> = {
-      fps30: "30 FPS",
-      fps60: "60 FPS",
-      fps120: "120 FPS",
-      fps144: "144 FPS",
+      fps30: t('settings.recordingConfig.videoSettings.frameRate.labels.fps30'),
+      fps60: t('settings.recordingConfig.videoSettings.frameRate.labels.fps60'),
+      fps120: t('settings.recordingConfig.videoSettings.frameRate.labels.fps120'),
+      fps144: t('settings.recordingConfig.videoSettings.frameRate.labels.fps144'),
     };
     return labels[fps];
   };
 
   const getBitrateLabel = (bitrate: BitratePreset): string => {
     const labels: Record<BitratePreset, string> = {
-      low: "Low (10 Mbps) - 720p60",
-      medium: "Medium (20 Mbps) - 1080p60",
-      high: "High (40 Mbps) - 1440p60",
-      very_high: "Very High (80 Mbps) - 4K60",
+      low: t('settings.recordingConfig.videoSettings.bitratePreset.labels.low'),
+      medium: t('settings.recordingConfig.videoSettings.bitratePreset.labels.medium'),
+      high: t('settings.recordingConfig.videoSettings.bitratePreset.labels.high'),
+      very_high: t('settings.recordingConfig.videoSettings.bitratePreset.labels.veryHigh'),
     };
     return labels[bitrate];
   };
 
   const getCodecLabel = (codec: VideoCodec): string => {
     const labels: Record<VideoCodec, string> = {
-      h264: "H.264 (Best Compatibility)",
-      h265: "H.265 (Best Efficiency)",
-      av1: "AV1 (Experimental)",
+      h264: t('settings.recordingConfig.videoSettings.videoCodec.labels.h264'),
+      h265: t('settings.recordingConfig.videoSettings.videoCodec.labels.h265'),
+      av1: t('settings.recordingConfig.videoSettings.videoCodec.labels.av1'),
     };
     return labels[codec];
   };
 
   const getEncoderLabel = (encoder: EncoderPreference): string => {
     const labels: Record<EncoderPreference, string> = {
-      auto: "Auto (Recommended)",
-      nvenc: "NVENC (NVIDIA GPU)",
-      qsv: "QSV (Intel GPU)",
-      amf: "AMF (AMD GPU)",
-      software: "Software (CPU)",
+      auto: t('settings.recordingConfig.videoSettings.encoderPreference.labels.auto'),
+      nvenc: t('settings.recordingConfig.videoSettings.encoderPreference.labels.nvenc'),
+      qsv: t('settings.recordingConfig.videoSettings.encoderPreference.labels.qsv'),
+      amf: t('settings.recordingConfig.videoSettings.encoderPreference.labels.amf'),
+      software: t('settings.recordingConfig.videoSettings.encoderPreference.labels.software'),
     };
     return labels[encoder];
   };
@@ -104,9 +106,9 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
       {/* Resolution */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Resolution</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.videoSettings.resolution.title')}</CardTitle>
           <CardDescription>
-            Video output resolution (higher = better quality, larger files)
+            {t('settings.recordingConfig.videoSettings.resolution.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -133,7 +135,7 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
               </Select>
             </div>
             {settings.resolution === "r1920x1080" && (
-              <Badge variant="secondary">Recommended</Badge>
+              <Badge variant="secondary">{t('settings.recordingConfig.videoSettings.resolution.recommended')}</Badge>
             )}
           </div>
         </CardContent>
@@ -142,9 +144,9 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
       {/* Frame Rate */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Frame Rate</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.videoSettings.frameRate.title')}</CardTitle>
           <CardDescription>
-            Frames per second (higher = smoother, larger files)
+            {t('settings.recordingConfig.videoSettings.frameRate.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -166,7 +168,7 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
               </Select>
             </div>
             {settings.frame_rate === "fps60" && (
-              <Badge variant="secondary">Recommended</Badge>
+              <Badge variant="secondary">{t('settings.recordingConfig.videoSettings.frameRate.recommended')}</Badge>
             )}
           </div>
         </CardContent>
@@ -175,9 +177,9 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
       {/* Bitrate */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Bitrate Preset</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.videoSettings.bitratePreset.title')}</CardTitle>
           <CardDescription>
-            Video quality preset (higher = better quality, larger files)
+            {t('settings.recordingConfig.videoSettings.bitratePreset.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -198,7 +200,7 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Info className="w-4 h-4" />
-            <span>Estimated file size: {getEstimatedSize()}</span>
+            <span>{t('settings.recordingConfig.videoSettings.bitratePreset.estimatedSize')}: {getEstimatedSize()}</span>
           </div>
         </CardContent>
       </Card>
@@ -206,9 +208,9 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
       {/* Codec */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Video Codec</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.videoSettings.videoCodec.title')}</CardTitle>
           <CardDescription>
-            Compression method (H.265 recommended for efficiency)
+            {t('settings.recordingConfig.videoSettings.videoCodec.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -229,7 +231,7 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
               </Select>
             </div>
             {settings.codec === "h265" && (
-              <Badge variant="secondary">Recommended</Badge>
+              <Badge variant="secondary">{t('settings.recordingConfig.videoSettings.videoCodec.recommended')}</Badge>
             )}
           </div>
         </CardContent>
@@ -238,9 +240,9 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
       {/* Encoder */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Encoder Preference</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.videoSettings.encoderPreference.title')}</CardTitle>
           <CardDescription>
-            Hardware acceleration (Auto detects best available)
+            {t('settings.recordingConfig.videoSettings.encoderPreference.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -263,7 +265,7 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
               </Select>
             </div>
             {settings.encoder === "auto" && (
-              <Badge variant="secondary">Recommended</Badge>
+              <Badge variant="secondary">{t('settings.recordingConfig.videoSettings.encoderPreference.recommended')}</Badge>
             )}
           </div>
         </CardContent>
@@ -273,21 +275,21 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
       <Card className="bg-muted/50">
         <CardContent className="pt-6">
           <div className="space-y-2 text-sm">
-            <p className="font-semibold">Current Configuration</p>
+            <p className="font-semibold">{t('settings.recordingConfig.videoSettings.currentConfiguration.title')}</p>
             <p className="text-muted-foreground">
-              • Resolution: {getResolutionLabel(settings.resolution)}
+              • {t('settings.recordingConfig.videoSettings.currentConfiguration.resolution')}: {getResolutionLabel(settings.resolution)}
             </p>
             <p className="text-muted-foreground">
-              • Frame Rate: {getFrameRateLabel(settings.frame_rate)}
+              • {t('settings.recordingConfig.videoSettings.currentConfiguration.frameRate')}: {getFrameRateLabel(settings.frame_rate)}
             </p>
             <p className="text-muted-foreground">
-              • Codec: {getCodecLabel(settings.codec)}
+              • {t('settings.recordingConfig.videoSettings.currentConfiguration.codec')}: {getCodecLabel(settings.codec)}
             </p>
             <p className="text-muted-foreground">
-              • Encoder: {getEncoderLabel(settings.encoder)}
+              • {t('settings.recordingConfig.videoSettings.currentConfiguration.encoder')}: {getEncoderLabel(settings.encoder)}
             </p>
             <p className="text-muted-foreground">
-              • Estimated Size: {getEstimatedSize()}
+              • {t('settings.recordingConfig.videoSettings.currentConfiguration.estimatedSize')}: {getEstimatedSize()}
             </p>
           </div>
         </CardContent>

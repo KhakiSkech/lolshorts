@@ -46,9 +46,9 @@ impl FeatureGate {
 
         match feature {
             // FREE tier features
-            Feature::BasicRecording
-            | Feature::BasicClipExtraction
-            | Feature::WatermarkedExport => true,
+            Feature::BasicRecording | Feature::BasicClipExtraction | Feature::WatermarkedExport => {
+                true
+            }
 
             // PRO tier features
             Feature::AdvancedEditing

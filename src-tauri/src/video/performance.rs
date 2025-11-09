@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // ========================================================================
 // Performance Profiling Utilities
 // ========================================================================
@@ -114,7 +116,10 @@ pub struct PerformanceProfiler {
 impl PerformanceProfiler {
     /// Create a new profiler
     pub fn new(target_duration_seconds: u32) -> Self {
-        info!("Starting performance profiling for {}s video", target_duration_seconds);
+        info!(
+            "Starting performance profiling for {}s video",
+            target_duration_seconds
+        );
 
         Self {
             start_time: Instant::now(),
@@ -138,7 +143,11 @@ impl PerformanceProfiler {
 
         if let Some(start_time) = self.stage_timers.remove(&stage_name) {
             let duration = start_time.elapsed();
-            info!("Stage {} completed in {:.2}s", stage_name, duration.as_secs_f64());
+            info!(
+                "Stage {} completed in {:.2}s",
+                stage_name,
+                duration.as_secs_f64()
+            );
             self.stage_durations.insert(stage_name, duration);
         } else {
             warn!("Stage {} was never started", stage_name);
@@ -169,15 +178,12 @@ impl PerformanceProfiler {
 
     /// Collect system metadata
     fn collect_metadata() -> PerformanceMetadata {
-        use sysinfo::{System, Disks};
+        use sysinfo::{Disks, System};
 
         let mut sys = System::new_all();
         sys.refresh_all();
 
-        let cpu_model = sys
-            .cpus()
-            .first()
-            .map(|cpu| cpu.brand().to_string());
+        let cpu_model = sys.cpus().first().map(|cpu| cpu.brand().to_string());
 
         let cpu_cores = num_cpus::get();
         let total_memory_mb = sys.total_memory() / 1024 / 1024;
@@ -228,10 +234,21 @@ impl PerformanceProfiler {
         info!("Target Duration: {}s", self.target_duration_seconds);
         info!("Processing Time: {:.2}s", actual_seconds);
         info!("Performance Target: {:.2}s", target_seconds);
-        info!("Target Met: {}", if target_met { "YES ✅" } else { "NO ❌" });
-        info!("Rating: {:?} {} ({} stars)", rating, rating.emoji(), rating.stars());
+        info!(
+            "Target Met: {}",
+            if target_met { "YES ✅" } else { "NO ❌" }
+        );
+        info!(
+            "Rating: {:?} {} ({} stars)",
+            rating,
+            rating.emoji(),
+            rating.stars()
+        );
         info!("Clips Processed: {}", self.clips_processed);
-        info!("Output Size: {:.2} MB", output_file_size as f64 / 1024.0 / 1024.0);
+        info!(
+            "Output Size: {:.2} MB",
+            output_file_size as f64 / 1024.0 / 1024.0
+        );
         info!("===============================================");
 
         if !target_met {

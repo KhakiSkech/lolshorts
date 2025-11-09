@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ interface GameModeSettingsProps {
 }
 
 export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) {
+  const { t } = useTranslation();
   const updateSetting = (key: keyof GameModeSettings, value: boolean) => {
     onChange({ ...settings, [key]: value });
   };
@@ -73,16 +75,16 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
     <div className="space-y-6">
       {/* Presets */}
       <div>
-        <h3 className="text-sm font-semibold mb-3">Quick Presets</h3>
+        <h3 className="text-sm font-semibold mb-3">{t('settings.recordingConfig.gameModes.quickPresets')}</h3>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => applyPreset("competitive")}>
-            Competitive Modes
+            {t('settings.recordingConfig.gameModes.competitiveModes')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => applyPreset("ranked-only")}>
-            Ranked Only
+            {t('settings.recordingConfig.gameModes.rankedOnly')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => applyPreset("all")}>
-            All Modes
+            {t('settings.recordingConfig.gameModes.allModes')}
           </Button>
         </div>
       </div>
@@ -90,19 +92,19 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
       {/* Ranked Modes */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Ranked Modes</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.gameModes.rankedModes.title')}</CardTitle>
           <CardDescription>
-            Competitive ranked gameplay
+            {t('settings.recordingConfig.gameModes.rankedModes.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label htmlFor="record_ranked_solo" className="cursor-pointer">
-                Ranked Solo/Duo
+                {t('settings.recordingConfig.gameModes.rankedModes.rankedSoloDuo')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Competitive 5v5 solo/duo queue
+                {t('settings.recordingConfig.gameModes.rankedModes.rankedSoloDuoDesc')}
               </p>
             </div>
             <Switch
@@ -115,10 +117,10 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label htmlFor="record_ranked_flex" className="cursor-pointer">
-                Ranked Flex
+                {t('settings.recordingConfig.gameModes.rankedModes.rankedFlex')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Competitive 5v5 flex queue
+                {t('settings.recordingConfig.gameModes.rankedModes.rankedFlexDesc')}
               </p>
             </div>
             <Switch
@@ -133,19 +135,19 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
       {/* Normal Modes */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Normal Modes</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.gameModes.normalModes.title')}</CardTitle>
           <CardDescription>
-            Casual gameplay modes
+            {t('settings.recordingConfig.gameModes.normalModes.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label htmlFor="record_normal" className="cursor-pointer">
-                Normal Draft/Blind
+                {t('settings.recordingConfig.gameModes.normalModes.normalDraftBlind')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Classic 5v5 Summoner's Rift
+                {t('settings.recordingConfig.gameModes.normalModes.normalDraftBlindDesc')}
               </p>
             </div>
             <Switch
@@ -158,10 +160,10 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label htmlFor="record_quick_play" className="cursor-pointer">
-                Quick Play
+                {t('settings.recordingConfig.gameModes.normalModes.quickPlay')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Fast-paced casual matches
+                {t('settings.recordingConfig.gameModes.normalModes.quickPlayDesc')}
               </p>
             </div>
             <Switch
@@ -176,19 +178,19 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
       {/* Alternative Modes */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Alternative Modes</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.gameModes.alternativeModes.title')}</CardTitle>
           <CardDescription>
-            ARAM, Arena, and special game modes
+            {t('settings.recordingConfig.gameModes.alternativeModes.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label htmlFor="record_aram" className="cursor-pointer">
-                ARAM
+                {t('settings.recordingConfig.gameModes.alternativeModes.aram')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                All Random All Mid on Howling Abyss
+                {t('settings.recordingConfig.gameModes.alternativeModes.aramDesc')}
               </p>
             </div>
             <Switch
@@ -201,10 +203,10 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label htmlFor="record_arena" className="cursor-pointer">
-                Arena
+                {t('settings.recordingConfig.gameModes.alternativeModes.arena')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                2v2v2v2 battle arena mode
+                {t('settings.recordingConfig.gameModes.alternativeModes.arenaDesc')}
               </p>
             </div>
             <Switch
@@ -217,10 +219,10 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label htmlFor="record_special" className="cursor-pointer">
-                Special Events
+                {t('settings.recordingConfig.gameModes.alternativeModes.specialEvents')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                URF, One for All, and other rotating modes
+                {t('settings.recordingConfig.gameModes.alternativeModes.specialEventsDesc')}
               </p>
             </div>
             <Switch
@@ -235,19 +237,19 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
       {/* Practice Modes */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Practice Modes</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.gameModes.practiceModes.title')}</CardTitle>
           <CardDescription>
-            Custom games and practice tool
+            {t('settings.recordingConfig.gameModes.practiceModes.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label htmlFor="record_custom" className="cursor-pointer">
-                Custom Games
+                {t('settings.recordingConfig.gameModes.practiceModes.customGames')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Player-created custom matches
+                {t('settings.recordingConfig.gameModes.practiceModes.customGamesDesc')}
               </p>
             </div>
             <Switch
@@ -260,10 +262,10 @@ export function GameModeSettings({ settings, onChange }: GameModeSettingsProps) 
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <Label htmlFor="record_practice" className="cursor-pointer">
-                Practice Tool
+                {t('settings.recordingConfig.gameModes.practiceModes.practiceTool')}
               </Label>
               <p className="text-xs text-muted-foreground mt-1">
-                Solo practice environment
+                {t('settings.recordingConfig.gameModes.practiceModes.practiceToolDesc')}
               </p>
             </div>
             <Switch

@@ -1,13 +1,12 @@
+use serde::{Deserialize, Serialize};
 /// Production performance metrics collection and monitoring
 ///
 /// Tracks system health, resource utilization, and recording performance
 /// for production observability and alerting.
-
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use serde::{Serialize, Deserialize};
-use tracing::{info, warn};
+use tracing::warn;
 
 /// Performance metrics for FFmpeg recording process
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -185,12 +184,12 @@ impl MetricsCollector {
         let mut metrics = self.system_metrics.write().await;
 
         // Calculate average CPU usage
-        let cpu_usage: f32 = sys.cpus().iter()
-            .map(|cpu| cpu.cpu_usage())
-            .sum::<f32>() / sys.cpus().len() as f32;
+        let cpu_usage: f32 =
+            sys.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
 
         metrics.total_cpu_percent = cpu_usage;
-        metrics.available_ram_gb = (sys.available_memory() as f64 / 1024.0 / 1024.0 / 1024.0) as f32;
+        metrics.available_ram_gb =
+            (sys.available_memory() as f64 / 1024.0 / 1024.0 / 1024.0) as f32;
 
         // TODO: Add disk space check for recording directory
         // TODO: Add GPU metrics if available
@@ -208,12 +207,18 @@ impl MetricsCollector {
         }
 
         if rec_metrics.cpu_percent > 95.0 {
-            warn!("Critical: CPU usage too high: {:.1}%", rec_metrics.cpu_percent);
+            warn!(
+                "Critical: CPU usage too high: {:.1}%",
+                rec_metrics.cpu_percent
+            );
             return HealthStatus::Critical;
         }
 
         if sys_metrics.available_disk_gb < 1.0 {
-            warn!("Critical: Disk space very low: {:.2} GB", sys_metrics.available_disk_gb);
+            warn!(
+                "Critical: Disk space very low: {:.2} GB",
+                sys_metrics.available_disk_gb
+            );
             return HealthStatus::Critical;
         }
 
@@ -234,17 +239,26 @@ impl MetricsCollector {
         }
 
         if rec_metrics.memory_mb > self.thresholds.max_memory_mb {
-            warn!("Warning: High memory usage: {:.1} MB", rec_metrics.memory_mb);
+            warn!(
+                "Warning: High memory usage: {:.1} MB",
+                rec_metrics.memory_mb
+            );
             return HealthStatus::Warning;
         }
 
         if rec_metrics.buffer_size_mb > self.thresholds.max_buffer_mb {
-            warn!("Warning: Buffer size too large: {:.1} MB", rec_metrics.buffer_size_mb);
+            warn!(
+                "Warning: Buffer size too large: {:.1} MB",
+                rec_metrics.buffer_size_mb
+            );
             return HealthStatus::Warning;
         }
 
         if sys_metrics.available_disk_gb < self.thresholds.min_disk_gb {
-            warn!("Warning: Low disk space: {:.2} GB", sys_metrics.available_disk_gb);
+            warn!(
+                "Warning: Low disk space: {:.2} GB",
+                sys_metrics.available_disk_gb
+            );
             return HealthStatus::Warning;
         }
 
@@ -295,6 +309,12 @@ impl MetricsCollector {
             }
         })
     }
+
+    #[cfg(test)]
+    pub async fn set_system_metrics_for_test(&self, metrics: SystemMetrics) {
+        let mut sys_metrics = self.system_metrics.write().await;
+        *sys_metrics = metrics;
+    }
 }
 
 #[cfg(test)]
@@ -314,7 +334,14 @@ mod tests {
             ..Default::default()
         };
 
+        // Set system metrics with sufficient disk space
+        let sys_metrics = SystemMetrics {
+            available_disk_gb: 10.0,
+            ..Default::default()
+        };
+
         collector.update_recording_metrics(metrics).await;
+        collector.set_system_metrics_for_test(sys_metrics).await;
 
         let health = collector.check_health().await;
         assert_eq!(health, HealthStatus::Healthy);
@@ -325,7 +352,7 @@ mod tests {
         let collector = MetricsCollector::new(HealthThresholds::default());
 
         let metrics = RecordingMetrics {
-            fps: 50.0,  // Below threshold (55)
+            fps: 50.0, // Below threshold (55)
             frame_drops: 0,
             cpu_percent: 30.0,
             memory_mb: 512.0,
@@ -333,7 +360,14 @@ mod tests {
             ..Default::default()
         };
 
+        // Set system metrics with sufficient disk space
+        let sys_metrics = SystemMetrics {
+            available_disk_gb: 10.0,
+            ..Default::default()
+        };
+
         collector.update_recording_metrics(metrics).await;
+        collector.set_system_metrics_for_test(sys_metrics).await;
 
         let health = collector.check_health().await;
         assert_eq!(health, HealthStatus::Warning);
@@ -344,7 +378,7 @@ mod tests {
         let collector = MetricsCollector::new(HealthThresholds::default());
 
         let metrics = RecordingMetrics {
-            fps: 40.0,  // Very low (< 45)
+            fps: 40.0, // Very low (< 45)
             frame_drops: 0,
             cpu_percent: 30.0,
             memory_mb: 512.0,

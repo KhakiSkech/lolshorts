@@ -1,0 +1,433 @@
+{
+  "app": {
+    "name": "LoLShorts",
+    "tagline": "Créateur de Moments Forts"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "games": "Parties",
+    "editor": "Éditeur",
+    "autoEdit": "Édition Auto",
+    "youtube": "YouTube",
+    "settings": "Paramètres",
+    "pro": "PRO"
+  },
+  "auth": {
+    "login": "Connexion",
+    "signup": "Inscription",
+    "logout": "Déconnexion",
+    "loginSignup": "Connexion / Inscription",
+    "email": "Email",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "noAccount": "Pas encore de compte ?",
+    "hasAccount": "Déjà un compte ?",
+    "createAccount": "Créer un compte",
+    "loginWithGoogle": "Se connecter avec Google",
+    "loginWithDiscord": "Se connecter avec Discord"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bon retour, {{name}} !",
+    "lcuStatus": {
+      "title": "League of Legends",
+      "connected": "Connecté",
+      "disconnected": "Déconnecté",
+      "connecting": "Connexion...",
+      "error": "Erreur",
+      "messages": {
+        "connected": "Connecté au client League",
+        "disconnected": "Connectez-vous au client League pour commencer",
+        "autoReconnect": "Reconnexion automatique toutes les {{seconds}} secondes",
+        "startLeague": "Assurez-vous que le client League of Legends est en cours d'exécution"
+      }
+    },
+    "gameStatus": {
+      "title": "Partie en cours",
+      "inGame": "En jeu",
+      "noGame": "Aucune partie",
+      "champion": "Joue {{champion}}",
+      "messages": {
+        "notInGame": "Pas en jeu",
+        "connectFirst": "Connectez-vous d'abord à League"
+      }
+    },
+    "recordingStatus": {
+      "title": "Enregistrement",
+      "idle": "Inactif",
+      "recording": "Enregistrement",
+      "processing": "Traitement",
+      "paused": "En pause",
+      "messages": {
+        "autoStart": "Démarrera automatiquement au début de la partie",
+        "loginRequired": "Connexion requise pour activer l'enregistrement automatique",
+        "recording": "Enregistrement en cours",
+        "duration": "Durée : {{duration}}"
+      }
+    },
+    "stats": {
+      "title": "Statistiques rapides",
+      "subtitle": "Vos statistiques d'enregistrement",
+      "totalGames": "Parties totales :",
+      "totalClips": "Clips totaux :",
+      "storageUsed": "Stockage utilisé :",
+      "comingSoon": "Bientôt disponible"
+    },
+    "gettingStarted": {
+      "title": "Démarrage",
+      "subtitle": "Configuration simple - enregistrement automatique",
+      "steps": {
+        "login": "Connectez-vous ou créez un compte",
+        "startLeague": "Démarrez le client League of Legends (la connexion automatique commencera)",
+        "enterGame": "Entrez dans une partie (n'importe quel mode de jeu)",
+        "autoRecord": "L'enregistrement démarre automatiquement au début de la partie",
+        "playNormal": "Jouez normalement - les moments forts seront détectés automatiquement selon les kills, objectifs et multikills",
+        "afterGame": "Après la partie, l'enregistrement s'arrête automatiquement et les clips sont sauvegardés pour édition"
+      }
+    }
+  },
+  "games": {
+    "title": "Games",
+    "recordedGames": "Recorded Games",
+    "refresh": "Refresh",
+    "noGames": "No games recorded yet",
+    "noGamesRecorded": "No Games Recorded Yet",
+    "playGame": "Play a League of Legends game to start recording",
+    "startRecordingPrompt": "Start recording games from the Dashboard to see them here.",
+    "loadingGames": "Loading games...",
+    "loadingGameData": "Loading game data...",
+    "deleteConfirm": "Are you sure you want to delete this game and all its clips?",
+    "deleteFailed": "Failed to delete game",
+    "filters": {
+      "all": "All Games",
+      "withClips": "With Clips",
+      "favorites": "Favorites"
+    },
+    "sorting": {
+      "newest": "Newest First",
+      "oldest": "Oldest First",
+      "mostClips": "Most Clips"
+    },
+    "stats": {
+      "totalGames": "Total Games",
+      "totalClips": "Total Clips",
+      "storageUsed": "Storage Used"
+    },
+    "game": {
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "remake": "Remake",
+      "date": "Date",
+      "duration": "Duration",
+      "kda": "KDA",
+      "recorded": "Recorded",
+      "clips": "{{count}} Clips",
+      "kdaFormat": "{{kills}}/{{deaths}}/{{assists}}",
+      "viewClips": "View Clips",
+      "delete": "Delete Game"
+    }
+  },
+  "editor": {
+    "title": "Éditeur vidéo",
+    "subtitle": "Éditez et personnalisez vos clips",
+    "proRequired": "Abonnement PRO requis",
+    "upgradeToPro": "Passer à PRO",
+    "noClips": "Aucun clip disponible",
+    "selectClips": "Sélectionnez des clips de vos parties pour commencer l'édition",
+    "timeline": {
+      "title": "Chronologie",
+      "addClip": "Ajouter un clip",
+      "removeClip": "Supprimer le clip"
+    },
+    "tools": {
+      "trim": "Rogner",
+      "merge": "Fusionner",
+      "transitions": "Transitions",
+      "filters": "Filtres",
+      "speed": "Vitesse",
+      "audio": "Audio"
+    },
+    "export": {
+      "title": "Exporter",
+      "quality": "Qualité",
+      "format": "Format",
+      "exportVideo": "Exporter la vidéo"
+    },
+    "selectGameTitle": "Select a Game to Edit",
+    "selectGameDescription": "Choose a game from your recorded sessions to start editing",
+    "noGamesAvailable": "No games available. Record a game session first from the Dashboard.",
+    "selectGame": "Select Game",
+    "chooseGame": "Choose a game",
+    "selectGamePrompt": "Select a game to load its clips and start building your video timeline.",
+    "loadingClips": "Loading clips...",
+    "errorLoadingClips": "Error Loading Clips",
+    "backToGameSelection": "Back to Game Selection",
+    "retry": "Retry",
+    "changeGame": "Change Game",
+    "gameWithClips": "Game {{gameId}} • {{count}} clips available",
+    "clipsAvailable": "{{count}} clips available"
+  },
+  "autoEdit": {
+    "title": "Édition Auto",
+    "subtitle": "Générateur de vidéos de moments forts propulsé par l'IA",
+    "proRequired": "Abonnement PRO requis",
+    "upgradeToPro": "Passer à PRO",
+    "selectGame": "Sélectionnez une partie pour générer des moments forts",
+    "templates": {
+      "title": "Modèles",
+      "epicPentakill": "Pentakill Épique",
+      "highlightReel": "Compilation de Moments Forts",
+      "cleanPlays": "Actions Propres",
+      "custom": "Personnalisé"
+    },
+    "settings": {
+      "title": "Paramètres",
+      "duration": "Durée cible",
+      "music": "Style musical",
+      "transitions": "Transitions",
+      "effects": "Effets"
+    },
+    "generate": "Générer la vidéo",
+    "generating": "Génération...",
+    "preview": "Aperçu",
+    "export": "Exporter"
+  },
+  "youtube": {
+    "title": "YouTube",
+    "subtitle": "Téléversez vos moments forts sur YouTube",
+    "proRequired": "Abonnement PRO requis",
+    "upgradeToPro": "Passer à PRO",
+    "connect": "Connecter le compte YouTube",
+    "disconnect": "Déconnecter",
+    "connected": "Connecté en tant que {{name}}",
+    "upload": {
+      "title": "Téléverser une vidéo",
+      "selectVideo": "Sélectionner une vidéo",
+      "videoTitle": "Titre",
+      "description": "Description",
+      "tags": "Tags",
+      "privacy": "Confidentialité",
+      "privacyOptions": {
+        "public": "Public",
+        "unlisted": "Non répertorié",
+        "private": "Privé"
+      },
+      "thumbnail": "Miniature",
+      "uploadButton": "Téléverser sur YouTube",
+      "uploading": "Téléversement..."
+    },
+    "history": {
+      "title": "Historique des téléversements",
+      "noVideos": "Aucune vidéo téléversée",
+      "views": "{{count}} vues",
+      "likes": "{{count}} j'aime",
+      "openYoutube": "Ouvrir sur YouTube"
+    },
+    "quota": {
+      "title": "Quota journalier",
+      "used": "Utilisé : {{used}} / {{total}}",
+      "remaining": "{{count}} téléversements restants",
+      "resetTime": "Réinitialisation dans {{time}}"
+    },
+    "tabs": {
+      "upload": "Upload",
+      "history": "History",
+      "account": "Account"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "general": {
+      "title": "Général",
+      "language": "Langue",
+      "selectLanguage": "Sélectionner la langue",
+      "theme": "Thème",
+      "themes": {
+        "light": "Clair",
+        "dark": "Sombre",
+        "system": "Système"
+      },
+      "startWithWindows": "Démarrer avec Windows",
+      "minimizeToTray": "Réduire dans la barre des tâches"
+    },
+    "recording": {
+      "title": "Enregistrement",
+      "autoRecord": "Enregistrer automatiquement les parties",
+      "replayBuffer": "Durée du tampon de relecture",
+      "seconds": "{{count}} secondes",
+      "quality": "Qualité d'enregistrement",
+      "qualities": {
+        "1080p60": "1080p 60fps",
+        "1080p30": "1080p 30fps",
+        "720p60": "720p 60fps",
+        "720p30": "720p 30fps"
+      },
+      "encoder": "Encodeur",
+      "encoders": {
+        "hardware": "Matériel (GPU)",
+        "software": "Logiciel (CPU)"
+      },
+      "bitrate": "Débit binaire",
+      "mbps": "{{count}} Mbps"
+    },
+    "hotkeys": {
+      "title": "Raccourcis clavier",
+      "toggleRecording": "Activer/Désactiver l'enregistrement",
+      "save60s": "Sauvegarder les 60 dernières secondes",
+      "save30s": "Sauvegarder les 30 dernières secondes",
+      "pressKey": "Appuyez sur une touche..."
+    },
+    "storage": {
+      "title": "Stockage",
+      "location": "Emplacement de sauvegarde",
+      "browse": "Parcourir",
+      "used": "Utilisé : {{used}} GB",
+      "autoCleanup": "Nettoyage automatique des anciens fichiers",
+      "keepDays": "Conserver les fichiers pendant {{count}} jours"
+    },
+    "account": {
+      "title": "Compte",
+      "subscription": "Abonnement",
+      "plan": {
+        "free": "GRATUIT",
+        "pro": "PRO"
+      },
+      "upgradeToPro": "Passer à PRO",
+      "manageBilling": "Gérer la facturation",
+      "cancelSubscription": "Annuler l'abonnement"
+    },
+    "about": {
+      "title": "À propos",
+      "version": "Version {{version}}",
+      "checkUpdates": "Vérifier les mises à jour",
+      "changelog": "Journal des modifications",
+      "website": "Site web",
+      "support": "Support",
+      "discord": "Communauté Discord"
+    },
+    "license": {
+      "title": "License & Subscription",
+      "description": "Your current plan and subscription details",
+      "loginRequired": "Login Required",
+      "loginPrompt": "Please login to view and manage your subscription",
+      "loginButton": "Login or Sign Up",
+      "loadingLicense": "Loading license information...",
+      "currentPlan": "Current Plan",
+      "proPlanDescription": "Unlimited clips, priority support, and advanced features",
+      "freePlanDescription": "Free tier with basic recording features",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "expiresOn": "Expires On",
+      "daysRemaining": "Days Remaining",
+      "days": "days",
+      "accountEmail": "Account Email",
+      "manageSubscription": "Manage Subscription",
+      "whyUpgrade": "Why Upgrade to PRO?",
+      "features": {
+        "unlimitedClips": "Unlimited Clips",
+        "unlimitedClipsDesc": "Record as many highlights as you want",
+        "advancedEditor": "Advanced Editor",
+        "advancedEditorDesc": "Premium transitions and effects",
+        "prioritySupport": "Priority Support",
+        "prioritySupportDesc": "Get help faster",
+        "noWatermarks": "No Watermarks",
+        "noWatermarksDesc": "Export clean videos"
+      },
+      "pricing": "PRO Pricing:",
+      "pricingDetails": "₩9,900/month or ₩99,000/year (Save 17%)",
+      "loadError": "Failed to load license information"
+    },
+    "recordingConfig": {
+      "title": "Recording Configuration",
+      "description": "Configure automatic clip recording preferences",
+      "resetToDefaults": "Reset to Defaults",
+      "loadingSettings": "Loading settings...",
+      "savingSettings": "Saving...",
+      "loadError": "Failed to load settings",
+      "tabs": {
+        "events": "Events",
+        "modes": "Game Modes",
+        "video": "Video",
+        "audio": "Audio",
+        "timing": "Timing",
+        "hotkeys": "Hotkeys"
+      }
+    },
+    "accountInfo": {
+      "title": "Account Information",
+      "description": "Your account details",
+      "email": "Email",
+      "userId": "User ID",
+      "licenseTier": "License Tier"
+    }
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "ok": "OK",
+    "yes": "Oui",
+    "no": "Non",
+    "loading": "Chargement...",
+    "saving": "Enregistrement...",
+    "saved": "Enregistré",
+    "error": "Erreur",
+    "success": "Succès",
+    "warning": "Avertissement",
+    "info": "Info",
+    "confirm": "Confirmer",
+    "back": "Retour",
+    "next": "Suivant",
+    "finish": "Terminer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sort": "Trier",
+    "export": "Exporter",
+    "import": "Importer",
+    "upload": "Téléverser",
+    "download": "Télécharger",
+    "share": "Partager",
+    "copy": "Copier",
+    "paste": "Coller",
+    "cut": "Couper",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite",
+    "networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
+    "authFailed": "Échec de l'authentification",
+    "notAuthenticated": "Vous devez être connecté",
+    "notAuthorized": "Vous n'avez pas la permission",
+    "notFound": "Non trouvé",
+    "serverError": "Erreur serveur. Veuillez réessayer plus tard.",
+    "invalidInput": "Entrée invalide",
+    "uploadFailed": "Échec du téléversement",
+    "processingFailed": "Échec du traitement",
+    "lcuNotConnected": "Client League non connecté",
+    "recordingFailed": "Échec de l'enregistrement",
+    "quotaExceeded": "Quota YouTube dépassé"
+  },
+  "tooltips": {
+    "replayBuffer": "Enregistre continuellement les {{seconds}} dernières secondes. Appuyez sur le raccourci pour sauvegarder.",
+    "autoRecord": "Démarre automatiquement l'enregistrement au début d'une partie",
+    "hardwareEncoder": "Utilise le GPU pour l'encodage (plus rapide, moins d'utilisation du CPU)",
+    "proFeature": "Cette fonctionnalité nécessite un abonnement PRO",
+    "lcuStatus": "État de connexion au client League of Legends",
+    "dailyQuota": "YouTube autorise ~6 téléversements de vidéos par jour"
+  },
+  "notifications": {
+    "gameStarted": "Partie commencée - Enregistrement activé",
+    "gameEnded": "Partie terminée - {{count}} clips sauvegardés",
+    "clipSaved": "Clip sauvegardé : {{name}}",
+    "uploadComplete": "Téléversement terminé : {{title}}",
+    "uploadFailed": "Échec du téléversement : {{error}}",
+    "updateAvailable": "Mise à jour disponible : v{{version}}"
+  }
+}

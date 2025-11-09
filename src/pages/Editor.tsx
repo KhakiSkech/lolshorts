@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/stores/editorStore';
 import { useEditor } from '@/hooks/useEditor';
 import { useStorage } from '@/hooks/useStorage';
@@ -16,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Video, AlertCircle } from 'lucide-react';
 
 export function Editor() {
+  const { t } = useTranslation();
   const { selectedGameId, setSelectedGameId, availableClips, setAvailableClips } = useEditorStore();
   const { loadGameClips, isLoading, error } = useEditor();
   const { getAllGames, isLoading: isLoadingGames } = useStorage();
@@ -71,10 +73,10 @@ export function Editor() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Video className="w-6 h-6" />
-              Select a Game to Edit
+              {t('editor.selectGameTitle')}
             </CardTitle>
             <CardDescription>
-              Choose a game from your recorded sessions to start editing
+              {t('editor.selectGameDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -86,16 +88,16 @@ export function Editor() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  No games available. Record a game session first from the Dashboard.
+                  {t('editor.noGamesAvailable')}
                 </AlertDescription>
               </Alert>
             ) : (
               <>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Select Game</label>
+                  <label className="text-sm font-medium">{t('editor.selectGame')}</label>
                   <Select onValueChange={handleGameSelect}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Choose a game" />
+                      <SelectValue placeholder={t('editor.chooseGame')} />
                     </SelectTrigger>
                     <SelectContent>
                       {games.map((game) => (
@@ -112,7 +114,7 @@ export function Editor() {
 
                 <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
                   <p>
-                    Select a game to load its clips and start building your video timeline.
+                    {t('editor.selectGamePrompt')}
                   </p>
                 </div>
               </>
@@ -129,7 +131,7 @@ export function Editor() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Loading clips...</p>
+          <p className="text-muted-foreground">{t('editor.loadingClips')}</p>
         </div>
       </div>
     );
@@ -143,7 +145,7 @@ export function Editor() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="w-6 h-6" />
-              Error Loading Clips
+              {t('editor.errorLoadingClips')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -156,13 +158,13 @@ export function Editor() {
                 onClick={() => setSelectedGameId(null)}
                 className="flex-1"
               >
-                Back to Game Selection
+                {t('editor.backToGameSelection')}
               </Button>
               <Button
                 onClick={() => window.location.reload()}
                 className="flex-1"
               >
-                Retry
+                {t('editor.retry')}
               </Button>
             </div>
           </CardContent>
@@ -180,9 +182,9 @@ export function Editor() {
           <div className="flex items-center gap-4">
             <Video className="w-6 h-6" />
             <div>
-              <h2 className="text-lg font-semibold">Video Editor</h2>
+              <h2 className="text-lg font-semibold">{t('editor.title')}</h2>
               <p className="text-sm text-muted-foreground">
-                Game {selectedGameId} • {availableClips.length} clips available
+                {t('editor.gameWithClips', { gameId: selectedGameId, count: availableClips.length })}
               </p>
             </div>
           </div>
@@ -192,14 +194,14 @@ export function Editor() {
               size="sm"
               onClick={() => setSelectedGameId(null)}
             >
-              Change Game
+              {t('editor.changeGame')}
             </Button>
             <Button
               size="sm"
               onClick={() => setIsExportModalOpen(true)}
               disabled={availableClips.length === 0}
             >
-              Export Video
+              {t('editor.export.exportVideo')}
             </Button>
           </div>
         </div>

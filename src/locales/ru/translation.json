@@ -1,0 +1,433 @@
+{
+  "app": {
+    "name": "LoLShorts",
+    "tagline": "Создатель лучших моментов"
+  },
+  "nav": {
+    "dashboard": "Панель управления",
+    "games": "Игры",
+    "editor": "Редактор",
+    "autoEdit": "Авто-редактирование",
+    "youtube": "YouTube",
+    "settings": "Настройки",
+    "pro": "PRO"
+  },
+  "auth": {
+    "login": "Войти",
+    "signup": "Регистрация",
+    "logout": "Выйти",
+    "loginSignup": "Вход / Регистрация",
+    "email": "Email",
+    "password": "Пароль",
+    "confirmPassword": "Подтвердите пароль",
+    "forgotPassword": "Забыли пароль?",
+    "noAccount": "Нет аккаунта?",
+    "hasAccount": "Уже есть аккаунт?",
+    "createAccount": "Создать аккаунт",
+    "loginWithGoogle": "Войти через Google",
+    "loginWithDiscord": "Войти через Discord"
+  },
+  "dashboard": {
+    "title": "Панель управления",
+    "welcome": "С возвращением, {{name}}!",
+    "lcuStatus": {
+      "title": "League of Legends",
+      "connected": "Подключено",
+      "disconnected": "Отключено",
+      "connecting": "Подключение...",
+      "error": "Ошибка",
+      "messages": {
+        "connected": "Подключено к клиенту League",
+        "disconnected": "Подключитесь к клиенту League для начала",
+        "autoReconnect": "Автоматическое переподключение каждые {{seconds}} секунд",
+        "startLeague": "Убедитесь, что клиент League of Legends запущен"
+      }
+    },
+    "gameStatus": {
+      "title": "Текущая игра",
+      "inGame": "В игре",
+      "noGame": "Нет игры",
+      "champion": "Играет {{champion}}",
+      "messages": {
+        "notInGame": "Не в игре",
+        "connectFirst": "Сначала подключитесь к League"
+      }
+    },
+    "recordingStatus": {
+      "title": "Запись",
+      "idle": "Не активно",
+      "recording": "Запись",
+      "processing": "Обработка",
+      "paused": "На паузе",
+      "messages": {
+        "autoStart": "Автоматически начнется при начале игры",
+        "loginRequired": "Требуется вход для включения автоматической записи",
+        "recording": "Запись в процессе",
+        "duration": "Длительность: {{duration}}"
+      }
+    },
+    "stats": {
+      "title": "Быстрая статистика",
+      "subtitle": "Ваша статистика записей",
+      "totalGames": "Всего игр:",
+      "totalClips": "Всего клипов:",
+      "storageUsed": "Использовано места:",
+      "comingSoon": "Скоро"
+    },
+    "gettingStarted": {
+      "title": "Начало работы",
+      "subtitle": "Простая настройка - автоматическая запись",
+      "steps": {
+        "login": "Войдите или создайте аккаунт",
+        "startLeague": "Запустите клиент League of Legends (начнется автоматическое подключение)",
+        "enterGame": "Зайдите в игру (любой игровой режим)",
+        "autoRecord": "Запись начнется автоматически при начале игры",
+        "playNormal": "Играйте как обычно - лучшие моменты будут автоматически определяться на основе убийств, целей и мультикиллов",
+        "afterGame": "После игры запись останавливается автоматически и клипы сохраняются для редактирования"
+      }
+    }
+  },
+  "games": {
+    "title": "Games",
+    "recordedGames": "Recorded Games",
+    "refresh": "Refresh",
+    "noGames": "No games recorded yet",
+    "noGamesRecorded": "No Games Recorded Yet",
+    "playGame": "Play a League of Legends game to start recording",
+    "startRecordingPrompt": "Start recording games from the Dashboard to see them here.",
+    "loadingGames": "Loading games...",
+    "loadingGameData": "Loading game data...",
+    "deleteConfirm": "Are you sure you want to delete this game and all its clips?",
+    "deleteFailed": "Failed to delete game",
+    "filters": {
+      "all": "All Games",
+      "withClips": "With Clips",
+      "favorites": "Favorites"
+    },
+    "sorting": {
+      "newest": "Newest First",
+      "oldest": "Oldest First",
+      "mostClips": "Most Clips"
+    },
+    "stats": {
+      "totalGames": "Total Games",
+      "totalClips": "Total Clips",
+      "storageUsed": "Storage Used"
+    },
+    "game": {
+      "victory": "Victory",
+      "defeat": "Defeat",
+      "remake": "Remake",
+      "date": "Date",
+      "duration": "Duration",
+      "kda": "KDA",
+      "recorded": "Recorded",
+      "clips": "{{count}} Clips",
+      "kdaFormat": "{{kills}}/{{deaths}}/{{assists}}",
+      "viewClips": "View Clips",
+      "delete": "Delete Game"
+    }
+  },
+  "editor": {
+    "title": "Видео редактор",
+    "subtitle": "Редактируйте и настраивайте свои клипы",
+    "proRequired": "Требуется PRO подписка",
+    "upgradeToPro": "Перейти на PRO",
+    "noClips": "Нет доступных клипов",
+    "selectClips": "Выберите клипы из своих игр для начала редактирования",
+    "timeline": {
+      "title": "Временная шкала",
+      "addClip": "Добавить клип",
+      "removeClip": "Удалить клип"
+    },
+    "tools": {
+      "trim": "Обрезать",
+      "merge": "Объединить",
+      "transitions": "Переходы",
+      "filters": "Фильтры",
+      "speed": "Скорость",
+      "audio": "Аудио"
+    },
+    "export": {
+      "title": "Экспорт",
+      "quality": "Качество",
+      "format": "Формат",
+      "exportVideo": "Экспортировать видео"
+    },
+    "selectGameTitle": "Select a Game to Edit",
+    "selectGameDescription": "Choose a game from your recorded sessions to start editing",
+    "noGamesAvailable": "No games available. Record a game session first from the Dashboard.",
+    "selectGame": "Select Game",
+    "chooseGame": "Choose a game",
+    "selectGamePrompt": "Select a game to load its clips and start building your video timeline.",
+    "loadingClips": "Loading clips...",
+    "errorLoadingClips": "Error Loading Clips",
+    "backToGameSelection": "Back to Game Selection",
+    "retry": "Retry",
+    "changeGame": "Change Game",
+    "gameWithClips": "Game {{gameId}} • {{count}} clips available",
+    "clipsAvailable": "{{count}} clips available"
+  },
+  "autoEdit": {
+    "title": "Авто-редактирование",
+    "subtitle": "Генератор видео лучших моментов на базе ИИ",
+    "proRequired": "Требуется PRO подписка",
+    "upgradeToPro": "Перейти на PRO",
+    "selectGame": "Выберите игру для генерации лучших моментов",
+    "templates": {
+      "title": "Шаблоны",
+      "epicPentakill": "Эпичная пентакилл",
+      "highlightReel": "Подборка лучших моментов",
+      "cleanPlays": "Чистые игры",
+      "custom": "Пользовательский"
+    },
+    "settings": {
+      "title": "Настройки",
+      "duration": "Целевая длительность",
+      "music": "Стиль музыки",
+      "transitions": "Переходы",
+      "effects": "Эффекты"
+    },
+    "generate": "Создать видео",
+    "generating": "Создание...",
+    "preview": "Предпросмотр",
+    "export": "Экспорт"
+  },
+  "youtube": {
+    "title": "YouTube",
+    "subtitle": "Загрузите свои лучшие моменты на YouTube",
+    "proRequired": "Требуется PRO подписка",
+    "upgradeToPro": "Перейти на PRO",
+    "connect": "Подключить аккаунт YouTube",
+    "disconnect": "Отключить",
+    "connected": "Подключено как {{name}}",
+    "upload": {
+      "title": "Загрузить видео",
+      "selectVideo": "Выбрать видео",
+      "videoTitle": "Название",
+      "description": "Описание",
+      "tags": "Теги",
+      "privacy": "Приватность",
+      "privacyOptions": {
+        "public": "Публичное",
+        "unlisted": "По ссылке",
+        "private": "Приватное"
+      },
+      "thumbnail": "Обложка",
+      "uploadButton": "Загрузить на YouTube",
+      "uploading": "Загрузка..."
+    },
+    "history": {
+      "title": "История загрузок",
+      "noVideos": "Пока нет загруженных видео",
+      "views": "{{count}} просмотров",
+      "likes": "{{count}} лайков",
+      "openYoutube": "Открыть на YouTube"
+    },
+    "quota": {
+      "title": "Дневная квота",
+      "used": "Использовано: {{used}} / {{total}}",
+      "remaining": "Осталось {{count}} загрузок",
+      "resetTime": "Сброс через {{time}}"
+    },
+    "tabs": {
+      "upload": "Upload",
+      "history": "History",
+      "account": "Account"
+    }
+  },
+  "settings": {
+    "title": "Настройки",
+    "general": {
+      "title": "Общие",
+      "language": "Язык",
+      "selectLanguage": "Выбрать язык",
+      "theme": "Тема",
+      "themes": {
+        "light": "Светлая",
+        "dark": "Темная",
+        "system": "Системная"
+      },
+      "startWithWindows": "Запускать с Windows",
+      "minimizeToTray": "Сворачивать в трей"
+    },
+    "recording": {
+      "title": "Запись",
+      "autoRecord": "Автоматически записывать игры",
+      "replayBuffer": "Длительность буфера повтора",
+      "seconds": "{{count}} секунд",
+      "quality": "Качество записи",
+      "qualities": {
+        "1080p60": "1080p 60fps",
+        "1080p30": "1080p 30fps",
+        "720p60": "720p 60fps",
+        "720p30": "720p 30fps"
+      },
+      "encoder": "Кодировщик",
+      "encoders": {
+        "hardware": "Аппаратный (GPU)",
+        "software": "Программный (CPU)"
+      },
+      "bitrate": "Битрейт",
+      "mbps": "{{count}} Mbps"
+    },
+    "hotkeys": {
+      "title": "Горячие клавиши",
+      "toggleRecording": "Переключить запись",
+      "save60s": "Сохранить последние 60с",
+      "save30s": "Сохранить последние 30с",
+      "pressKey": "Нажмите клавишу..."
+    },
+    "storage": {
+      "title": "Хранилище",
+      "location": "Место сохранения",
+      "browse": "Обзор",
+      "used": "Использовано: {{used}} GB",
+      "autoCleanup": "Автоматическая очистка старых файлов",
+      "keepDays": "Хранить файлы {{count}} дней"
+    },
+    "account": {
+      "title": "Аккаунт",
+      "subscription": "Подписка",
+      "plan": {
+        "free": "БЕСПЛАТНО",
+        "pro": "PRO"
+      },
+      "upgradeToPro": "Перейти на PRO",
+      "manageBilling": "Управление платежами",
+      "cancelSubscription": "Отменить подписку"
+    },
+    "about": {
+      "title": "О программе",
+      "version": "Версия {{version}}",
+      "checkUpdates": "Проверить обновления",
+      "changelog": "Список изменений",
+      "website": "Веб-сайт",
+      "support": "Поддержка",
+      "discord": "Discord сообщество"
+    },
+    "license": {
+      "title": "License & Subscription",
+      "description": "Your current plan and subscription details",
+      "loginRequired": "Login Required",
+      "loginPrompt": "Please login to view and manage your subscription",
+      "loginButton": "Login or Sign Up",
+      "loadingLicense": "Loading license information...",
+      "currentPlan": "Current Plan",
+      "proPlanDescription": "Unlimited clips, priority support, and advanced features",
+      "freePlanDescription": "Free tier with basic recording features",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "expiresOn": "Expires On",
+      "daysRemaining": "Days Remaining",
+      "days": "days",
+      "accountEmail": "Account Email",
+      "manageSubscription": "Manage Subscription",
+      "whyUpgrade": "Why Upgrade to PRO?",
+      "features": {
+        "unlimitedClips": "Unlimited Clips",
+        "unlimitedClipsDesc": "Record as many highlights as you want",
+        "advancedEditor": "Advanced Editor",
+        "advancedEditorDesc": "Premium transitions and effects",
+        "prioritySupport": "Priority Support",
+        "prioritySupportDesc": "Get help faster",
+        "noWatermarks": "No Watermarks",
+        "noWatermarksDesc": "Export clean videos"
+      },
+      "pricing": "PRO Pricing:",
+      "pricingDetails": "₩9,900/month or ₩99,000/year (Save 17%)",
+      "loadError": "Failed to load license information"
+    },
+    "recordingConfig": {
+      "title": "Recording Configuration",
+      "description": "Configure automatic clip recording preferences",
+      "resetToDefaults": "Reset to Defaults",
+      "loadingSettings": "Loading settings...",
+      "savingSettings": "Saving...",
+      "loadError": "Failed to load settings",
+      "tabs": {
+        "events": "Events",
+        "modes": "Game Modes",
+        "video": "Video",
+        "audio": "Audio",
+        "timing": "Timing",
+        "hotkeys": "Hotkeys"
+      }
+    },
+    "accountInfo": {
+      "title": "Account Information",
+      "description": "Your account details",
+      "email": "Email",
+      "userId": "User ID",
+      "licenseTier": "License Tier"
+    }
+  },
+  "common": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "close": "Закрыть",
+    "ok": "ОК",
+    "yes": "Да",
+    "no": "Нет",
+    "loading": "Загрузка...",
+    "saving": "Сохранение...",
+    "saved": "Сохранено",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "warning": "Предупреждение",
+    "info": "Информация",
+    "confirm": "Подтвердить",
+    "back": "Назад",
+    "next": "Далее",
+    "finish": "Завершить",
+    "search": "Поиск",
+    "filter": "Фильтр",
+    "sort": "Сортировка",
+    "export": "Экспорт",
+    "import": "Импорт",
+    "upload": "Загрузить",
+    "download": "Скачать",
+    "share": "Поделиться",
+    "copy": "Копировать",
+    "paste": "Вставить",
+    "cut": "Вырезать",
+    "undo": "Отменить",
+    "redo": "Повторить",
+    "selectAll": "Выбрать все",
+    "deselectAll": "Снять выделение"
+  },
+  "errors": {
+    "generic": "Произошла ошибка",
+    "networkError": "Ошибка сети. Проверьте ваше подключение.",
+    "authFailed": "Ошибка аутентификации",
+    "notAuthenticated": "Вы должны войти в систему",
+    "notAuthorized": "У вас нет прав доступа",
+    "notFound": "Не найдено",
+    "serverError": "Ошибка сервера. Попробуйте позже.",
+    "invalidInput": "Неверные данные",
+    "uploadFailed": "Не удалось загрузить",
+    "processingFailed": "Ошибка обработки",
+    "lcuNotConnected": "Клиент League не подключен",
+    "recordingFailed": "Ошибка записи",
+    "quotaExceeded": "Превышена квота YouTube"
+  },
+  "tooltips": {
+    "replayBuffer": "Непрерывно записывает последние {{seconds}} секунд. Нажмите горячую клавишу для сохранения.",
+    "autoRecord": "Автоматически начинать запись при начале игры",
+    "hardwareEncoder": "Использовать GPU для кодирования (быстрее, меньше нагрузка на CPU)",
+    "proFeature": "Эта функция требует PRO подписку",
+    "lcuStatus": "Статус подключения к клиенту League of Legends",
+    "dailyQuota": "YouTube разрешает ~6 загрузок видео в день"
+  },
+  "notifications": {
+    "gameStarted": "Игра началась - Запись включена",
+    "gameEnded": "Игра закончилась - сохранено {{count}} клипов",
+    "clipSaved": "Клип сохранен: {{name}}",
+    "uploadComplete": "Загрузка завершена: {{title}}",
+    "uploadFailed": "Ошибка загрузки: {{error}}",
+    "updateAvailable": "Доступно обновление: v{{version}}"
+  }
+}

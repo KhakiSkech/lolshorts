@@ -2,16 +2,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod auth;
-mod storage;
 mod feature_gate;
-mod lcu;
-mod recording;
-mod video;
-mod supabase;
-mod payments;
-mod settings;
 mod hotkey;
+mod lcu;
+mod payments;
+mod recording;
+mod settings;
+mod storage;
+mod supabase;
 mod utils;
+mod video;
+mod youtube;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -30,6 +31,7 @@ pub struct AppState {
     pub metrics_collector: Arc<utils::metrics::MetricsCollector>,
     pub cleanup_manager: Arc<utils::cleanup::CleanupManager>,
     pub auto_composer: Arc<video::AutoComposer>,
+    pub youtube_manager: Arc<youtube::YouTubeManager>,
 }
 
 #[tokio::main]
@@ -53,10 +55,8 @@ async fn main() {
         .join("lolshorts");
 
     // Initialize storage
-    let storage = Arc::new(
-        storage::Storage::new(&app_data_dir)
-            .expect("Failed to initialize storage"),
-    );
+    let storage =
+        Arc::new(storage::Storage::new(&app_data_dir).expect("Failed to initialize storage"));
 
     // Initialize auth manager
     let auth = Arc::new(auth::AuthManager::new());
@@ -70,30 +70,30 @@ async fn main() {
 
     let recording_manager = Arc::new(RwLock::new(
         recording::initialize_recording_backend(recordings_dir)
-            .expect("Failed to initialize recording backend")
+            .expect("Failed to initialize recording backend"),
     ));
 
-    tracing::info!("Recording backend initialized for {}", recording::Platform::current().name());
+    tracing::info!(
+        "Recording backend initialized for {}",
+        recording::Platform::current().name()
+    );
 
     // Load recording settings
     let recording_settings = Arc::new(RwLock::new(
-        settings::models::RecordingSettings::load()
-            .unwrap_or_else(|e| {
-                tracing::warn!("Failed to load recording settings, using defaults: {}", e);
-                settings::models::RecordingSettings::default()
-            })
+        settings::models::RecordingSettings::load().unwrap_or_else(|e| {
+            tracing::warn!("Failed to load recording settings, using defaults: {}", e);
+            settings::models::RecordingSettings::default()
+        }),
     ));
 
     tracing::info!("Recording settings loaded");
 
     // Initialize Auto Clip Manager
-    let auto_clip_manager = Arc::new(
-        recording::auto_clip_manager::AutoClipManager::new(
-            Arc::clone(&recording_manager),
-            Arc::clone(&storage),
-            Arc::clone(&recording_settings),
-        )
-    );
+    let auto_clip_manager = Arc::new(recording::auto_clip_manager::AutoClipManager::new(
+        Arc::clone(&recording_manager),
+        Arc::clone(&storage),
+        Arc::clone(&recording_settings),
+    ));
 
     tracing::info!("Auto Clip Manager initialized");
 
@@ -104,7 +104,7 @@ async fn main() {
 
     // Initialize Metrics Collector
     let metrics_collector = Arc::new(utils::metrics::MetricsCollector::new(
-        utils::metrics::HealthThresholds::default()
+        utils::metrics::HealthThresholds::default(),
     ));
 
     tracing::info!("Metrics Collector initialized");
@@ -113,7 +113,7 @@ async fn main() {
     let cleanup_config = utils::cleanup::CleanupConfig::default();
     let cleanup_manager = Arc::new(utils::cleanup::CleanupManager::new(
         app_data_dir.clone(),
-        cleanup_config
+        cleanup_config,
     ));
 
     // Run startup cleanup
@@ -132,6 +132,31 @@ async fn main() {
 
     tracing::info!("Auto Composer initialized");
 
+    // Initialize YouTube Manager
+    let youtube_client_id = std::env::var("YOUTUBE_CLIENT_ID")
+        .unwrap_or_else(|_| "your-client-id.apps.googleusercontent.com".to_string());
+    let youtube_client_secret =
+        std::env::var("YOUTUBE_CLIENT_SECRET").unwrap_or_else(|_| "your-client-secret".to_string());
+    let youtube_redirect_uri =
+        std::env::var("YOUTUBE_REDIRECT_URI").unwrap_or_else(|_| "http://localhost:8080/oauth2/callback".to_string());
+
+    let youtube_manager = Arc::new(
+        youtube::YouTubeManager::new(
+            youtube_client_id,
+            youtube_client_secret,
+            youtube_redirect_uri,
+            Arc::clone(&storage),
+        )
+        .expect("Failed to initialize YouTube manager"),
+    );
+
+    // Load stored YouTube credentials if available
+    if let Err(e) = youtube_manager.load_credentials().await {
+        tracing::warn!("Failed to load YouTube credentials: {}", e);
+    }
+
+    tracing::info!("YouTube Manager initialized");
+
     let app_state = AppState {
         storage,
         auth,
@@ -143,6 +168,7 @@ async fn main() {
         metrics_collector: Arc::clone(&metrics_collector),
         cleanup_manager: Arc::clone(&cleanup_manager),
         auto_composer,
+        youtube_manager,
     };
 
     // Start hotkey system with callbacks
@@ -150,97 +176,109 @@ async fn main() {
     let auto_clip_manager_hotkey = Arc::clone(&auto_clip_manager);
 
     tokio::spawn(async move {
-        hotkey_manager.start(move |event| {
-            let rm = Arc::clone(&recording_manager_hotkey);
-            let acm = Arc::clone(&auto_clip_manager_hotkey);
+        hotkey_manager
+            .start(move |event| {
+                let rm = Arc::clone(&recording_manager_hotkey);
+                let acm = Arc::clone(&auto_clip_manager_hotkey);
 
-            tokio::spawn(async move {
-                use hotkey::HotkeyEvent;
+                tokio::spawn(async move {
+                    use hotkey::HotkeyEvent;
 
-                match event {
-                    HotkeyEvent::ToggleAutoCapture => {
-                        // Check if auto-capture is running
-                        let is_monitoring = acm.is_monitoring().await;
+                    match event {
+                        HotkeyEvent::ToggleAutoCapture => {
+                            // Check if auto-capture is running
+                            let is_monitoring = acm.is_monitoring().await;
 
-                        if is_monitoring {
-                            // Stop auto-capture
-                            tracing::info!("Hotkey F8: Stopping auto-capture");
-                            if let Err(e) = acm.stop_event_monitoring().await {
-                                tracing::error!("Failed to stop auto-capture: {}", e);
-                            }
-                            if let Err(e) = rm.write().await.stop_replay_buffer().await {
-                                tracing::error!("Failed to stop replay buffer: {}", e);
-                            }
-                        } else {
-                            // Start auto-capture
-                            tracing::info!("Hotkey F8: Starting auto-capture");
-                            if let Err(e) = rm.write().await.start_replay_buffer().await {
-                                tracing::error!("Failed to start replay buffer: {}", e);
-                            }
-                            if let Err(e) = acm.start_event_monitoring().await {
-                                tracing::error!("Failed to start event monitoring: {}", e);
+                            if is_monitoring {
+                                // Stop auto-capture
+                                tracing::info!("Hotkey F8: Stopping auto-capture");
+                                if let Err(e) = acm.stop_event_monitoring().await {
+                                    tracing::error!("Failed to stop auto-capture: {}", e);
+                                }
+                                if let Err(e) = rm.write().await.stop_replay_buffer().await {
+                                    tracing::error!("Failed to stop replay buffer: {}", e);
+                                }
+                            } else {
+                                // Start auto-capture
+                                tracing::info!("Hotkey F8: Starting auto-capture");
+                                if let Err(e) = rm.write().await.start_replay_buffer().await {
+                                    tracing::error!("Failed to start replay buffer: {}", e);
+                                }
+                                if let Err(e) = acm.start_event_monitoring().await {
+                                    tracing::error!("Failed to start event monitoring: {}", e);
+                                }
                             }
                         }
-                    },
-                    HotkeyEvent::SaveReplay60 => {
-                        // Save last 60 seconds
-                        tracing::info!("Hotkey F9: Saving 60s replay");
+                        HotkeyEvent::SaveReplay60 => {
+                            // Save last 60 seconds
+                            tracing::info!("Hotkey F9: Saving 60s replay");
 
-                        use std::time::Instant;
-                        use crate::recording::GameEvent;
+                            use crate::recording::GameEvent;
+                            use std::time::Instant;
 
-                        let manual_event = GameEvent {
-                            event_id: 0,
-                            event_name: "HotkeyReplay60".to_string(),
-                            event_time: 0.0,
-                            killer_name: None,
-                            victim_name: None,
-                            assisters: vec![],
-                            priority: 3,
-                            timestamp: Instant::now(),
-                        };
+                            let manual_event = GameEvent {
+                                event_id: 0,
+                                event_name: "HotkeyReplay60".to_string(),
+                                event_time: 0.0,
+                                killer_name: None,
+                                victim_name: None,
+                                assisters: vec![],
+                                priority: 3,
+                                timestamp: Instant::now(),
+                            };
 
-                        match rm.read().await.save_clip(
-                            &manual_event,
-                            format!("hotkey_60s_{}", Instant::now().elapsed().as_secs()),
-                            3,
-                            60.0,
-                        ).await {
-                            Ok(path) => tracing::info!("Saved 60s replay to: {:?}", path),
-                            Err(e) => tracing::error!("Failed to save 60s replay: {}", e),
+                            match rm
+                                .read()
+                                .await
+                                .save_clip(
+                                    &manual_event,
+                                    format!("hotkey_60s_{}", Instant::now().elapsed().as_secs()),
+                                    3,
+                                    60.0,
+                                )
+                                .await
+                            {
+                                Ok(path) => tracing::info!("Saved 60s replay to: {:?}", path),
+                                Err(e) => tracing::error!("Failed to save 60s replay: {}", e),
+                            }
                         }
-                    },
-                    HotkeyEvent::SaveReplay30 => {
-                        // Save last 30 seconds
-                        tracing::info!("Hotkey F10: Saving 30s replay");
+                        HotkeyEvent::SaveReplay30 => {
+                            // Save last 30 seconds
+                            tracing::info!("Hotkey F10: Saving 30s replay");
 
-                        use std::time::Instant;
-                        use crate::recording::GameEvent;
+                            use crate::recording::GameEvent;
+                            use std::time::Instant;
 
-                        let manual_event = GameEvent {
-                            event_id: 0,
-                            event_name: "HotkeyReplay30".to_string(),
-                            event_time: 0.0,
-                            killer_name: None,
-                            victim_name: None,
-                            assisters: vec![],
-                            priority: 2,
-                            timestamp: Instant::now(),
-                        };
+                            let manual_event = GameEvent {
+                                event_id: 0,
+                                event_name: "HotkeyReplay30".to_string(),
+                                event_time: 0.0,
+                                killer_name: None,
+                                victim_name: None,
+                                assisters: vec![],
+                                priority: 2,
+                                timestamp: Instant::now(),
+                            };
 
-                        match rm.read().await.save_clip(
-                            &manual_event,
-                            format!("hotkey_30s_{}", Instant::now().elapsed().as_secs()),
-                            2,
-                            30.0,
-                        ).await {
-                            Ok(path) => tracing::info!("Saved 30s replay to: {:?}", path),
-                            Err(e) => tracing::error!("Failed to save 30s replay: {}", e),
+                            match rm
+                                .read()
+                                .await
+                                .save_clip(
+                                    &manual_event,
+                                    format!("hotkey_30s_{}", Instant::now().elapsed().as_secs()),
+                                    2,
+                                    30.0,
+                                )
+                                .await
+                            {
+                                Ok(path) => tracing::info!("Saved 30s replay to: {:?}", path),
+                                Err(e) => tracing::error!("Failed to save 30s replay: {}", e),
+                            }
                         }
-                    },
-                }
-            });
-        }).await
+                    }
+                });
+            })
+            .await
             .unwrap_or_else(|e| tracing::error!("Failed to start hotkey system: {}", e));
     });
 
@@ -302,8 +340,13 @@ async fn main() {
             storage::commands::save_game_events,
             storage::commands::save_clip_metadata,
             storage::commands::delete_game,
-            storage::commands::get_storage_stats,
+            storage::commands::get_dashboard_stats,
             storage::commands::list_clips,
+            storage::commands::get_auto_edit_quota,
+            storage::commands::get_auto_edit_results,
+            storage::commands::get_auto_edit_result,
+            storage::commands::delete_auto_edit_result,
+            storage::commands::update_auto_edit_youtube_status,
             // Settings commands
             settings::commands::get_recording_settings,
             settings::commands::save_recording_settings,
@@ -315,6 +358,18 @@ async fn main() {
             utils::commands::get_app_version,
             utils::commands::force_cleanup,
             utils::commands::get_disk_space_info,
+            // YouTube commands
+            youtube::commands::youtube_start_auth,
+            youtube::commands::youtube_start_auth_with_server,
+            youtube::commands::youtube_complete_auth,
+            youtube::commands::youtube_get_auth_status,
+            youtube::commands::youtube_upload_video,
+            youtube::commands::youtube_get_upload_progress,
+            youtube::commands::youtube_get_video_details,
+            youtube::commands::youtube_get_upload_history,
+            youtube::commands::youtube_add_to_history,
+            youtube::commands::youtube_get_quota_info,
+            youtube::commands::youtube_logout,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

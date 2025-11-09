@@ -1,4 +1,5 @@
-use super::{AuthManager, SubscriptionTier, User, AuthError};
+#![allow(dead_code)]
+use super::{AuthError, AuthManager, SubscriptionTier, User};
 use std::sync::Arc;
 
 /// Authentication guard that checks if user is authenticated
@@ -7,8 +8,7 @@ pub fn require_auth(auth: &Arc<AuthManager>) -> Result<User, AuthError> {
         return Err(AuthError::NotAuthenticated);
     }
 
-    auth.get_current_user()?
-        .ok_or(AuthError::NotAuthenticated)
+    auth.get_current_user()?.ok_or(AuthError::NotAuthenticated)
 }
 
 /// License tier guard that checks if user has required tier
@@ -24,11 +24,9 @@ pub fn require_tier(
         // FREE users can only access FREE features
         (SubscriptionTier::Free, SubscriptionTier::Free) => Ok(user),
         // FREE users cannot access PRO features
-        (SubscriptionTier::Free, SubscriptionTier::Pro) => {
-            Err(AuthError::Failed(
-                "PRO subscription required for this feature".to_string(),
-            ))
-        }
+        (SubscriptionTier::Free, SubscriptionTier::Pro) => Err(AuthError::Failed(
+            "PRO subscription required for this feature".to_string(),
+        )),
     }
 }
 
@@ -70,9 +68,9 @@ mod tests {
 
         assert!(is_token_expired(&expired_user));
 
-        // Token expires in 10 minutes (within buffer, should refresh)
+        // Token expires in 3 minutes (within 5-minute buffer, should refresh)
         let near_expired_user = User {
-            expires_at: now + 600,
+            expires_at: now + 180,
             ..expired_user.clone()
         };
 

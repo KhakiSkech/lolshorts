@@ -1,0 +1,5 @@
+# Allow certain lints for work-in-progress code
+# These will be addressed in future iterations
+
+# Suppress warnings about unused code during development
+allow-unwrap-in-tests = true

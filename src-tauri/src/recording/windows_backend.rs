@@ -1,16 +1,19 @@
-use std::sync::Arc;
-use std::path::PathBuf;
-use std::time::{Duration, Instant};
-use std::collections::VecDeque;
-use std::process::{Child, Command, Stdio};
-use tokio::sync::RwLock as TokioRwLock;
-use parking_lot::RwLock;
-use anyhow::{Result, Context as AnyhowContext};
-use crate::storage::GameMetadata;
-use super::{RecordingStatus, RecordingStats, GameEvent};
+#![allow(clippy::upper_case_acronyms)]
 use super::audio::AudioConfig;
+use super::{GameEvent, RecordingStats, RecordingStatus};
+use crate::storage::GameMetadata;
+use crate::utils::circuit_breaker::{
+    CircuitBreaker as ProductionCircuitBreaker, CircuitBreakerConfig,
+};
 use crate::utils::retry::{retry_with_backoff, RetryConfig};
-use crate::utils::circuit_breaker::{CircuitBreaker as ProductionCircuitBreaker, CircuitBreakerConfig};
+use anyhow::{Context as AnyhowContext, Result};
+use parking_lot::RwLock;
+use std::collections::VecDeque;
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock as TokioRwLock;
 
 // Configuration constants
 const SEGMENT_DURATION_SECS: u64 = 10;
@@ -90,8 +93,8 @@ impl RecordingConfig {
 
         // Base bitrate calculation (bits per pixel)
         let base_bpp = match codec {
-            VideoCodec::HEVC => 0.10,  // H.265 is ~50% more efficient
-            VideoCodec::H264 => 0.15,  // H.264 baseline
+            VideoCodec::HEVC => 0.10, // H.265 is ~50% more efficient
+            VideoCodec::H264 => 0.15, // H.264 baseline
         };
 
         // FPS scaling factor
@@ -119,17 +122,17 @@ impl RecordingConfig {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum VideoCodec {
-    HEVC,  // H.265 (preferred for quality/size)
-    H264,  // H.264 (fallback for compatibility)
+    HEVC, // H.265 (preferred for quality/size)
+    H264, // H.264 (fallback for compatibility)
 }
 
 /// Hardware encoder types
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum HardwareEncoder {
-    NVENC,     // NVIDIA GPU
-    QSV,       // Intel Quick Sync
-    AMF,       // AMD GPU
-    Software,  // CPU fallback
+    NVENC,    // NVIDIA GPU
+    QSV,      // Intel Quick Sync
+    AMF,      // AMD GPU
+    Software, // CPU fallback
 }
 
 impl HardwareEncoder {
@@ -157,10 +160,10 @@ impl HardwareEncoder {
     /// Presets vary by encoder type
     fn get_preset(&self) -> &'static str {
         match self {
-            Self::NVENC => "p4",           // NVENC: p1 (fastest) to p7 (slowest), p4 is balanced
-            Self::QSV => "balanced",       // QSV: balanced quality/speed
-            Self::AMF => "balanced",       // AMF: balanced quality/speed
-            Self::Software => "medium",    // x265: medium quality/speed
+            Self::NVENC => "p4",     // NVENC: p1 (fastest) to p7 (slowest), p4 is balanced
+            Self::QSV => "balanced", // QSV: balanced quality/speed
+            Self::AMF => "balanced", // AMF: balanced quality/speed
+            Self::Software => "medium", // x265: medium quality/speed
         }
     }
 
@@ -168,18 +171,18 @@ impl HardwareEncoder {
     fn get_encoder_options(&self) -> Vec<(&'static str, &'static str)> {
         match self {
             Self::NVENC => vec![
-                ("-rc", "vbr"),            // Variable bitrate for better quality
-                ("-rc-lookahead", "20"),   // Lookahead for better quality
-                ("-spatial-aq", "1"),      // Spatial AQ for better quality
-                ("-temporal-aq", "1"),     // Temporal AQ for motion
+                ("-rc", "vbr"),          // Variable bitrate for better quality
+                ("-rc-lookahead", "20"), // Lookahead for better quality
+                ("-spatial-aq", "1"),    // Spatial AQ for better quality
+                ("-temporal-aq", "1"),   // Temporal AQ for motion
             ],
             Self::QSV => vec![
-                ("-look_ahead", "1"),      // Lookahead enabled
+                ("-look_ahead", "1"),        // Lookahead enabled
                 ("-look_ahead_depth", "40"), // Lookahead depth
             ],
             Self::AMF => vec![
-                ("-rc", "vbr_latency"),    // VBR for quality with low latency
-                ("-quality", "balanced"),  // Balanced quality preset
+                ("-rc", "vbr_latency"),   // VBR for quality with low latency
+                ("-quality", "balanced"), // Balanced quality preset
             ],
             Self::Software => vec![
                 ("-x265-params", "aq-mode=3"), // Best adaptive quantization
@@ -207,12 +210,16 @@ impl HardwareEncoder {
     /// Test if an encoder is available by running a quick FFmpeg test
     fn test_encoder(encoder_name: &str) -> bool {
         let result = Command::new("ffmpeg")
-            .args(&[
-                "-f", "lavfi",
-                "-i", "nullsrc=s=256x256:d=0.1",
-                "-c:v", encoder_name,
-                "-f", "null",
-                "-"
+            .args([
+                "-f",
+                "lavfi",
+                "-i",
+                "nullsrc=s=256x256:d=0.1",
+                "-c:v",
+                encoder_name,
+                "-f",
+                "null",
+                "-",
             ])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -275,7 +282,8 @@ impl SegmentBuffer {
 
     /// Generate path for next segment
     fn next_segment_path(&self) -> PathBuf {
-        self.temp_dir.join(format!("segment_{:04}.mp4", self.current_segment))
+        self.temp_dir
+            .join(format!("segment_{:04}.mp4", self.current_segment))
     }
 
     /// Clear all segments
@@ -350,9 +358,12 @@ impl SegmentRecorder {
 
         // Build complete FFmpeg command
         let mut ffmpeg_args = vec![
-            "-f".to_string(), "gdigrab".to_string(),                    // Windows GDI screen capture
-            "-framerate".to_string(), self.config.fps.to_string(),
-            "-i".to_string(), "desktop".to_string(),                    // Capture entire desktop
+            "-f".to_string(),
+            "gdigrab".to_string(), // Windows GDI screen capture
+            "-framerate".to_string(),
+            self.config.fps.to_string(),
+            "-i".to_string(),
+            "desktop".to_string(), // Capture entire desktop
         ];
 
         // Add audio inputs (microphone and/or system audio)
@@ -360,12 +371,18 @@ impl SegmentRecorder {
 
         // Video encoding args
         ffmpeg_args.extend(vec![
-            "-c:v".to_string(), video_encoder.to_string(),              // Hardware encoder
-            "-preset".to_string(), self.config.hardware_encoder.get_preset().to_string(), // Encoder-specific preset
-            "-b:v".to_string(), bitrate.clone(),                        // Bitrate
-            "-maxrate".to_string(), bitrate.clone(),                    // Max bitrate
-            "-bufsize".to_string(), format!("{}k", self.config.bitrate * 2 / 1000), // Buffer size
-            "-pix_fmt".to_string(), "yuv420p".to_string(),              // Pixel format
+            "-c:v".to_string(),
+            video_encoder.to_string(), // Hardware encoder
+            "-preset".to_string(),
+            self.config.hardware_encoder.get_preset().to_string(), // Encoder-specific preset
+            "-b:v".to_string(),
+            bitrate.clone(), // Bitrate
+            "-maxrate".to_string(),
+            bitrate.clone(), // Max bitrate
+            "-bufsize".to_string(),
+            format!("{}k", self.config.bitrate * 2 / 1000), // Buffer size
+            "-pix_fmt".to_string(),
+            "yuv420p".to_string(), // Pixel format
         ]);
 
         // Add encoder-specific optimization options
@@ -384,9 +401,7 @@ impl SegmentRecorder {
             ffmpeg_args.extend(audio_maps);
         } else {
             // No audio: map video only
-            ffmpeg_args.extend(vec![
-                "-map".to_string(), "0:v".to_string(),
-            ]);
+            ffmpeg_args.extend(vec!["-map".to_string(), "0:v".to_string()]);
         }
 
         // Add audio codec args if audio is enabled
@@ -396,22 +411,20 @@ impl SegmentRecorder {
 
         // Duration and output
         ffmpeg_args.extend(vec![
-            "-t".to_string(), SEGMENT_DURATION_SECS.to_string(),       // Duration
-            "-y".to_string(),                                           // Overwrite output file
+            "-t".to_string(),
+            SEGMENT_DURATION_SECS.to_string(), // Duration
+            "-y".to_string(),                  // Overwrite output file
             self.current_segment_path.to_str().unwrap().to_string(),
         ]);
 
         // Start FFmpeg process with retry logic and circuit breaker protection
         // Clone necessary data for closure
         let ffmpeg_args_clone = ffmpeg_args.clone();
-        let segment_path_clone = self.current_segment_path.clone();
         let circuit_breaker = Arc::clone(&self.circuit_breaker);
 
-        let child = circuit_breaker.call(|| async {
-            retry_with_backoff(
-                FFMPEG_RETRY_CONFIG,
-                "FFmpeg process startup",
-                || async {
+        let child = circuit_breaker
+            .call(|| async {
+                retry_with_backoff(FFMPEG_RETRY_CONFIG, "FFmpeg process startup", || async {
                     // Spawn FFmpeg process (sync operation wrapped in async)
                     Command::new("ffmpeg")
                         .args(&ffmpeg_args_clone)
@@ -419,15 +432,19 @@ impl SegmentRecorder {
                         .stderr(Stdio::piped())
                         .spawn()
                         .context("Failed to start FFmpeg process")
-                }
-            ).await
-        }).await?;
+                })
+                .await
+            })
+            .await?;
 
         self.ffmpeg_process = Some(child);
         self.current_segment_start = Instant::now();
         *self.is_recording.lock() = true;
 
-        tracing::info!("FFmpeg segment recording started successfully: {:?}", self.current_segment_path);
+        tracing::info!(
+            "FFmpeg segment recording started successfully: {:?}",
+            self.current_segment_path
+        );
 
         Ok(())
     }
@@ -474,10 +491,17 @@ impl SegmentRecorder {
                     if let Err(e) = buffer.add_segment(segment_path.clone()) {
                         tracing::error!("Failed to add segment to buffer: {}", e);
                     } else {
-                        tracing::info!("Segment added to buffer: {:?} (size: {} bytes)", segment_path, file_size);
+                        tracing::info!(
+                            "Segment added to buffer: {:?} (size: {} bytes)",
+                            segment_path,
+                            file_size
+                        );
                     }
                 } else {
-                    tracing::warn!("Segment file is empty, not adding to buffer: {:?}", self.current_segment_path);
+                    tracing::warn!(
+                        "Segment file is empty, not adding to buffer: {:?}",
+                        self.current_segment_path
+                    );
                 }
             } else {
                 tracing::warn!("Segment file not found: {:?}", self.current_segment_path);
@@ -512,7 +536,7 @@ impl WindowsRecorder {
         // Initialize production circuit breaker for critical FFmpeg operations
         let circuit_breaker = Arc::new(ProductionCircuitBreaker::new(
             "FFmpeg Recording",
-            CircuitBreakerConfig::aggressive()  // Critical service requires aggressive failure detection
+            CircuitBreakerConfig::aggressive(), // Critical service requires aggressive failure detection
         ));
 
         Ok(Self {
@@ -533,7 +557,7 @@ impl WindowsRecorder {
     /// Update audio configuration from settings
     /// Note: Changes will take effect on next segment recording (after rotation)
     pub fn update_audio_config(&mut self, audio_settings: &crate::settings::models::AudioSettings) {
-        use crate::settings::models::{SampleRate, AudioBitrate};
+        use crate::settings::models::{AudioBitrate, SampleRate};
 
         // Convert AudioSettings to AudioConfig
         let sample_rate = match audio_settings.sample_rate {
@@ -581,7 +605,10 @@ impl WindowsRecorder {
         *status = RecordingStatus::Buffering;
         drop(status);
 
-        tracing::info!("Starting FFmpeg-based replay buffer with {}s window", SEGMENT_DURATION_SECS * BUFFER_SEGMENTS as u64);
+        tracing::info!(
+            "Starting FFmpeg-based replay buffer with {}s window",
+            SEGMENT_DURATION_SECS * BUFFER_SEGMENTS as u64
+        );
 
         // Create segment recorder with circuit breaker
         let mut recorder = SegmentRecorder::new(
@@ -626,7 +653,9 @@ impl WindowsRecorder {
                     *status
                 };
 
-                if current_status == RecordingStatus::Idle || current_status == RecordingStatus::Error {
+                if current_status == RecordingStatus::Idle
+                    || current_status == RecordingStatus::Error
+                {
                     tracing::info!("Recording stopped (status: {:?}), stopping segments and exiting rotation task", current_status);
 
                     // Stop the current recording segment
@@ -750,7 +779,8 @@ impl WindowsRecorder {
         }
 
         // Concatenate segments using FFmpeg
-        self.concat_segments(&segments, &output_path, duration).await?;
+        self.concat_segments(&segments, &output_path, duration)
+            .await?;
 
         // Update stats
         {
@@ -787,8 +817,7 @@ impl WindowsRecorder {
             }
         }
 
-        std::fs::write(&concat_file, content)
-            .context("Failed to write concat list")?;
+        std::fs::write(&concat_file, content).context("Failed to write concat list")?;
 
         tracing::debug!("Concatenating {} segments", segments.len());
 
@@ -797,24 +826,26 @@ impl WindowsRecorder {
         let output_path_clone = output_path.clone();
         let duration_str = duration_secs.to_string();
 
-        let status = retry_with_backoff(
-            FFMPEG_RETRY_CONFIG,
-            "FFmpeg concatenation",
-            || async {
-                Command::new("ffmpeg")
-                    .args(&[
-                        "-f", "concat",
-                        "-safe", "0",
-                        "-i", concat_file_clone.to_str().unwrap(),
-                        "-t", &duration_str,  // Limit duration
-                        "-c", "copy",          // Copy without re-encoding
-                        "-y",                  // Overwrite output
-                        output_path_clone.to_str().unwrap(),
-                    ])
-                    .status()
-                    .context("Failed to execute FFmpeg")
-            }
-        ).await?;
+        let status = retry_with_backoff(FFMPEG_RETRY_CONFIG, "FFmpeg concatenation", || async {
+            Command::new("ffmpeg")
+                .args([
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
+                    "-i",
+                    concat_file_clone.to_str().unwrap(),
+                    "-t",
+                    &duration_str, // Limit duration
+                    "-c",
+                    "copy", // Copy without re-encoding
+                    "-y",   // Overwrite output
+                    output_path_clone.to_str().unwrap(),
+                ])
+                .status()
+                .context("Failed to execute FFmpeg")
+        })
+        .await?;
 
         // Cleanup concat file
         let _ = std::fs::remove_file(&concat_file);
@@ -823,7 +854,11 @@ impl WindowsRecorder {
             anyhow::bail!("FFmpeg concatenation failed with status: {}", status);
         }
 
-        tracing::info!("Successfully concatenated {} segments to {:?}", segments.len(), output_path);
+        tracing::info!(
+            "Successfully concatenated {} segments to {:?}",
+            segments.len(),
+            output_path
+        );
 
         Ok(())
     }
@@ -916,7 +951,7 @@ mod tests {
         let mut buffer = SegmentBuffer::new(segment_dir.clone()).unwrap();
 
         // Add segments up to capacity
-        for i in 0..BUFFER_SEGMENTS {
+        for _ in 0..BUFFER_SEGMENTS {
             let path = buffer.next_segment_path();
             std::fs::File::create(&path).unwrap();
             buffer.add_segment(path).unwrap();
@@ -953,7 +988,9 @@ mod tests {
         };
 
         // Should fail - buffer not active
-        let result = recorder.save_clip(&event, "test".to_string(), 3, 30.0).await;
+        let result = recorder
+            .save_clip(&event, "test".to_string(), 3, 30.0)
+            .await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not active"));
     }

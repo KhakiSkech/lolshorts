@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -49,6 +50,7 @@ interface RecordingStatus {
 }
 
 export function StatusDashboard() {
+  const { t } = useTranslation();
   const [recordingMetrics, setRecordingMetrics] = useState<RecordingMetrics | null>(null);
   const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(null);
   const [healthStatus, setHealthStatus] = useState<HealthStatus>('Healthy');
@@ -138,7 +140,7 @@ export function StatusDashboard() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Radio className="h-5 w-5" />
-              Recording Status
+              {t('statusDashboard.recordingStatus')}
             </CardTitle>
             <Badge variant={getStatusBadgeVariant(recordingStatus.status)}>
               {recordingStatus.status}
@@ -146,19 +148,19 @@ export function StatusDashboard() {
           </div>
           <CardDescription>
             {recordingStatus.is_monitoring
-              ? 'Auto-capture active - monitoring game events'
-              : 'Press F8 to start auto-capture'}
+              ? t('statusDashboard.autoCapture.active')
+              : t('statusDashboard.autoCapture.pressF8')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-sm text-muted-foreground">Buffer Duration</div>
+              <div className="text-sm text-muted-foreground">{t('statusDashboard.bufferDuration')}</div>
               <div className="text-2xl font-bold">{recordingStatus.buffer_duration_secs}s</div>
             </div>
             {recordingMetrics && (
               <div>
-                <div className="text-sm text-muted-foreground">Buffer Segments</div>
+                <div className="text-sm text-muted-foreground">{t('statusDashboard.bufferSegments')}</div>
                 <div className="text-2xl font-bold">{recordingMetrics.buffer_segments}/6</div>
               </div>
             )}
@@ -173,11 +175,11 @@ export function StatusDashboard() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                Performance Metrics
+                {t('statusDashboard.performanceMetrics')}
               </CardTitle>
               <Badge variant={getHealthBadgeVariant(healthStatus)}>
                 {getHealthIcon(healthStatus)}
-                <span className="ml-1">{healthStatus}</span>
+                <span className="ml-1">{t(`statusDashboard.${healthStatus.toLowerCase()}`)}</span>
               </Badge>
             </div>
           </CardHeader>
@@ -185,7 +187,7 @@ export function StatusDashboard() {
             {/* FPS */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">FPS</span>
+                <span className="text-sm font-medium">{t('statusDashboard.fps')}</span>
                 <span className="text-sm text-muted-foreground">
                   {recordingMetrics.fps.toFixed(1)} / 60
                 </span>
@@ -201,7 +203,7 @@ export function StatusDashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium flex items-center gap-1">
                   <Cpu className="h-4 w-4" />
-                  FFmpeg CPU
+                  {t('statusDashboard.ffmpegCpu')}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {recordingMetrics.cpu_percent.toFixed(1)}%
@@ -218,7 +220,7 @@ export function StatusDashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium flex items-center gap-1">
                   <HardDrive className="h-4 w-4" />
-                  Memory
+                  {t('statusDashboard.memory')}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {recordingMetrics.memory_mb.toFixed(0)} MB
@@ -230,7 +232,7 @@ export function StatusDashboard() {
             {/* Bitrate */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Bitrate</span>
+                <span className="text-sm font-medium">{t('statusDashboard.bitrate')}</span>
                 <span className="text-sm text-muted-foreground">
                   {(recordingMetrics.bitrate_kbps / 1000).toFixed(1)} Mbps
                 </span>
@@ -241,9 +243,9 @@ export function StatusDashboard() {
             {recordingMetrics.frame_drops > 0 && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Frame Drops Detected</AlertTitle>
+                <AlertTitle>{t('statusDashboard.frameDropsDetected')}</AlertTitle>
                 <AlertDescription>
-                  {recordingMetrics.frame_drops} frames dropped in current segment
+                  {t('statusDashboard.frameDropsMessage', { count: recordingMetrics.frame_drops })}
                 </AlertDescription>
               </Alert>
             )}
@@ -257,32 +259,32 @@ export function StatusDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Cpu className="h-5 w-5" />
-              System Resources
+              {t('statusDashboard.systemResources')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-muted-foreground">Total CPU</div>
+                <div className="text-sm text-muted-foreground">{t('statusDashboard.totalCpu')}</div>
                 <div className="text-2xl font-bold">
                   {systemMetrics.total_cpu_percent.toFixed(1)}%
                 </div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Available RAM</div>
+                <div className="text-sm text-muted-foreground">{t('statusDashboard.availableRam')}</div>
                 <div className="text-2xl font-bold">
                   {systemMetrics.available_ram_gb.toFixed(1)} GB
                 </div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Available Disk</div>
+                <div className="text-sm text-muted-foreground">{t('statusDashboard.availableDisk')}</div>
                 <div className="text-2xl font-bold">
                   {systemMetrics.available_disk_gb.toFixed(1)} GB
                 </div>
               </div>
               {systemMetrics.gpu_percent && (
                 <div>
-                  <div className="text-sm text-muted-foreground">GPU</div>
+                  <div className="text-sm text-muted-foreground">{t('statusDashboard.gpu')}</div>
                   <div className="text-2xl font-bold">
                     {systemMetrics.gpu_percent.toFixed(1)}%
                   </div>
@@ -294,9 +296,9 @@ export function StatusDashboard() {
             {systemMetrics.available_disk_gb < 5 && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Low Disk Space</AlertTitle>
+                <AlertTitle>{t('statusDashboard.lowDiskSpace')}</AlertTitle>
                 <AlertDescription>
-                  Less than 5 GB available. Recording may fail.
+                  {t('statusDashboard.lowDiskSpaceMessage')}
                 </AlertDescription>
               </Alert>
             )}
@@ -309,21 +311,21 @@ export function StatusDashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Hotkey Reference
+            {t('statusDashboard.hotkeyReference')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Toggle Auto-Capture:</span>
+              <span className="text-muted-foreground">{t('statusDashboard.toggleAutoCapture')}</span>
               <kbd className="px-2 py-1 bg-muted rounded">F8</kbd>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Save 60s Replay:</span>
+              <span className="text-muted-foreground">{t('statusDashboard.save60sReplay')}</span>
               <kbd className="px-2 py-1 bg-muted rounded">F9</kbd>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Save 30s Replay:</span>
+              <span className="text-muted-foreground">{t('statusDashboard.save30sReplay')}</span>
               <kbd className="px-2 py-1 bg-muted rounded">F10</kbd>
             </div>
           </div>

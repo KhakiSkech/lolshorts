@@ -1,14 +1,14 @@
+#![allow(dead_code)]
+use anyhow::{anyhow, Result};
 /// Retry logic with exponential backoff for production resilience
 ///
 /// Provides configurable retry strategies for transient failures:
 /// - Exponential backoff with jitter to prevent thundering herd
 /// - Maximum retry attempts with timeout
 /// - Customizable retry conditions
-
 use std::time::Duration;
 use tokio::time::sleep;
-use anyhow::{Result, anyhow};
-use tracing::{warn, debug};
+use tracing::{debug, warn};
 
 /// Retry strategy configuration
 #[derive(Debug, Clone)]
@@ -69,8 +69,8 @@ impl RetryConfig {
         use rand::Rng;
 
         // Exponential backoff: initial_delay * (multiplier ^ attempt)
-        let base_delay = self.initial_delay.as_secs_f64()
-            * self.backoff_multiplier.powi(attempt as i32);
+        let base_delay =
+            self.initial_delay.as_secs_f64() * self.backoff_multiplier.powi(attempt as i32);
 
         // Cap at max_delay
         let capped_delay = base_delay.min(self.max_delay.as_secs_f64());
@@ -115,7 +115,12 @@ where
     let mut last_error: Option<String> = None;
 
     for attempt in 0..config.max_attempts {
-        debug!("{}: Attempt {}/{}", operation_name, attempt + 1, config.max_attempts);
+        debug!(
+            "{}: Attempt {}/{}",
+            operation_name,
+            attempt + 1,
+            config.max_attempts
+        );
 
         match operation().await {
             Ok(result) => {
@@ -176,7 +181,12 @@ where
     let mut last_error: Option<String> = None;
 
     for attempt in 0..config.max_attempts {
-        debug!("{}: Attempt {}/{}", operation_name, attempt + 1, config.max_attempts);
+        debug!(
+            "{}: Attempt {}/{}",
+            operation_name,
+            attempt + 1,
+            config.max_attempts
+        );
 
         match operation().await {
             Ok(result) => {
@@ -191,7 +201,11 @@ where
                 // Check if we should retry this error
                 if !should_retry(&e) {
                     warn!("{}: Non-retryable error: {}", operation_name, error_msg);
-                    return Err(anyhow!("{}: {}", operation_name, error_msg));
+                    return Err(anyhow!(
+                        "{}: Non-retryable error: {}",
+                        operation_name,
+                        error_msg
+                    ));
                 }
 
                 warn!(
@@ -276,7 +290,10 @@ mod tests {
         .await;
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Failed after 3 attempts"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Failed after 3 attempts"));
     }
 
     #[tokio::test]
@@ -292,8 +309,8 @@ mod tests {
         let result = retry_with_condition(
             config,
             "test_operation",
-            |error: &str| !error.contains("permanent"),
-            || async { Err::<(), _>("permanent error") },
+            |error: &&'static str| !error.contains("permanent"),
+            || async { Err::<(), &'static str>("permanent error") },
         )
         .await;
 

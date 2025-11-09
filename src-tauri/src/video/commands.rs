@@ -37,9 +37,12 @@ pub async fn extract_clip(
     require_tier(&state.auth, SubscriptionTier::Pro).map_err(|e| e.to_string())?;
 
     // Security validation
-    let validated_input = security::validate_video_input_path(&input_path).map_err(|e| e.to_string())?;
-    let validated_output = security::validate_video_output_path(&output_path).map_err(|e| e.to_string())?;
-    let validated_start_time = security::validate_time_offset(start_time).map_err(|e| e.to_string())?;
+    let validated_input =
+        security::validate_video_input_path(&input_path).map_err(|e| e.to_string())?;
+    let validated_output =
+        security::validate_video_output_path(&output_path).map_err(|e| e.to_string())?;
+    let validated_start_time =
+        security::validate_time_offset(start_time).map_err(|e| e.to_string())?;
     let validated_duration = security::validate_duration(duration).map_err(|e| e.to_string())?;
 
     let processor = VideoProcessor::new();
@@ -74,7 +77,8 @@ pub async fn compose_shorts(
         .collect();
     let validated_clips = validated_clips?;
 
-    let validated_output = security::validate_video_output_path(&output_path).map_err(|e| e.to_string())?;
+    let validated_output =
+        security::validate_video_output_path(&output_path).map_err(|e| e.to_string())?;
 
     let processor = VideoProcessor::new();
 
@@ -99,18 +103,17 @@ pub async fn generate_thumbnail(
     require_tier(&state.auth, SubscriptionTier::Pro).map_err(|e| e.to_string())?;
 
     // Security validation
-    let validated_input = security::validate_video_input_path(&input_path).map_err(|e| e.to_string())?;
-    let validated_output = security::validate_thumbnail_path(&output_path).map_err(|e| e.to_string())?;
-    let validated_time_offset = security::validate_time_offset(time_offset).map_err(|e| e.to_string())?;
+    let validated_input =
+        security::validate_video_input_path(&input_path).map_err(|e| e.to_string())?;
+    let validated_output =
+        security::validate_thumbnail_path(&output_path).map_err(|e| e.to_string())?;
+    let validated_time_offset =
+        security::validate_time_offset(time_offset).map_err(|e| e.to_string())?;
 
     let processor = VideoProcessor::new();
 
     let result_path = processor
-        .generate_thumbnail(
-            validated_input,
-            validated_output,
-            validated_time_offset,
-        )
+        .generate_thumbnail(validated_input, validated_output, validated_time_offset)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -127,7 +130,8 @@ pub async fn get_video_duration(
     require_auth(&state.auth).map_err(|e| e.to_string())?;
 
     // Security validation
-    let validated_input = security::validate_video_input_path(&input_path).map_err(|e| e.to_string())?;
+    let validated_input =
+        security::validate_video_input_path(&input_path).map_err(|e| e.to_string())?;
 
     let processor = VideoProcessor::new();
 
@@ -150,7 +154,8 @@ pub async fn delete_clip(
     require_auth(&state.auth).map_err(|e| e.to_string())?;
 
     // Security validation
-    let validated_path = security::validate_video_input_path(&clip_file_path).map_err(|e| e.to_string())?;
+    let validated_path =
+        security::validate_video_input_path(&clip_file_path).map_err(|e| e.to_string())?;
     let validated_game_id = security::validate_game_id(&game_id).map_err(|e| e.to_string())?;
 
     // Delete the video file
@@ -160,39 +165,82 @@ pub async fn delete_clip(
     }
 
     // Delete from JSON storage
-    state.storage.delete_clip_metadata(&validated_game_id, &clip_file_path)
+    state
+        .storage
+        .delete_clip_metadata(&validated_game_id, &clip_file_path)
         .map_err(|e| format!("Failed to delete clip metadata: {}", e))?;
 
-    tracing::info!("Successfully deleted clip and metadata: {:?}", validated_path);
+    tracing::info!(
+        "Successfully deleted clip and metadata: {:?}",
+        validated_path
+    );
     Ok(())
 }
 
-/// Start auto-edit composition for YouTube Shorts (PRO feature)
+/// Start auto-edit composition for YouTube Shorts
 ///
 /// This is the main entry point for automated Shorts generation.
 /// It will intelligently select clips, apply canvas overlays, mix audio,
 /// and produce a final 60/120/180 second video ready for upload.
+///
+/// Quota limits:
+/// - FREE tier: 5 auto-edits per month
+/// - PRO tier: Unlimited
 #[tauri::command]
 pub async fn start_auto_edit(
     state: State<'_, AppState>,
     config: AutoEditConfig,
 ) -> Result<AutoEditResult, String> {
-    // Require PRO tier for auto-edit feature
-    require_tier(&state.auth, SubscriptionTier::Pro).map_err(|e| e.to_string())?;
+    // Require authentication (both FREE and PRO can use auto-edit)
+    require_auth(&state.auth).map_err(|e| e.to_string())?;
+
+    // Check tier and quota
+    let tier = state.auth.get_tier().map_err(|e| e.to_string())?;
+    let is_pro = matches!(tier, SubscriptionTier::Pro);
+
+    // Check quota before starting
+    let remaining = state
+        .storage
+        .check_auto_edit_quota(is_pro)
+        .map_err(|e| format!("Quota check failed: {}", e))?;
+
+    tracing::info!(
+        "Auto-edit quota check passed: tier={:?}, remaining={}",
+        tier,
+        if is_pro { "unlimited".to_string() } else { remaining.to_string() }
+    );
 
     // Generate unique job ID
     let job_id = format!("auto_edit_{}", chrono::Local::now().format("%Y%m%d_%H%M%S"));
 
-    tracing::info!("Starting auto-edit job: {} with target duration: {}s", job_id, config.target_duration);
+    tracing::info!(
+        "Starting auto-edit job: {} with target duration: {}s",
+        job_id,
+        config.target_duration
+    );
 
     // Start auto-composition
-    let result = state.auto_composer
+    let result = state
+        .auto_composer
         .compose(config, job_id.clone())
         .await
         .map_err(|e| {
             tracing::error!("Auto-edit failed for job {}: {}", job_id, e);
             format!("Auto-edit failed: {}", e)
         })?;
+
+    // Increment usage counter on success (only for FREE tier, PRO is unlimited)
+    if !is_pro {
+        state
+            .storage
+            .increment_auto_edit_usage()
+            .map_err(|e| {
+                tracing::error!("Failed to increment usage: {}", e);
+                // Don't fail the whole operation if usage increment fails
+                format!("Warning: Usage tracking failed: {}", e)
+            })
+            .ok();
+    }
 
     tracing::info!("Auto-edit completed successfully: {:?}", result.output_path);
     Ok(result)
@@ -244,7 +292,8 @@ pub async fn load_canvas_template(
     require_auth(&state.auth).map_err(|e| e.to_string())?;
 
     // Security validation
-    let validated_template_id = security::validate_template_id(&template_id).map_err(|e| e.to_string())?;
+    let validated_template_id =
+        security::validate_template_id(&template_id).map_err(|e| e.to_string())?;
 
     let template = state
         .storage
@@ -280,7 +329,8 @@ pub async fn delete_canvas_template(
     require_auth(&state.auth).map_err(|e| e.to_string())?;
 
     // Security validation
-    let validated_template_id = security::validate_template_id(&template_id).map_err(|e| e.to_string())?;
+    let validated_template_id =
+        security::validate_template_id(&template_id).map_err(|e| e.to_string())?;
 
     state
         .storage

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::path::{Path, PathBuf};
 use tokio::process::Command as TokioCommand;
 use tracing::info;
@@ -60,7 +61,7 @@ impl VideoProcessor {
         // Run FFmpeg command to extract clip
         // Using -ss before -i for fast seeking, -c copy to avoid re-encoding when possible
         let mut command = TokioCommand::new(&self.ffmpeg_path);
-        command.args(&[
+        command.args([
             "-ss",
             &start_time.to_string(),
             "-i",
@@ -170,20 +171,19 @@ impl VideoProcessor {
 
         // Run FFmpeg to concatenate and scale to 9:16
         let mut command = TokioCommand::new(&self.ffmpeg_path);
-        command.args(&[
+        command.args([
             "-f",
             "concat",
             "-safe",
             "0",
             "-i",
-            concat_file.to_str().ok_or_else(|| VideoError::FileAccessError {
-                path: concat_file.display().to_string(),
-            })?,
+            concat_file
+                .to_str()
+                .ok_or_else(|| VideoError::FileAccessError {
+                    path: concat_file.display().to_string(),
+                })?,
             "-vf",
-            &format!(
-                "scale={}:{},setsar=1",
-                target_width, target_height
-            ),
+            &format!("scale={}:{},setsar=1", target_width, target_height),
             "-c:v",
             "libx264",
             "-preset",
@@ -240,7 +240,7 @@ impl VideoProcessor {
         );
 
         let mut command = TokioCommand::new(&self.ffmpeg_path);
-        command.args(&[
+        command.args([
             "-i",
             input.to_str().ok_or_else(|| VideoError::FileAccessError {
                 path: input.display().to_string(),
@@ -309,7 +309,7 @@ impl VideoProcessor {
 
         // Run FFmpeg to extract a single frame as JPEG
         let mut command = TokioCommand::new(&self.ffmpeg_path);
-        command.args(&[
+        command.args([
             "-ss",
             &time_offset.to_string(),
             "-i",
@@ -350,7 +350,7 @@ impl VideoProcessor {
         }
 
         let output = TokioCommand::new("ffprobe")
-            .args(&[
+            .args([
                 "-v",
                 "error",
                 "-show_entries",
@@ -379,12 +379,13 @@ impl VideoProcessor {
         }
 
         let duration_str = String::from_utf8_lossy(&output.stdout);
-        let duration = duration_str
-            .trim()
-            .parse::<f64>()
-            .map_err(|e| VideoError::ProcessingError {
-                message: format!("Failed to parse duration: {}", e),
-            })?;
+        let duration =
+            duration_str
+                .trim()
+                .parse::<f64>()
+                .map_err(|e| VideoError::ProcessingError {
+                    message: format!("Failed to parse duration: {}", e),
+                })?;
 
         Ok(duration)
     }

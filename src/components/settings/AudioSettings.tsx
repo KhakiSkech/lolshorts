@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -32,6 +33,7 @@ interface AudioSettingsProps {
 }
 
 export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
+  const { t } = useTranslation();
   const updateSetting = <K extends keyof AudioSettings>(
     key: K,
     value: AudioSettings[K]
@@ -41,18 +43,18 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
 
   const getSampleRateLabel = (rate: SampleRate): string => {
     const labels: Record<SampleRate, string> = {
-      hz44100: "44.1 kHz (CD Quality)",
-      hz48000: "48 kHz (Professional)",
+      hz44100: t('settings.recordingConfig.audioSettings.audioQuality.sampleRateLabels.hz44100'),
+      hz48000: t('settings.recordingConfig.audioSettings.audioQuality.sampleRateLabels.hz48000'),
     };
     return labels[rate];
   };
 
   const getBitrateLabel = (bitrate: AudioBitrate): string => {
     const labels: Record<AudioBitrate, string> = {
-      kbps128: "128 kbps (Standard)",
-      kbps192: "192 kbps (High)",
-      kbps256: "256 kbps (Very High)",
-      kbps320: "320 kbps (Maximum)",
+      kbps128: t('settings.recordingConfig.audioSettings.audioQuality.bitrateLabels.kbps128'),
+      kbps192: t('settings.recordingConfig.audioSettings.audioQuality.bitrateLabels.kbps192'),
+      kbps256: t('settings.recordingConfig.audioSettings.audioQuality.bitrateLabels.kbps256'),
+      kbps320: t('settings.recordingConfig.audioSettings.audioQuality.bitrateLabels.kbps320'),
     };
     return labels[bitrate];
   };
@@ -64,16 +66,16 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Mic className="w-4 h-4" />
-            Microphone Recording
+            {t('settings.recordingConfig.audioSettings.microphoneRecording.title')}
           </CardTitle>
           <CardDescription>
-            Record your voice commentary during gameplay
+            {t('settings.recordingConfig.audioSettings.microphoneRecording.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="record_microphone" className="flex-1 cursor-pointer">
-              Enable Microphone Recording
+              {t('settings.recordingConfig.audioSettings.microphoneRecording.enableMicrophone')}
             </Label>
             <Switch
               id="record_microphone"
@@ -85,7 +87,7 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
           {settings.record_microphone && (
             <>
               <div className="space-y-2">
-                <Label>Microphone Device</Label>
+                <Label>{t('settings.recordingConfig.audioSettings.microphoneRecording.microphoneDevice')}</Label>
                 <Select
                   value={settings.microphone_device || "default"}
                   onValueChange={(value) =>
@@ -93,10 +95,10 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select device" />
+                    <SelectValue placeholder={t('settings.recordingConfig.audioSettings.microphoneRecording.selectDevice')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Default Device</SelectItem>
+                    <SelectItem value="default">{t('settings.recordingConfig.audioSettings.microphoneRecording.defaultDevice')}</SelectItem>
                     {/* TODO: List actual audio input devices via Tauri command */}
                   </SelectContent>
                 </Select>
@@ -104,7 +106,7 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>Microphone Volume</Label>
+                  <Label>{t('settings.recordingConfig.audioSettings.microphoneRecording.microphoneVolume')}</Label>
                   <Badge variant="secondary">{settings.microphone_volume}%</Badge>
                 </div>
                 <Slider
@@ -116,9 +118,9 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Muted</span>
+                  <span>{t('settings.recordingConfig.audioSettings.microphoneRecording.muted')}</span>
                   <span>100%</span>
-                  <span>200% (Boost)</span>
+                  <span>{t('settings.recordingConfig.audioSettings.microphoneRecording.boost')}</span>
                 </div>
               </div>
             </>
@@ -131,16 +133,16 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Volume2 className="w-4 h-4" />
-            System Audio Recording
+            {t('settings.recordingConfig.audioSettings.systemAudioRecording.title')}
           </CardTitle>
           <CardDescription>
-            Record game sounds, music, and other system audio
+            {t('settings.recordingConfig.audioSettings.systemAudioRecording.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="record_system_audio" className="flex-1 cursor-pointer">
-              Enable System Audio Recording
+              {t('settings.recordingConfig.audioSettings.systemAudioRecording.enableSystemAudio')}
             </Label>
             <Switch
               id="record_system_audio"
@@ -152,7 +154,7 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
           {settings.record_system_audio && (
             <>
               <div className="space-y-2">
-                <Label>System Audio Device</Label>
+                <Label>{t('settings.recordingConfig.audioSettings.systemAudioRecording.systemAudioDevice')}</Label>
                 <Select
                   value={settings.system_audio_device || "default"}
                   onValueChange={(value) =>
@@ -160,10 +162,10 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select device" />
+                    <SelectValue placeholder={t('settings.recordingConfig.audioSettings.systemAudioRecording.selectDevice')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Default Device</SelectItem>
+                    <SelectItem value="default">{t('settings.recordingConfig.audioSettings.systemAudioRecording.defaultDevice')}</SelectItem>
                     {/* TODO: List actual audio output devices via Tauri command */}
                   </SelectContent>
                 </Select>
@@ -171,7 +173,7 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>System Audio Volume</Label>
+                  <Label>{t('settings.recordingConfig.audioSettings.systemAudioRecording.systemAudioVolume')}</Label>
                   <Badge variant="secondary">{settings.system_audio_volume}%</Badge>
                 </div>
                 <Slider
@@ -183,9 +185,9 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Muted</span>
+                  <span>{t('settings.recordingConfig.audioSettings.systemAudioRecording.muted')}</span>
                   <span>100%</span>
-                  <span>200% (Boost)</span>
+                  <span>{t('settings.recordingConfig.audioSettings.systemAudioRecording.boost')}</span>
                 </div>
               </div>
             </>
@@ -196,14 +198,14 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
       {/* Audio Quality Settings */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Audio Quality</CardTitle>
+          <CardTitle className="text-base">{t('settings.recordingConfig.audioSettings.audioQuality.title')}</CardTitle>
           <CardDescription>
-            Configure sample rate and bitrate for recordings
+            {t('settings.recordingConfig.audioSettings.audioQuality.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Sample Rate</Label>
+            <Label>{t('settings.recordingConfig.audioSettings.audioQuality.sampleRate')}</Label>
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <Select
@@ -220,13 +222,13 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
                 </Select>
               </div>
               {settings.sample_rate === "hz48000" && (
-                <Badge variant="secondary">Recommended</Badge>
+                <Badge variant="secondary">{t('settings.recordingConfig.audioSettings.audioQuality.recommended')}</Badge>
               )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Audio Bitrate</Label>
+            <Label>{t('settings.recordingConfig.audioSettings.audioQuality.audioBitrate')}</Label>
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <Select
@@ -245,7 +247,7 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
                 </Select>
               </div>
               {settings.bitrate === "kbps192" && (
-                <Badge variant="secondary">Recommended</Badge>
+                <Badge variant="secondary">{t('settings.recordingConfig.audioSettings.audioQuality.recommended')}</Badge>
               )}
             </div>
           </div>
@@ -257,29 +259,29 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
         <Card className="bg-muted/50">
           <CardContent className="pt-6">
             <div className="space-y-2 text-sm">
-              <p className="font-semibold">Current Audio Configuration</p>
+              <p className="font-semibold">{t('settings.recordingConfig.audioSettings.currentConfiguration.title')}</p>
               {settings.record_microphone && (
                 <>
                   <p className="text-muted-foreground">
-                    • Microphone: Enabled ({settings.microphone_volume}% volume)
+                    • {t('settings.recordingConfig.audioSettings.currentConfiguration.microphone')}: {t('settings.recordingConfig.audioSettings.currentConfiguration.enabled')} ({settings.microphone_volume}% {t('settings.recordingConfig.audioSettings.currentConfiguration.volume')})
                   </p>
                   <p className="text-muted-foreground">
-                    • Device: {settings.microphone_device || "Default"}
+                    • {t('settings.recordingConfig.audioSettings.currentConfiguration.device')}: {settings.microphone_device || t('settings.recordingConfig.audioSettings.currentConfiguration.default')}
                   </p>
                 </>
               )}
               {settings.record_system_audio && (
                 <>
                   <p className="text-muted-foreground">
-                    • System Audio: Enabled ({settings.system_audio_volume}% volume)
+                    • {t('settings.recordingConfig.audioSettings.currentConfiguration.systemAudio')}: {t('settings.recordingConfig.audioSettings.currentConfiguration.enabled')} ({settings.system_audio_volume}% {t('settings.recordingConfig.audioSettings.currentConfiguration.volume')})
                   </p>
                   <p className="text-muted-foreground">
-                    • Device: {settings.system_audio_device || "Default"}
+                    • {t('settings.recordingConfig.audioSettings.currentConfiguration.device')}: {settings.system_audio_device || t('settings.recordingConfig.audioSettings.currentConfiguration.default')}
                   </p>
                 </>
               )}
               <p className="text-muted-foreground">
-                • Quality: {getSampleRateLabel(settings.sample_rate)} @ {getBitrateLabel(settings.bitrate)}
+                • {t('settings.recordingConfig.audioSettings.currentConfiguration.quality')}: {getSampleRateLabel(settings.sample_rate)} @ {getBitrateLabel(settings.bitrate)}
               </p>
             </div>
           </CardContent>

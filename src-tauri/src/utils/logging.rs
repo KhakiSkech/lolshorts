@@ -1,12 +1,13 @@
+#![allow(dead_code)]
+
+use std::fs;
 /// Production-grade structured logging system
 ///
 /// Provides context-rich logging with file rotation, performance tracking,
 /// and integration with external monitoring systems.
-
 use std::path::PathBuf;
 use tracing::Level;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-use std::fs;
+use tracing_subscriber::{fmt, EnvFilter};
 
 /// Logging configuration
 #[derive(Debug, Clone)]
@@ -70,8 +71,8 @@ impl Default for LogConfig {
             log_dir: PathBuf::from("logs"),
             max_file_size_mb: 10,
             max_files: 5,
-            console_enabled: true,  // Console enabled by default
-            console_pretty: cfg!(debug_assertions),  // Pretty only in debug builds
+            console_enabled: true, // Console enabled by default
+            console_pretty: cfg!(debug_assertions), // Pretty only in debug builds
         }
     }
 }
@@ -99,16 +100,13 @@ pub fn init_logging(config: LogConfig) -> anyhow::Result<()> {
     }
 
     // Build environment filter
-    let env_filter = EnvFilter::from_default_env()
-        .add_directive(config.level.into());
+    let env_filter = EnvFilter::from_default_env().add_directive(config.level.into());
 
     // Simplified implementation: Choose one primary output
     if config.file_enabled {
         // File logging with daily rotation
-        let file_appender = tracing_appender::rolling::daily(
-            config.log_dir.clone(),
-            "lolshorts.log"
-        );
+        let file_appender =
+            tracing_appender::rolling::daily(config.log_dir.clone(), "lolshorts.log");
 
         let subscriber = fmt()
             .with_env_filter(env_filter)
@@ -156,7 +154,6 @@ pub fn init_logging(config: LogConfig) -> anyhow::Result<()> {
 /// Logging macros with context
 ///
 /// These are re-exports of tracing macros with added context helpers
-
 /// Log performance-critical operations
 #[macro_export]
 macro_rules! log_perf {

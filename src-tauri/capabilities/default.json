@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0",
+  "identifier": "default",
+  "description": "Default permissions for LoLShorts application",
+  "windows": ["*"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:event:allow-listen",
+    "core:event:allow-emit",
+    "core:window:default",
+    "core:window:allow-create",
+    "core:window:allow-center",
+    "core:window:allow-close",
+    "core:app:default",
+    "core:app:allow-version",
+    "core:app:allow-name",
+    "core:path:default",
+    "core:path:allow-resolve",
+    "core:path:allow-resolve-directory",
+    "shell:default",
+    "shell:allow-open"
+  ]
+}

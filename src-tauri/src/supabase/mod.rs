@@ -126,7 +126,10 @@ mod tests {
     #[test]
     fn test_error_display() {
         let error = SupabaseError::AuthFailed("Invalid credentials".to_string());
-        assert_eq!(error.to_string(), "Authentication failed: Invalid credentials");
+        assert_eq!(
+            error.to_string(),
+            "Authentication failed: Invalid credentials"
+        );
 
         let error = SupabaseError::ApiError("Rate limit exceeded".to_string());
         assert_eq!(error.to_string(), "Supabase API error: Rate limit exceeded");

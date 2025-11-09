@@ -1,7 +1,8 @@
+#![allow(dead_code)]
+
 /// Production-grade error types with context
 ///
 /// Provides rich error information for debugging and monitoring
-
 use thiserror::Error;
 
 /// Application-wide error types

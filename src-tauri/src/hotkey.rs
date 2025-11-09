@@ -1,3 +1,4 @@
+use anyhow::Result;
 /// Global hotkey system for LoLShorts
 ///
 /// Registers system-wide hotkeys for recording control:
@@ -6,10 +7,8 @@
 /// - F10: Quick save 30 seconds
 ///
 /// Uses Windows RegisterHotKey API for global hotkey registration
-
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use anyhow::{Result, Context as AnyhowContext};
 
 // UTF-16 string macro for Windows API - MUST be defined before use
 #[cfg(target_os = "windows")]
@@ -34,12 +33,12 @@ macro_rules! w {
 use windows::Win32::{
     Foundation::{HWND, LPARAM, LRESULT, WPARAM},
     UI::Input::KeyboardAndMouse::{
-        RegisterHotKey, UnregisterHotKey, MOD_NOREPEAT, VK_F8, VK_F9, VK_F10,
+        RegisterHotKey, UnregisterHotKey, MOD_NOREPEAT, VK_F10, VK_F8, VK_F9,
     },
     UI::WindowsAndMessaging::{
-        CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW,
-        PostQuitMessage, TranslateMessage, MSG, WNDCLASSW, CS_HREDRAW, CS_VREDRAW,
-        WM_DESTROY, WM_HOTKEY, WS_OVERLAPPEDWINDOW, WINDOW_EX_STYLE,
+        CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, PostQuitMessage,
+        TranslateMessage, CS_HREDRAW, CS_VREDRAW, MSG, WINDOW_EX_STYLE, WM_DESTROY, WM_HOTKEY,
+        WNDCLASSW, WS_OVERLAPPEDWINDOW,
     },
 };
 
@@ -140,7 +139,9 @@ impl HotkeyManager {
                     tracing::warn!("Failed to register F10 hotkey");
                 }
 
-                tracing::info!("Global hotkeys registered: F8 (toggle), F9 (save 60s), F10 (save 30s)");
+                tracing::info!(
+                    "Global hotkeys registered: F8 (toggle), F9 (save 60s), F10 (save 30s)"
+                );
 
                 // Message loop
                 let mut msg = MSG::default();
@@ -160,7 +161,7 @@ impl HotkeyManager {
                         }
                     }
 
-                    TranslateMessage(&msg);
+                    let _ = TranslateMessage(&msg);
                     DispatchMessageW(&msg);
                 }
 
@@ -235,7 +236,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_hotkey_event_equality() {
-        assert_eq!(HotkeyEvent::ToggleAutoCapture, HotkeyEvent::ToggleAutoCapture);
+        assert_eq!(
+            HotkeyEvent::ToggleAutoCapture,
+            HotkeyEvent::ToggleAutoCapture
+        );
         assert_ne!(HotkeyEvent::ToggleAutoCapture, HotkeyEvent::SaveReplay60);
     }
 }

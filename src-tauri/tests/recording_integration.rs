@@ -40,7 +40,7 @@ fn test_ffmpeg_available() {
 #[cfg(target_os = "windows")]
 fn test_gdigrab_available() {
     let output = std::process::Command::new("ffmpeg")
-        .args(&["-f", "gdigrab", "-list_devices", "true", "-i", "dummy"])
+        .args(["-f", "gdigrab", "-list_devices", "true", "-i", "dummy"])
         .output();
 
     assert!(output.is_ok(), "FFmpeg gdigrab test failed");
@@ -62,7 +62,7 @@ fn test_gdigrab_available() {
 #[test]
 fn test_h265_encoder_available() {
     let output = std::process::Command::new("ffmpeg")
-        .args(&["-encoders"])
+        .args(["-encoders"])
         .output();
 
     assert!(output.is_ok(), "FFmpeg encoders check failed");
@@ -107,7 +107,7 @@ fn test_short_recording() {
     println!("📁 Output: {}", output_file.display());
 
     let mut child = std::process::Command::new("ffmpeg")
-        .args(&[
+        .args([
             "-f",
             "gdigrab",
             "-framerate",
@@ -175,7 +175,7 @@ fn test_h265_hardware_encoding() {
 
     for encoder in &encoders {
         let output = std::process::Command::new("ffmpeg")
-            .args(&["-encoders"])
+            .args(["-encoders"])
             .output()
             .expect("FFmpeg encoders check failed");
 
@@ -186,10 +186,7 @@ fn test_h265_hardware_encoding() {
         }
     }
 
-    assert!(
-        working_encoder.is_some(),
-        "No H.265 encoder available"
-    );
+    assert!(working_encoder.is_some(), "No H.265 encoder available");
 
     let encoder = working_encoder.unwrap();
     println!("🎬 Testing H.265 encoding with: {}", encoder);
@@ -198,7 +195,7 @@ fn test_h265_hardware_encoding() {
     let output_file = temp_dir.path().join("test_h265.mp4");
 
     let mut child = std::process::Command::new("ffmpeg")
-        .args(&[
+        .args([
             "-f",
             "gdigrab",
             "-framerate",
@@ -223,10 +220,7 @@ fn test_h265_hardware_encoding() {
         .wait_timeout(Duration::from_secs(10))
         .expect("Failed to wait for FFmpeg");
 
-    assert!(
-        status.is_some(),
-        "FFmpeg process timed out"
-    );
+    assert!(status.is_some(), "FFmpeg process timed out");
 
     let status = status.unwrap();
     if !status.success() {
@@ -235,7 +229,10 @@ fn test_h265_hardware_encoding() {
 
         // If hardware encoder failed, it's okay (might not have GPU)
         if encoder != "libx265" {
-            println!("⚠️ Hardware encoder {} not available, this is okay", encoder);
+            println!(
+                "⚠️ Hardware encoder {} not available, this is okay",
+                encoder
+            );
             println!("   Error: {}", error);
             return;
         } else {
@@ -243,10 +240,7 @@ fn test_h265_hardware_encoding() {
         }
     }
 
-    assert!(
-        output_file.exists(),
-        "Output file not created"
-    );
+    assert!(output_file.exists(), "Output file not created");
 
     println!("✅ H.265 encoding successful with {}", encoder);
 }
@@ -301,7 +295,7 @@ fn test_ffmpeg_process_termination() {
     let output_file = temp_dir.path().join("test_termination.mp4");
 
     let mut child = std::process::Command::new("ffmpeg")
-        .args(&[
+        .args([
             "-f",
             "gdigrab",
             "-framerate",

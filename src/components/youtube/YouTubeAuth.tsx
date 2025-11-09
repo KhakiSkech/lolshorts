@@ -1,0 +1,157 @@
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useYouTube } from '@/hooks/useYouTube';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Youtube, LogOut, CheckCircle, AlertCircle } from 'lucide-react';
+import { open } from '@tauri-apps/plugin-shell';
+
+export function YouTubeAuth() {
+  const { t } = useTranslation();
+  const {
+    authStatus,
+    isLoading,
+    error,
+    startAuthWithServer,
+    logout,
+    checkAuthStatus,
+  } = useYouTube();
+
+  const [authInProgress, setAuthInProgress] = useState(false);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
+
+  const handleStartAuth = async () => {
+    try {
+      setAuthInProgress(true);
+      const authUrl = await startAuthWithServer();
+
+      // Open auth URL in system browser
+      await open(authUrl);
+
+      // Authentication will complete automatically when user authorizes in browser
+      // The callback server (port 9090) will handle the redirect and save credentials
+    } catch (err) {
+      console.error('Auth error:', err);
+    } finally {
+      setAuthInProgress(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
+  const formatExpiryDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Youtube className="h-6 w-6 text-red-500" />
+            <div>
+              <CardTitle>{t('youtube.auth.youtubeAccount')}</CardTitle>
+              <CardDescription>
+                {t('youtube.auth.connectDescription')}
+              </CardDescription>
+            </div>
+          </div>
+          {authStatus.authenticated ? (
+            <Badge variant="default" className="gap-1">
+              <CheckCircle className="h-3 w-3" />
+              {t('youtube.auth.connected')}
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="gap-1">
+              <AlertCircle className="h-3 w-3" />
+              {t('youtube.auth.disconnected')}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {authStatus.authenticated ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+              <div>
+                <p className="text-sm font-medium">{t('youtube.auth.signedInAs')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {authStatus.email || 'Unknown'}
+                </p>
+                {authStatus.expires_at && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t('youtube.auth.tokenExpires')} {formatExpiryDate(authStatus.expires_at)}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                disabled={isLoading}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                {t('youtube.auth.signOut')}
+              </Button>
+            </div>
+
+            <Alert>
+              <AlertDescription>
+                {t('youtube.auth.accountConnected')}
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Alert>
+              <AlertDescription>
+                {t('youtube.auth.connectPrompt')}
+              </AlertDescription>
+            </Alert>
+
+            {authInProgress && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {t('youtube.auth.waitingForAuthorization')}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Button
+              onClick={handleStartAuth}
+              disabled={isLoading || authInProgress}
+              className="w-full"
+            >
+              <Youtube className="h-4 w-4 mr-2" />
+              {authInProgress ? t('youtube.auth.connectingAutomatically') : t('youtube.auth.connectYouTubeAccount')}
+            </Button>
+
+            <p className="text-xs text-muted-foreground">
+              {t('youtube.auth.automaticAuth')}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

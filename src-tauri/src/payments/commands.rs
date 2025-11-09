@@ -37,13 +37,14 @@ pub async fn create_subscription(
 
     // Calculate amount based on period
     let amount = match request.period.as_str() {
-        "MONTHLY" => 9900,  // 9,900원/month
-        "YEARLY" => 99000,  // 99,000원/year (2 months free)
+        "MONTHLY" => 9900, // 9,900원/month
+        "YEARLY" => 99000, // 99,000원/year (2 months free)
         _ => return Err("Invalid subscription period".to_string()),
     };
 
     // Generate unique order ID
-    let order_id = format!("ORDER_{}_{}",
+    let order_id = format!(
+        "ORDER_{}_{}",
         Utc::now().timestamp(),
         Uuid::new_v4().to_string()[..8].to_string()
     );
@@ -55,15 +56,18 @@ pub async fn create_subscription(
     };
 
     // Create Supabase client
-    let supabase_url = std::env::var("SUPABASE_URL")
-        .map_err(|_| "SUPABASE_URL not configured".to_string())?;
+    let supabase_url =
+        std::env::var("SUPABASE_URL").map_err(|_| "SUPABASE_URL not configured".to_string())?;
     let supabase_key = std::env::var("SUPABASE_ANON_KEY")
         .map_err(|_| "SUPABASE_ANON_KEY not configured".to_string())?;
 
     let http_client = Client::new();
 
     // Get user's license (using direct HTTP request)
-    let license_url = format!("{}/rest/v1/licenses?user_id=eq.{}&select=id", supabase_url, user.id);
+    let license_url = format!(
+        "{}/rest/v1/licenses?user_id=eq.{}&select=id",
+        supabase_url, user.id
+    );
     let license_response = http_client
         .get(&license_url)
         .header("apikey", &supabase_key)
@@ -77,7 +81,8 @@ pub async fn create_subscription(
         .await
         .map_err(|e| format!("Failed to parse license response: {}", e))?;
 
-    let license_id = licenses.first()
+    let license_id = licenses
+        .first()
         .and_then(|l| l.get("id"))
         .and_then(|id| id.as_str())
         .ok_or("License not found")?;
@@ -145,7 +150,8 @@ pub async fn confirm_payment(
     let client = TossPaymentsClient::new(secret_key);
 
     // Get payment details from Toss
-    let payment = client.get_payment(&payment_key)
+    let payment = client
+        .get_payment(&payment_key)
         .await
         .map_err(|e| format!("Failed to get payment: {}", e))?;
 
@@ -163,8 +169,8 @@ pub async fn confirm_payment(
     }
 
     // Update payment record in Supabase (triggers will auto-upgrade license)
-    let supabase_url = std::env::var("SUPABASE_URL")
-        .map_err(|_| "SUPABASE_URL not configured".to_string())?;
+    let supabase_url =
+        std::env::var("SUPABASE_URL").map_err(|_| "SUPABASE_URL not configured".to_string())?;
     let supabase_key = std::env::var("SUPABASE_ANON_KEY")
         .map_err(|_| "SUPABASE_ANON_KEY not configured".to_string())?;
 
@@ -180,7 +186,10 @@ pub async fn confirm_payment(
         "raw_webhook_data": serde_json::to_value(&payment).unwrap(),
     });
 
-    let payments_url = format!("{}/rest/v1/toss_payments?order_id=eq.{}", supabase_url, order_id);
+    let payments_url = format!(
+        "{}/rest/v1/toss_payments?order_id=eq.{}",
+        supabase_url, order_id
+    );
     http_client
         .patch(&payments_url)
         .header("apikey", &supabase_key)
@@ -205,8 +214,8 @@ pub async fn get_subscription_status(
     // Require authentication
     let user = require_auth(&state.auth).map_err(|e| e.to_string())?;
 
-    let supabase_url = std::env::var("SUPABASE_URL")
-        .map_err(|_| "SUPABASE_URL not configured".to_string())?;
+    let supabase_url =
+        std::env::var("SUPABASE_URL").map_err(|_| "SUPABASE_URL not configured".to_string())?;
     let supabase_key = std::env::var("SUPABASE_ANON_KEY")
         .map_err(|_| "SUPABASE_ANON_KEY not configured".to_string())?;
 
@@ -231,18 +240,20 @@ pub async fn get_subscription_status(
         .await
         .map_err(|e| format!("Failed to parse license response: {}", e))?;
 
-    let license = licenses.first()
-        .ok_or("License not found")?;
+    let license = licenses.first().ok_or("License not found")?;
 
-    let tier = license.get("tier")
+    let tier = license
+        .get("tier")
         .and_then(|t| t.as_str())
         .unwrap_or("FREE");
 
-    let status = license.get("status")
+    let status = license
+        .get("status")
         .and_then(|s| s.as_str())
         .unwrap_or("ACTIVE");
 
-    let expires_at = license.get("expires_at")
+    let expires_at = license
+        .get("expires_at")
         .and_then(|e| e.as_str())
         .map(|s| s.to_string());
 
