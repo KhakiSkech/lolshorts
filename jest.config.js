@@ -31,6 +31,9 @@ export default {
     '^@/(.*)$': '<rootDir>/src/$1', // Path alias support
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy', // Mock CSS imports
     '\\.(jpg|jpeg|png|gif|svg|woff|woff2|ttf|eot)$': '<rootDir>/__mocks__/fileMock.js', // Mock assets
+    // Mock FFmpeg and binary dependencies
+    'ffmpeg-static': '<rootDir>/__mocks__/ffmpegMock.js',
+    'fluent-ffmpeg': '<rootDir>/__mocks__/ffmpegMock.js',
   },
 
   // Resolve modules with extensions
@@ -50,4 +53,9 @@ export default {
 
   // Module file extensions
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+
+  // Ignore transforms for node_modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(supabase|@supabase|@radix-ui|@dnd-kit)/)',
+  ],
 };

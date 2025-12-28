@@ -4,324 +4,114 @@
 
 ![LoLShorts Banner](docs/images/banner.png)
 
-**Automatically record and edit your League of Legends gameplay into YouTube Shorts format**
+**리그 오브 레전드 플레이를 자동으로 녹화하고, 쇼츠와 매드무비를 1초 만에 완성하는 AI 비서**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](https://www.microsoft.com/windows)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/KhakiSkech/lolshorts/releases)
+[![Version](https://img.shields.io/badge/version-1.2.0-green.svg)](https://github.com/KhakiSkech/lolshorts/releases)
 
-[Features](#-features) • [Download](#-download) • [Usage](#-usage) • [Development](#-development) • [License](#-license)
+[기능](#-features) • [다운로드](#-download) • [사용법](#-usage) • [배포 및 업데이트](#-distribution) • [개발](#-development)
 
 </div>
 
 ---
 
-## 📖 Overview
+## 📖 개요
 
-LoLShorts is a desktop application that automatically records your League of Legends gameplay and creates highlight clips optimized for YouTube Shorts. Never miss a pentakill, baron steal, or epic teamfight again!
+**LoLShorts**는 단순한 녹화 프로그램이 아닙니다. 당신의 플레이를 분석하고, 가장 빛나는 순간을 찾아내어, **유튜브 쇼츠(Shorts)**와 **롱폼 몽타주(Montage)** 영상으로 자동 제작해 주는 **크리에이터를 위한 필수 도구**입니다.
 
-### Key Features
-
-- ✨ **Automatic Event Detection**: Detects pentakills, multi-kills, baron/dragon steals, and more
-- 🎥 **Replay Buffer**: Always recording the last 2 minutes, save any moment instantly
-- 🚀 **Hardware Acceleration**: GPU-accelerated video encoding (NVENC/QSV/AMF)
-- 🎬 **Built-in Editor**: Timeline editing with transitions, effects, and text overlays
-- 📊 **Smart Prioritization**: Automatically ranks clips by importance
-- 🎨 **Customizable**: Full control over quality, format, and recording settings
-- 🔒 **Privacy First**: All processing happens locally, no data leaves your computer
+이제 LoL 클라이언트를 켜지 않아도 전적을 검색하고, 리플레이를 실행하여 **'페이커'의 시점**으로 명장면을 추출할 수 있습니다.
 
 ---
 
-## 🎯 Features
+## ✨ 주요 기능 (v1.2.0)
 
-### Automatic Recording
-- Real-time monitoring of League of Legends game state via LCU API
-- Intelligent event detection system with priority scoring
-- Hardware-accelerated H.265 encoding for efficient storage
-- Configurable replay buffer (30s - 5min)
+### 🎯 1. 리플레이 허브 & 타겟팅 녹화 (New)
+*   **원스톱 관리:** 앱 내에서 내 전적(최근 20게임)을 조회하고, 리플레이를 바로 다운로드/실행합니다.
+*   **스마트 타겟팅:** 리플레이 실행 시 **"누구를 녹화할까요?"** 팝업이 뜹니다. 원하는 선수(예: Faker)를 선택하면, 카메라가 그 선수를 따라다니며 킬 장면만 골라내어 녹화합니다.
 
-### Event Detection
-| Event Type | Priority | Description |
-|------------|----------|-------------|
-| Pentakill | ⭐⭐⭐⭐⭐ | 5 consecutive kills |
-| Quadrakill | ⭐⭐⭐⭐ | 4 consecutive kills |
-| Baron Steal | ⭐⭐⭐⭐ | Steal Baron from enemy team |
-| Dragon Steal | ⭐⭐⭐ | Steal Dragon from enemy team |
-| Triple Kill | ⭐⭐⭐ | 3 consecutive kills |
-| Multi-Kill | ⭐⭐ | 2+ kills in sequence |
+### 🎬 2. 듀얼 포맷 에디터 (New)
+*   **Shorts 모드 (9:16)**: 모바일에 최적화된 세로 영상. AI가 챔피언을 중심으로 화면을 자동 크롭합니다.
+*   **Montage 모드 (16:9)**: PC/TV 시청용 가로 영상. 여러 하이라이트 클립을 시간 순서대로 매끄럽게 연결하여 **매드무비**를 만듭니다.
 
-### Video Editor
-- Drag-and-drop timeline interface
-- Trim, cut, and merge clips
-- Add transitions and effects
-- Text overlays and annotations
-- Export directly to YouTube Shorts format (9:16, max 60s)
+### 🤖 3. 지능형 자동 편집 (Auto-Edit)
+*   **오늘의 하이라이트**: 오늘 플레이한 5게임을 선택하면, 그중 최고의 장면(펜타킬 > 쿼드라킬...)들만 뽑아 1분짜리 요약 영상을 만듭니다.
+*   **중복 방지 시스템**: 한 번 영상으로 만들어진 클립은 다음 편집 시 자동으로 제외되어, 항상 새로운 장면을 보여줍니다.
 
-### Recording Settings
-- **Quality Presets**: Low, Medium, High, Ultra (720p-1440p)
-- **Frame Rates**: 30 FPS or 60 FPS
-- **Bitrate Control**: 1-20 Mbps customizable
-- **Audio Settings**: Game audio + microphone support
-- **Storage Management**: Automatic cleanup, disk usage monitoring
+### ⚡ 4. 강력한 성능
+*   **하드웨어 가속**: NVIDIA(NVENC), AMD(AMF), Intel(QSV) 가속을 지원하여 프레임 드랍 없이 녹화합니다.
+*   **로컬 처리**: 모든 영상 분석과 편집은 사용자 PC에서 이루어지며, 데이터는 외부로 전송되지 않습니다.
 
 ---
 
-## 📥 Download
+## 📥 다운로드 및 설치
 
-### System Requirements
+### 시스템 요구 사항
+- **OS**: Windows 10 (64-bit) 이상
+- **League of Legends**: 설치 및 최신 업데이트 필요
 
-| Component | Requirement |
-|-----------|-------------|
-| **OS** | Windows 10 (64-bit) or later |
-| **CPU** | Intel Core i5 / AMD Ryzen 5 or better |
-| **RAM** | 8 GB minimum, 16 GB recommended |
-| **GPU** | NVIDIA GTX 1050 / AMD RX 560 or better (for hardware encoding) |
-| **Storage** | 10 GB free space (more for recordings) |
-| **Game** | League of Legends installed and up-to-date |
-
-### Installation
-
-1. Download the latest installer:
-   - **NSIS Installer (Recommended)**: [`LoLShorts_1.0.0_x64-setup.exe`](https://github.com/KhakiSkech/lolshorts/releases/download/v1.0.0/LoLShorts_1.0.0_x64-setup.exe)
-   - **MSI Installer (Enterprise)**: [`LoLShorts_1.0.0_x64_en-US.msi`](https://github.com/KhakiSkech/lolshorts/releases/download/v1.0.0/LoLShorts_1.0.0_x64_en-US.msi)
-
-2. Run the installer with administrator privileges
-
-3. Follow the installation wizard
-
-4. Launch LoLShorts from the Start Menu or Desktop shortcut
+### 설치 방법
+1. [Releases 페이지](https://github.com/KhakiSkech/lolshorts/releases/latest)에서 최신 인스톨러를 다운로드합니다.
+   - **MSI Installer (추천)**: `LoLShorts_1.2.0_x64_en-US.msi`
+2. 파일을 실행하여 설치합니다. (FFmpeg가 자동으로 포함되어 있어 별도 설정이 필요 없습니다.)
+3. 바탕화면의 **LoLShorts** 아이콘을 실행합니다.
 
 ---
 
-## 🚀 Usage
+## 🚀 사용 가이드
 
-### Quick Start Guide
+### Case A: 내가 한 게임 녹화하기 (Live)
+1. **LoLShorts 실행**: 앱을 켜두기만 하세요.
+2. **게임 시작**: 리그 오브 레전드를 플레이합니다.
+3. **자동 녹화**: 킬, 멀티킬, 바론 스틸 등 중요 이벤트가 발생하면 자동으로 녹화되어 저장됩니다.
 
-1. **Launch LoLShorts**
-   - The app will automatically detect if League of Legends is running
-   - LCU connection status will be displayed in the dashboard
-
-2. **Configure Settings** (Optional)
-   - Open Settings page
-   - Choose quality preset (High recommended for 1080p 60fps)
-   - Configure audio settings
-   - Set replay buffer duration
-
-3. **Start Recording**
-   - Click "Start Recording" button
-   - Launch League of Legends and enter a game
-   - LoLShorts will automatically monitor for highlight events
-
-4. **Save Highlights**
-   - When a highlight event occurs, it's automatically detected
-   - Click "Save Replay" to manually save the last 2 minutes
-   - All clips are saved to the Clip Library
-
-5. **Edit and Export**
-   - Open Clip Library to view saved clips
-   - Select clips to edit in the Video Editor
-   - Add transitions, effects, and text
-   - Export to YouTube Shorts format
-
-### Hotkeys
-
-| Key | Action |
-|-----|--------|
-| `Ctrl + Shift + R` | Start/Stop Recording |
-| `Ctrl + Shift + S` | Save Replay Buffer |
-| `Ctrl + Shift + E` | Open Video Editor |
+### Case B: 리플레이로 매드무비 만들기 (Replay)
+1. **리플레이 탭**: 앱 좌측 메뉴에서 `Replays`를 클릭합니다.
+2. **전적 선택**: 원하는 게임의 `Download` 버튼을 누르고, 완료되면 `Watch`를 클릭합니다.
+3. **타겟 선택**: 게임 로딩 후 팝업이 뜨면 **녹화하고 싶은 선수**를 선택합니다.
+4. **카메라 고정**: 게임 내에서 해당 챔피언을 **더블 클릭**하거나 **F1~F5** 키를 눌러 시점을 고정하세요.
+5. **완성**: 게임이 끝나면 `Editor` 탭에서 추출된 클립들을 모아 **"Export Montage"**를 누르면 매드무비가 완성됩니다.
 
 ---
 
-## 🛠️ Development
+## 🚀 배포 및 자동 업데이트 (Distribution)
 
-### Tech Stack
+LoLShorts는 **GitHub Actions**와 **Tauri Updater**를 통해 자동 배포 및 업데이트 시스템을 갖추고 있습니다.
 
-**Frontend**:
-- React 18 + TypeScript
-- Zustand (State Management)
-- shadcn/ui + Tailwind CSS
-- Vite 6
+### 업데이트 원리
+- 앱 실행 시 서버의 최신 버전을 확인합니다.
+- 새 버전이 있으면 사용자에게 알림을 띄우고, 승인 시 백그라운드에서 업데이트를 설치합니다.
 
-**Backend**:
-- Rust + Tokio (Async Runtime)
-- Tauri 2.0 (Desktop Framework)
-- FFmpeg (Video Processing)
-- Windows Media Foundation
+### 개발자 배포 가이드
+새 버전을 배포하려면 다음 단계를 따르세요:
 
-**APIs**:
-- LCU API (League Client)
-- Live Client Data API (In-Game Events)
-
-### Prerequisites
-
-- **Rust**: Latest stable version (install via [rustup](https://rustup.rs/))
-- **Node.js**: v18 or later
-- **npm** or **pnpm**: Package manager
-- **FFmpeg**: Required for video processing
-
-### Building from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/KhakiSkech/lolshorts.git
-cd lolshorts
-
-# Install frontend dependencies
-npm install
-
-# Install Rust dependencies (automatically done by cargo)
-cd src-tauri
-cargo build
-
-# Run development build
-cd ..
-npm run tauri:dev
-
-# Build production release
-npm run tauri:build
-```
-
-### Project Structure
-
-```
-lolshorts/
-├── src/                      # Frontend React app
-│   ├── components/          # UI components
-│   ├── stores/              # Zustand stores
-│   ├── lib/                 # Utilities
-│   └── assets/              # Static assets
-├── src-tauri/               # Rust backend
-│   ├── src/
-│   │   ├── auth/           # License and authentication
-│   │   ├── recording/      # Video recording logic
-│   │   ├── storage/        # Clip storage and metadata
-│   │   ├── video/          # Video processing (FFmpeg)
-│   │   └── main.rs         # Application entry point
-│   └── Cargo.toml          # Rust dependencies
-├── docs/                    # Documentation
-├── tests/                   # Test suites
-└── README.md               # This file
-```
-
-### Testing
-
-```bash
-# Run Rust tests
-cd src-tauri
-cargo test
-
-# Run frontend tests
-cd ..
-npm test
-
-# Run E2E tests
-npm run test:e2e
-```
-
-### Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. **버전 올리기**: `package.json`과 `src-tauri/Cargo.toml`의 버전을 동일하게 수정합니다.
+2. **태그 푸시**:
+   ```bash
+   git add .
+   git commit -m "chore: release v1.2.1"
+   git tag v1.2.1
+   git push origin v1.2.1
+   ```
+3. **자동 빌드**: GitHub Actions가 자동으로 빌드, 서명, 릴리스 생성을 수행합니다.
 
 ---
 
-## 📋 Roadmap
+## 🛠️ 기술 스택
 
-### Version 1.1.0 (Planned - Q1 2025)
-- [ ] Cloud storage integration (Google Drive, Dropbox)
-- [ ] Multi-language support (Korean, Chinese, Japanese)
-- [ ] Performance optimizations
-- [ ] Bug fixes and stability improvements
-
-### Version 1.2.0 (Planned - Q2 2025) 🎯 **PRIORITY**
-**Complete Video Creation & Publishing Suite**
-
-#### Auto-Edit Workflow
-- [ ] Multi-game clip selection with intelligent priority algorithm
-- [ ] Canvas-style background editor (Canva-like) for overlays and text
-- [ ] Duration-based auto-composition (60/120/180 seconds)
-- [ ] Background music integration with volume mixing controls
-- [ ] Template save/load system for reusable designs
-- [ ] One-click Shorts generation
-
-#### YouTube Upload Integration
-- [ ] OAuth2 authentication with Google account
-- [ ] Direct upload to YouTube Shorts
-- [ ] AI-powered metadata generation (titles, descriptions, tags)
-- [ ] Thumbnail selection and upload
-- [ ] Upload progress tracking with speed/ETA
-- [ ] Upload history and management
-
-#### Additional Features
-- [ ] AI-powered highlight detection improvements
-- [ ] Advanced editing features (slow motion replays, dynamic zoom on kills, event-triggered animations, visual filters)
-- [ ] Auto-caption generation
-
-### Version 1.3.0 (Planned - Q3 2025)
-- [ ] **macOS support** (Boot Camp required for League of Legends)
-- [ ] TikTok upload integration
-- [ ] Multi-account support (multiple YouTube channels)
-- [ ] Scheduled uploads
-
-### Version 2.0.0 (Future - Q4 2025)
-- [ ] Support for other Riot Games (Valorant, Teamfight Tactics, Legends of Runeterra)
-- [ ] Live streaming integration
-- [ ] Mobile companion app
-- [ ] Cloud-based video rendering
+- **Core**: Tauri 2.0, Rust (Tokio)
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Shadcn/UI
+- **Video Engine**: FFmpeg (Sidecar Pattern), Windows Media Foundation
+- **Integration**: LCU API (League Client Update), Live Client Data API
 
 ---
 
-## 📄 License
+## 📄 라이선스
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+이 프로젝트는 MIT 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
 
----
-
-## 🤝 Support
-
-- **Issues**: [GitHub Issues](https://github.com/KhakiSkech/lolshorts/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/KhakiSkech/lolshorts/discussions)
-- **Email**: support@lolshorts.com
-
----
-
-## 📚 Documentation
-
-- [Installation Guide](docs/INSTALLATION.md)
-- [User Manual](docs/USER_MANUAL.md)
-- [Developer Guide](docs/DEVELOPER_GUIDE.md)
-- [API Documentation](docs/API.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-
----
-
-## 🙏 Acknowledgments
-
-- **Riot Games** - For League of Legends and the LCU API
-- **FFmpeg** - Video processing library
-- **Tauri** - Desktop application framework
-- **shadcn/ui** - Beautiful UI components
-
----
-
-## ⚖️ Legal Notice
-
-LoLShorts is not endorsed by Riot Games and does not reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
-
-This application complies with Riot Games' [Third Party Application Policy](https://developer.riotgames.com/policies/general).
-
----
+<br>
 
 <div align="center">
-
-Made with ❤️ by the LoLShorts Team
-
-[Website](https://lolshorts.com) • [Twitter](https://twitter.com/lolshorts) • [Discord](https://discord.gg/lolshorts)
-
+  Made with ❤️ by the LoLShorts Team
 </div>

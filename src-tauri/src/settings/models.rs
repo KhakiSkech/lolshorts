@@ -15,6 +15,12 @@ pub struct RecordingSettings {
     pub auto_start_with_league: bool,
     pub minimize_to_tray: bool,
     pub show_notifications: bool,
+    #[serde(default = "default_show_replay_popup")]
+    pub show_replay_popup: bool,
+}
+
+fn default_show_replay_popup() -> bool {
+    true
 }
 
 impl Default for RecordingSettings {
@@ -30,6 +36,7 @@ impl Default for RecordingSettings {
             auto_start_with_league: true,
             minimize_to_tray: true,
             show_notifications: true,
+            show_replay_popup: true,
         }
     }
 }
@@ -149,7 +156,7 @@ pub struct VideoSettings {
     pub encoder: EncoderPreference,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Resolution {
     R1920x1080, // 1080p (추천)
@@ -157,7 +164,7 @@ pub enum Resolution {
     R3840x2160, // 4K
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum FrameRate {
     Fps30,
@@ -166,7 +173,7 @@ pub enum FrameRate {
     Fps144,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum BitratePreset {
     Low,         // 10 Mbps (720p60)
@@ -176,7 +183,7 @@ pub enum BitratePreset {
     Custom(u32), // 사용자 지정 (kbps)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum VideoCodec {
     H264, // 호환성 최고
@@ -184,7 +191,7 @@ pub enum VideoCodec {
     Av1,  // 차세대 (실험적)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum EncoderPreference {
     Auto,     // 자동 선택 (추천)
@@ -206,11 +213,48 @@ impl Default for VideoSettings {
     }
 }
 
+impl VideoSettings {
+    /// Convert resolution to (width, height) tuple
+    pub fn get_resolution(&self) -> (u32, u32) {
+        match self.resolution {
+            Resolution::R1920x1080 => (1920, 1080),
+            Resolution::R2560x1440 => (2560, 1440),
+            Resolution::R3840x2160 => (3840, 2160),
+        }
+    }
+
+    /// Convert frame rate to u32
+    pub fn get_fps(&self) -> u32 {
+        match self.frame_rate {
+            FrameRate::Fps30 => 30,
+            FrameRate::Fps60 => 60,
+            FrameRate::Fps120 => 120,
+            FrameRate::Fps144 => 144,
+        }
+    }
+
+    /// Convert bitrate preset to actual bitrate in bps
+    pub fn get_bitrate(&self) -> u32 {
+        match &self.bitrate_preset {
+            BitratePreset::Low => 10_000_000,      // 10 Mbps
+            BitratePreset::Medium => 20_000_000,   // 20 Mbps
+            BitratePreset::High => 40_000_000,     // 40 Mbps
+            BitratePreset::VeryHigh => 80_000_000, // 80 Mbps
+            BitratePreset::Custom(kbps) => kbps * 1000, // Convert kbps to bps
+        }
+    }
+
+    /// Check if using H.265 codec
+    pub fn is_h265(&self) -> bool {
+        matches!(self.codec, VideoCodec::H265)
+    }
+}
+
 // ============================================================================
 // Audio Settings
 // ============================================================================
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AudioSettings {
     // 마이크 녹음
     pub record_microphone: bool,
@@ -227,14 +271,14 @@ pub struct AudioSettings {
     pub bitrate: AudioBitrate,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum SampleRate {
     Hz44100,
     Hz48000, // 추천
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum AudioBitrate {
     Kbps128,
@@ -256,6 +300,32 @@ impl Default for AudioSettings {
 
             sample_rate: SampleRate::Hz48000,
             bitrate: AudioBitrate::Kbps192,
+        }
+    }
+}
+
+impl AudioSettings {
+    /// Convert to recording::audio::AudioConfig
+    pub fn to_audio_config(&self) -> crate::recording::audio::AudioConfig {
+        crate::recording::audio::AudioConfig {
+            record_microphone: self.record_microphone,
+            microphone_device: self.microphone_device.clone(),
+            microphone_volume: self.microphone_volume,
+
+            record_system_audio: self.record_system_audio,
+            system_audio_device: self.system_audio_device.clone(),
+            system_audio_volume: self.system_audio_volume,
+
+            sample_rate: match self.sample_rate {
+                SampleRate::Hz44100 => 44100,
+                SampleRate::Hz48000 => 48000,
+            },
+            bitrate: match self.bitrate {
+                AudioBitrate::Kbps128 => 128,
+                AudioBitrate::Kbps192 => 192,
+                AudioBitrate::Kbps256 => 256,
+                AudioBitrate::Kbps320 => 320,
+            },
         }
     }
 }
@@ -371,7 +441,7 @@ mod tests {
         assert!(settings.event_filter.record_kills);
         assert!(settings.event_filter.record_multikills);
         assert!(!settings.event_filter.record_deaths);
-        assert_eq!(settings.event_filter.min_priority, 2);
+        assert_eq!(settings.event_filter.min_priority, 1);
 
         // Game mode defaults
         assert!(settings.game_mode.record_ranked_solo);

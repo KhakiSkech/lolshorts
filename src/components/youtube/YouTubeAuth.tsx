@@ -95,7 +95,7 @@ export function YouTubeAuth() {
               <div>
                 <p className="text-sm font-medium">{t('youtube.auth.signedInAs')}</p>
                 <p className="text-sm text-muted-foreground">
-                  {authStatus.email || 'Unknown'}
+                  {t('youtube.auth.youtubeAccount')}
                 </p>
                 {authStatus.expires_at && (
                   <p className="text-xs text-muted-foreground mt-1">

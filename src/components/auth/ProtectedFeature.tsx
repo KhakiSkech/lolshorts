@@ -1,8 +1,10 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AuthModal } from "./AuthModal";
 
 interface ProtectedFeatureProps {
   children: ReactNode;
@@ -19,7 +21,9 @@ export function ProtectedFeature({
   fallback,
   onUpgrade,
 }: ProtectedFeatureProps) {
+  const { t } = useTranslation();
   const { isAuthenticated, user } = useAuthStore();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Not authenticated
   if (!isAuthenticated || !user) {
@@ -28,29 +32,41 @@ export function ProtectedFeature({
     }
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            🔒 Authentication Required
-          </CardTitle>
-          <CardDescription>
-            Please login to access {featureName}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Create an account or login to unlock all features
-          </p>
-          <Button onClick={() => {/* Open auth modal */}} className="w-full">
-            Login / Sign Up
-          </Button>
-        </CardContent>
-      </Card>
+      <>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🔒 {t('auth.authenticationRequired')}
+            </CardTitle>
+            <CardDescription>
+              {t('auth.pleaseLoginToAccess', { feature: featureName })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              {t('auth.createAccountOrLogin')}
+            </p>
+            <Button
+              onClick={() => setAuthModalOpen(true)}
+              className="w-full"
+              data-testid="open-auth-modal-button"
+            >
+              {t('auth.loginSignup')}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <AuthModal
+          open={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          defaultMode="login"
+        />
+      </>
     );
   }
 
   // Authenticated but needs PRO
-  if (requiresPro && user.tier !== "Pro") {
+  if (requiresPro && user.tier !== "PRO") {
     if (fallback) {
       return <>{fallback}</>;
     }
@@ -99,10 +115,10 @@ export function useFeatureAccess() {
 
   return {
     isAuthenticated,
-    isPro: user?.tier === "Pro",
+    isPro: user?.tier === "PRO",
     canAccess: (requiresPro: boolean = false) => {
       if (!isAuthenticated) return false;
-      if (requiresPro && user?.tier !== "Pro") return false;
+      if (requiresPro && user?.tier !== "PRO") return false;
       return true;
     },
   };

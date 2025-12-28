@@ -56,8 +56,8 @@ pub type Result<T> = std::result::Result<T, SecurityError>;
 /// - Path existence (optional)
 ///
 /// # Example
-/// ```
-/// use crate::utils::security;
+/// ```ignore
+/// use lolshorts::utils::security;
 ///
 /// let safe_path = security::validate_path(
 ///     "C:\\Users\\John\\Videos\\clip.mp4",

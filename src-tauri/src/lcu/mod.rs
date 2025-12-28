@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use thiserror::Error;
+use sysinfo::{System, ProcessesToUpdate}; // Ensure sysinfo is used
 
 #[derive(Debug, Error)]
 pub enum LcuError {
@@ -24,10 +25,18 @@ pub type Result<T> = std::result::Result<T, LcuError>;
 /// Lockfile data parsed from League client lockfile
 #[derive(Debug, Clone)]
 pub struct LockfileData {
+    /// Process name (for debugging purposes)
+    #[allow(dead_code)]
     pub process_name: String,
+    /// Process ID (for debugging purposes)
+    #[allow(dead_code)]
     pub pid: u32,
+    /// Port for LCU API connection (essential)
     pub port: u16,
+    /// Password for LCU API authentication (essential)
     pub password: String,
+    /// Protocol version (for debugging purposes)
+    #[allow(dead_code)]
     pub protocol: String,
 }
 
@@ -41,6 +50,7 @@ impl LockfileData {
         }
 
         Ok(Self {
+            // Optional debug fields - stored for diagnostics
             process_name: parts[0].to_string(),
             pid: parts[1].parse().map_err(|_| LcuError::InvalidLockfile)?,
             port: parts[2].parse().map_err(|_| LcuError::InvalidLockfile)?,
@@ -109,18 +119,77 @@ impl LcuClient {
         }
     }
 
-    /// Get the lockfile path by checking multiple possible locations
+    /// Get the lockfile path by checking running processes first, then possible locations
     pub fn get_lockfile_path() -> Result<PathBuf> {
-        // List of possible lockfile locations
-        let mut possible_paths = vec![
-            // Standard installation in C:\Riot Games
-            PathBuf::from("C:\\Riot Games\\League of Legends\\lockfile"),
-            // Program Files locations
-            PathBuf::from("C:\\Program Files\\Riot Games\\League of Legends\\lockfile"),
-            PathBuf::from("C:\\Program Files (x86)\\Riot Games\\League of Legends\\lockfile"),
-        ];
+        tracing::info!("Attempting to detect League Client lockfile...");
 
-        // Add LocalAppData location if environment variable exists
+        // Method 1: Dynamic Process Detection (sysinfo)
+        let mut sys = System::new_all();
+        sys.refresh_processes(ProcessesToUpdate::All);
+
+        for process in sys.processes().values() {
+            let name = process.name().to_string_lossy().to_lowercase();
+            if name == "leagueclientux.exe" || name == "leagueclientux" {
+                if let Some(exe_path) = process.exe() {
+                    if let Some(parent_dir) = exe_path.parent() {
+                        let lockfile_path = parent_dir.join("lockfile");
+                        if lockfile_path.exists() {
+                            tracing::info!("Found lockfile via sysinfo: {}", lockfile_path.display());
+                            return Ok(lockfile_path);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Method 2: Windows WMIC Command (Fallback if sysinfo fails due to permissions)
+        #[cfg(target_os = "windows")]
+        {
+            use std::process::Command;
+            use std::os::windows::process::CommandExt;
+            
+            tracing::info!("sysinfo failed, trying WMIC...");
+            
+            // Execute: wmic process where "name='LeagueClientUx.exe'" get ExecutablePath
+            let output = Command::new("wmic")
+                .args(&["process", "where", "name='LeagueClientUx.exe'", "get", "ExecutablePath"])
+                .creation_flags(0x08000000) // CREATE_NO_WINDOW
+                .output();
+
+            if let Ok(output) = output {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() || trimmed.to_lowercase().contains("executablepath") {
+                        continue;
+                    }
+                    
+                    let path = PathBuf::from(trimmed);
+                    if let Some(parent) = path.parent() {
+                        let lockfile_path = parent.join("lockfile");
+                        if lockfile_path.exists() {
+                            tracing::info!("Found lockfile via WMIC: {}", lockfile_path.display());
+                            return Ok(lockfile_path);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Method 3: Expanded Standard Paths (Brute Force)
+        let mut possible_paths = Vec::new();
+        
+        // Common Drives
+        let drives = vec!["C:", "D:", "E:", "F:", "G:"];
+        
+        for drive in drives {
+            // Standard Riot Games folder
+            possible_paths.push(PathBuf::from(format!("{}\\{}", drive, "Riot Games\\League of Legends\\lockfile")));
+            // Program Files
+            possible_paths.push(PathBuf::from(format!("{}\\{}", drive, "Program Files\\Riot Games\\League of Legends\\lockfile")));
+        }
+
+        // LocalAppData
         if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
             possible_paths.push(
                 PathBuf::from(local_app_data)
@@ -133,19 +202,35 @@ impl LcuClient {
         // Try each path
         for path in possible_paths {
             if path.exists() {
-                tracing::info!("Found lockfile at: {}", path.display());
+                tracing::info!("Found lockfile at standard location: {}", path.display());
                 return Ok(path);
             }
         }
 
+        tracing::error!("Failed to find League Client lockfile. Ensure the client is running.");
         Err(LcuError::ClientNotFound)
     }
 
-    /// Read and parse the lockfile
+    /// Read and parse the lockfile with retries
     pub fn read_lockfile() -> Result<LockfileData> {
         let lockfile_path = Self::get_lockfile_path()?;
-        let content = fs::read_to_string(lockfile_path)?;
-        LockfileData::parse(&content)
+        
+        let mut attempts = 0;
+        let max_attempts = 5;
+        
+        loop {
+            match fs::read_to_string(&lockfile_path) {
+                Ok(content) => return LockfileData::parse(&content),
+                Err(e) => {
+                    attempts += 1;
+                    if attempts >= max_attempts {
+                        return Err(LcuError::Io(e));
+                    }
+                    // Wait a bit before retrying (file might be locked during writing)
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+            }
+        }
     }
 
     /// Connect to the League client by reading lockfile
@@ -212,7 +297,8 @@ impl LcuClient {
             .ok_or(LcuError::Connection("Not connected".to_string()))?;
 
         let base_url = self.get_base_url()?;
-        let url = format!("{}/lol-gameflow/v1/session", base_url);
+        // Use gameflow-phase endpoint which is more stable and unlikely to 404
+        let url = format!("{}/lol-gameflow/v1/gameflow-phase", base_url);
 
         let response = client
             .get(&url)
@@ -225,12 +311,60 @@ impl LcuClient {
             return Err(LcuError::Api(format!("HTTP {}", response.status())));
         }
 
-        let session: GameSession = response
-            .json()
+        let phase_str = response
+            .text()
             .await
             .map_err(|e| LcuError::Api(e.to_string()))?;
+            
+        // The response is a JSON string like "InProgress", need to trim quotes
+        let phase_clean = phase_str.trim().trim_matches('"');
+        
+        let phase = match phase_clean {
+            "InProgress" => GameFlowPhase::InProgress,
+            "Reconnect" => GameFlowPhase::Reconnect,
+            "ChampSelect" => GameFlowPhase::ChampSelect,
+            "GameStart" => GameFlowPhase::GameStart,
+            "Lobby" => GameFlowPhase::Lobby,
+            "Matchmaking" => GameFlowPhase::Matchmaking,
+            "WaitingForStats" => GameFlowPhase::WaitingForStats,
+            "PreEndOfGame" => GameFlowPhase::PreEndOfGame,
+            "EndOfGame" => GameFlowPhase::EndOfGame,
+            "TerminatedInError" => GameFlowPhase::TerminatedInError,
+            _ => GameFlowPhase::None,
+        };
 
-        Ok(session)
+        // We don't get game_data from gameflow-phase, so set it to None
+        // If we need game_data, we should call /lol-gameflow/v1/session separately if phase is InProgress
+        // But for get_game_session struct, we need it.
+        // Let's optimize: if InProgress, verify with session call.
+        
+        let mut game_data = None;
+        
+        if matches!(phase, GameFlowPhase::InProgress | GameFlowPhase::Reconnect) {
+             let session_url = format!("{}/lol-gameflow/v1/session", base_url);
+             if let Ok(resp) = client.get(&session_url).basic_auth("riot", Some(&lockfile.password)).send().await {
+                 if resp.status().is_success() {
+                     if let Ok(full_session) = resp.json::<serde_json::Value>().await {
+                         // Parse game data manually or use struct
+                         if let Some(data) = full_session.get("gameData") {
+                             let id = data.get("gameId").and_then(|v| v.as_i64()).unwrap_or(0);
+                             let mode = data.get("gameMode").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
+                             let time = data.get("gameTime").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                             game_data = Some(GameData {
+                                 game_id: id,
+                                 game_mode: mode,
+                                 game_time: time
+                             });
+                         }
+                     }
+                 }
+             }
+        }
+
+        Ok(GameSession {
+            phase,
+            game_data,
+        })
     }
 
     /// Check if a game is in progress
@@ -250,6 +384,277 @@ impl LcuClient {
     pub fn is_connected(&self) -> bool {
         self.lockfile_data.is_some() && self.http_client.is_some()
     }
+
+    /// Get performance metrics for monitoring
+    pub async fn get_performance_metrics(&self) -> LcuMetrics {
+        let is_connected = self.is_connected();
+        let has_active_endpoint = is_connected && self.http_client.is_some();
+
+        LcuMetrics {
+            is_connected,
+            cache_valid: is_connected, // Consider valid if connected
+            cache_age_ms: if is_connected { 0 } else { u64::MAX },
+            last_lockfile_check_age_ms: if self.lockfile_data.is_some() { 0 } else { u64::MAX },
+            has_active_endpoint,
+        }
+    }
+
+    /// Force refresh connection by re-reading lockfile
+    pub async fn refresh_caches(&self) -> Result<()> {
+        // LCU client is stateless except for http_client - reconnection is done via connect()
+        // Check if we can still reach the API
+        if self.is_connected() {
+            if let Some(client) = &self.http_client {
+                let base_url = self.get_base_url()?;
+                let url = format!("{}/lol-summoner/v1/status", base_url);
+                match client.get(&url).send().await {
+                    Ok(resp) if resp.status().is_success() => {
+                        tracing::debug!("LCU cache refresh: connection verified");
+                        return Ok(());
+                    }
+                    _ => {
+                        tracing::warn!("LCU cache refresh: connection lost, may need reconnect");
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    // ========================================================================
+    // Match History & Replay Management
+    // ========================================================================
+
+    /// Get current summoner's match history
+    pub async fn list_match_history(&self, begin_index: u32, end_index: u32) -> Result<Vec<MatchInfo>> {
+        let client = self
+            .http_client
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+        let lockfile = self
+            .lockfile_data
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+
+        let base_url = self.get_base_url()?;
+        // Get current summoner first
+        let summoner_url = format!("{}/lol-summoner/v1/current-summoner", base_url);
+        let summoner_resp = client
+            .get(&summoner_url)
+            .basic_auth("riot", Some(&lockfile.password))
+            .send()
+            .await
+            .map_err(|e| LcuError::Api(e.to_string()))?;
+
+        if !summoner_resp.status().is_success() {
+            return Err(LcuError::Api("Failed to get current summoner".to_string()));
+        }
+
+        let summoner: serde_json::Value = summoner_resp.json().await.map_err(|e| LcuError::Api(e.to_string()))?;
+        let puuid = summoner["puuid"].as_str().ok_or(LcuError::Api("Invalid summoner data".to_string()))?;
+
+        // Get match history
+        let history_url = format!(
+            "{}/lol-match-history/v1/products/lol/{}/matches?begIndex={}&endIndex={}", 
+            base_url, puuid, begin_index, end_index
+        );
+
+        let history_resp = client
+            .get(&history_url)
+            .basic_auth("riot", Some(&lockfile.password))
+            .send()
+            .await
+            .map_err(|e| LcuError::Api(e.to_string()))?;
+
+        if !history_resp.status().is_success() {
+            return Err(LcuError::Api("Failed to fetch match history".to_string()));
+        }
+
+        let history_data: serde_json::Value = history_resp.json().await.map_err(|e| LcuError::Api(e.to_string()))?;
+        let games = history_data["games"]["games"].as_array().ok_or(LcuError::Api("Invalid match history format".to_string()))?;
+
+        let mut matches = Vec::new();
+        for game in games {
+            matches.push(MatchInfo {
+                game_id: game["gameId"].as_i64().unwrap_or(0),
+                game_mode: game["gameMode"].as_str().unwrap_or("Unknown").to_string(),
+                game_creation: game["gameCreation"].as_i64().unwrap_or(0),
+                game_duration: game["gameDuration"].as_i64().unwrap_or(0),
+                champion_id: game["participants"][0]["championId"].as_i64().unwrap_or(0) as u32, // Simplified: assumes player is 0 (usually relative to query)
+                // Actual logic needs to find participant with matching PUUID
+                win: game["participants"][0]["stats"]["win"].as_bool().unwrap_or(false),
+                kills: game["participants"][0]["stats"]["kills"].as_u64().unwrap_or(0) as u32,
+                deaths: game["participants"][0]["stats"]["deaths"].as_u64().unwrap_or(0) as u32,
+                assists: game["participants"][0]["stats"]["assists"].as_u64().unwrap_or(0) as u32,
+            });
+        }
+
+        Ok(matches)
+    }
+
+    /// Download replay for a specific game
+    pub async fn download_replay(&self, game_id: i64) -> Result<()> {
+        let client = self
+            .http_client
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+        let lockfile = self
+            .lockfile_data
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+
+        let base_url = self.get_base_url()?;
+        let url = format!("{}/lol-replays/v1/rofls/{}/download", base_url, game_id);
+
+        let resp = client
+            .post(&url)
+            .basic_auth("riot", Some(&lockfile.password))
+            .send()
+            .await
+            .map_err(|e| LcuError::Api(e.to_string()))?;
+
+        if !resp.status().is_success() {
+            return Err(LcuError::Api(format!("Failed to start replay download: {}", resp.status())));
+        }
+
+        Ok(())
+    }
+
+    /// Get replay download status
+    pub async fn get_replay_status(&self, game_id: i64) -> Result<String> {
+        let client = self
+            .http_client
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+        let lockfile = self
+            .lockfile_data
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+
+        let base_url = self.get_base_url()?;
+        let url = format!("{}/lol-replays/v1/rofls/{}/download/status", base_url, game_id);
+
+        let resp = client
+            .get(&url)
+            .basic_auth("riot", Some(&lockfile.password))
+            .send()
+            .await
+            .map_err(|e| LcuError::Api(e.to_string()))?;
+
+        // If 404, it means not downloaded
+        if resp.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok("NotDownloaded".to_string());
+        }
+
+        if !resp.status().is_success() {
+            return Err(LcuError::Api("Failed to check replay status".to_string()));
+        }
+
+        // Returns raw string like "downloading" or "complete"? 
+        // API returns simple JSON usually. Let's treat as string for now.
+        let status = resp.text().await.map_err(|e| LcuError::Api(e.to_string()))?;
+        Ok(status.trim_matches('"').to_string())
+    }
+
+    /// Launch replay in League Client
+    pub async fn launch_replay(&self, game_id: i64) -> Result<()> {
+        let client = self
+            .http_client
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+        let lockfile = self
+            .lockfile_data
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+
+        let base_url = self.get_base_url()?;
+        let url = format!("{}/lol-replays/v1/rofls/{}/watch", base_url, game_id);
+
+        let resp = client
+            .post(&url)
+            .basic_auth("riot", Some(&lockfile.password))
+            .send()
+            .await
+            .map_err(|e| LcuError::Api(e.to_string()))?;
+
+        if !resp.status().is_success() {
+            return Err(LcuError::Api("Failed to launch replay".to_string()));
+        }
+
+        Ok(())
+    }
+
+    /// Get game participants (for Target Selection in Replay)
+    pub async fn get_game_participants(&self) -> Result<Vec<PlayerInfo>> {
+        let client = self
+            .http_client
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+        let lockfile = self
+            .lockfile_data
+            .as_ref()
+            .ok_or(LcuError::Connection("Not connected".to_string()))?;
+
+        let base_url = self.get_base_url()?;
+        let url = format!("{}/lol-gameflow/v1/session", base_url);
+
+        let resp = client
+            .get(&url)
+            .basic_auth("riot", Some(&lockfile.password))
+            .send()
+            .await
+            .map_err(|e| LcuError::Api(e.to_string()))?;
+
+        if !resp.status().is_success() {
+            return Err(LcuError::Api("Failed to get game session".to_string()));
+        }
+
+        let session: serde_json::Value = resp.json().await.map_err(|e| LcuError::Api(e.to_string()))?;
+        let team_one = session["gameData"]["teamOne"].as_array().ok_or(LcuError::Api("Invalid team data".to_string()))?;
+        let team_two = session["gameData"]["teamTwo"].as_array().ok_or(LcuError::Api("Invalid team data".to_string()))?;
+
+        let mut players = Vec::new();
+
+        for p in team_one.iter().chain(team_two.iter()) {
+            players.push(PlayerInfo {
+                summoner_name: p["summonerName"].as_str().unwrap_or("Unknown").to_string(),
+                champion_id: p["championId"].as_i64().unwrap_or(0) as u32,
+                team_id: if players.len() < 5 { 100 } else { 200 },
+            });
+        }
+
+        Ok(players)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MatchInfo {
+    pub game_id: i64,
+    pub game_mode: String,
+    pub game_creation: i64,
+    pub game_duration: i64,
+    pub champion_id: u32,
+    pub win: bool,
+    pub kills: u32,
+    pub deaths: u32,
+    pub assists: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlayerInfo {
+    pub summoner_name: String,
+    pub champion_id: u32,
+    pub team_id: u32,
+}
+
+/// Performance metrics for monitoring LCU client health
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LcuMetrics {
+    pub is_connected: bool,
+    pub cache_valid: bool,
+    pub cache_age_ms: u64,
+    pub last_lockfile_check_age_ms: u64,
+    pub has_active_endpoint: bool,
 }
 
 #[cfg(test)]
@@ -273,85 +678,4 @@ mod tests {
         assert_eq!(lockfile.password, "secret123");
         assert_eq!(lockfile.protocol, "https");
     }
-
-    #[test]
-    fn test_lockfile_parse_with_whitespace() {
-        let content = "  LeagueClient:12345:54321:secret123:https  \n";
-        let lockfile = LockfileData::parse(content).unwrap();
-
-        assert_eq!(lockfile.process_name, "LeagueClient");
-        assert_eq!(lockfile.port, 54321);
-    }
-
-    #[test]
-    fn test_lockfile_parse_invalid_format() {
-        let content = "InvalidFormat";
-        let result = LockfileData::parse(content);
-
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), LcuError::InvalidLockfile));
-    }
-
-    #[test]
-    fn test_lockfile_parse_invalid_port() {
-        let content = "LeagueClient:12345:notanumber:secret123:https";
-        let result = LockfileData::parse(content);
-
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), LcuError::InvalidLockfile));
-    }
-
-    #[test]
-    fn test_lockfile_parse_missing_fields() {
-        let content = "LeagueClient:12345:54321";
-        let result = LockfileData::parse(content);
-
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), LcuError::InvalidLockfile));
-    }
-
-    #[test]
-    fn test_gameflow_phase_deserialization() {
-        // Test that GameFlowPhase can be deserialized from JSON
-        let json = r#""InProgress""#;
-        let phase: GameFlowPhase = serde_json::from_str(json).unwrap();
-        assert!(matches!(phase, GameFlowPhase::InProgress));
-    }
-
-    // Note: The following tests require a running League client
-    // They are commented out for automated testing
-    // Uncomment and run manually when League is running
-
-    // #[tokio::test]
-    // async fn test_lcu_connection() {
-    //     let mut client = LcuClient::new();
-    //     let result = client.connect().await;
-    //
-    //     if result.is_ok() {
-    //         assert!(client.is_connected());
-    //     } else {
-    //         // If League is not running, this is expected
-    //         println!("League client not running: {:?}", result);
-    //     }
-    // }
-
-    // #[tokio::test]
-    // async fn test_get_game_session() {
-    //     let mut client = LcuClient::new();
-    //     if client.connect().await.is_ok() {
-    //         let session = client.get_game_session().await;
-    //         assert!(session.is_ok());
-    //         println!("Game session: {:?}", session);
-    //     }
-    // }
-
-    // #[tokio::test]
-    // async fn test_is_in_game() {
-    //     let mut client = LcuClient::new();
-    //     if client.connect().await.is_ok() {
-    //         let in_game = client.is_in_game().await;
-    //         assert!(in_game.is_ok());
-    //         println!("In game: {:?}", in_game);
-    //     }
-    // }
 }

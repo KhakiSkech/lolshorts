@@ -1,56 +1,16 @@
-import { invoke } from '@tauri-apps/api/core';
 import { useState, useCallback } from 'react';
-
-export interface GameMetadata {
-  game_id: string;
-  summoner_name: string;
-  champion: string;
-  game_mode: string;
-  game_start_time: string;
-  game_duration: number;
-  result: string;
-  kills: number;
-  deaths: number;
-  assists: number;
-  created_at: string;
-}
-
-export interface EventData {
-  event_id: number;
-  event_name: string;
-  event_time: number;
-  killer_name?: string;
-  victim_name?: string;
-  assisters: string[];
-  priority: number;
-}
-
-export interface ClipMetadata {
-  clip_id: string;
-  event_id: number;
-  file_path: string;
-  thumbnail_path?: string;
-  start_time: number;
-  end_time: number;
-  duration: number;
-  created_at: string;
-}
-
-export interface StorageStats {
-  total_games: number;
-  total_clips: number;
-  total_size_bytes: number;
-}
+import { storageApi } from '@/api/storage';
+import { Game, GameMetadata, EventData, ClipMetadata, StorageStats } from '@/types/storage';
 
 export function useStorage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const listGames = useCallback(async (): Promise<string[]> => {
+  const listGames = useCallback(async (): Promise<Game[]> => {
     setLoading(true);
     setError(null);
     try {
-      const games = await invoke<string[]>('list_games');
+      const games = await storageApi.listGames();
       return games;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -65,7 +25,7 @@ export function useStorage() {
     setLoading(true);
     setError(null);
     try {
-      const metadata = await invoke<GameMetadata>('get_game_metadata', { gameId });
+      const metadata = await storageApi.getGameMetadata(gameId);
       return metadata;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -80,11 +40,14 @@ export function useStorage() {
     setLoading(true);
     setError(null);
     try {
-      const gameIds = await invoke<string[]>('list_games');
-      const games = await Promise.all(
-        gameIds.map(gameId => invoke<GameMetadata>('get_game_metadata', { gameId }))
+      const games = await storageApi.listGames(); // Returns Game[]
+      const detailedGames = await Promise.all(
+        games.map(async (game) => {
+          // Fetch GameMetadata for each Game
+          return await storageApi.getGameMetadata(game.game_id);
+        })
       );
-      return games;
+      return detailedGames;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
@@ -98,7 +61,7 @@ export function useStorage() {
     setLoading(true);
     setError(null);
     try {
-      await invoke('save_game_metadata', { gameId, metadata });
+      await storageApi.saveGameMetadata(gameId, metadata);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
@@ -112,7 +75,7 @@ export function useStorage() {
     setLoading(true);
     setError(null);
     try {
-      const events = await invoke<EventData[]>('get_game_events', { gameId });
+      const events = await storageApi.getGameEvents(gameId);
       return events;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -127,7 +90,7 @@ export function useStorage() {
     setLoading(true);
     setError(null);
     try {
-      await invoke('save_game_events', { gameId, events });
+      await storageApi.saveGameEvents(gameId, events);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
@@ -141,7 +104,7 @@ export function useStorage() {
     setLoading(true);
     setError(null);
     try {
-      await invoke('save_clip_metadata', { gameId, clip });
+      await storageApi.saveClipMetadata(gameId, clip);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
@@ -155,7 +118,7 @@ export function useStorage() {
     setLoading(true);
     setError(null);
     try {
-      await invoke('delete_game', { gameId });
+      await storageApi.deleteGame(gameId);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
@@ -169,7 +132,7 @@ export function useStorage() {
     setLoading(true);
     setError(null);
     try {
-      const stats = await invoke<StorageStats>('get_storage_stats');
+      const stats = await storageApi.getStorageStats();
       return stats;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);

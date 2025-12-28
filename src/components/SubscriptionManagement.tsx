@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from 'react-i18next';
-import { invoke } from "@tauri-apps/api/core";
+import { paymentApi, SubscriptionDetails } from "@/api/payment";
 import {
   Dialog,
   DialogContent,
@@ -19,9 +19,9 @@ import {
   CheckCircle2,
   XCircle,
   Calendar,
-  DollarSign,
   Loader2
 } from "lucide-react";
+import { getErrorMessage } from "@/lib/utils";
 
 interface SubscriptionManagementProps {
   isOpen: boolean;
@@ -30,15 +30,7 @@ interface SubscriptionManagementProps {
   expiresAt: string | null;
 }
 
-interface SubscriptionDetails {
-  subscription_id: string;
-  tier: "PRO";
-  period: "MONTHLY" | "YEARLY";
-  amount: number;
-  status: "active" | "cancelled" | "expired";
-  next_billing_date: string | null;
-  created_at: string;
-}
+// SubscriptionDetails interface removed (imported from api)
 
 export function SubscriptionManagement({
   isOpen,
@@ -65,11 +57,11 @@ export function SubscriptionManagement({
     setError(null);
 
     try {
-      const details = await invoke<SubscriptionDetails>("get_subscription_details");
+      const details = await paymentApi.getSubscriptionDetails();
       setSubscription(details);
     } catch (err) {
       console.error("Failed to load subscription:", err);
-      setError(err as string);
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +72,7 @@ export function SubscriptionManagement({
     setError(null);
 
     try {
-      await invoke("cancel_subscription");
+      await paymentApi.cancelSubscription();
 
       // Refresh subscription details
       await loadSubscriptionDetails();
@@ -91,7 +83,7 @@ export function SubscriptionManagement({
       alert(t('settings.account.cancelSuccess'));
     } catch (err) {
       console.error("Failed to cancel subscription:", err);
-      setError(err as string);
+      setError(getErrorMessage(err));
     } finally {
       setIsCancelling(false);
     }
@@ -106,11 +98,7 @@ export function SubscriptionManagement({
     });
   };
 
-  const formatAmount = (amount: number): string => {
-    return `₩${amount.toLocaleString("ko-KR")}`;
-  };
-
-  const getPeriodLabel = (period: "MONTHLY" | "YEARLY"): string => {
+  const getPeriodLabel = (period: string): string => {
     return period === "MONTHLY" ? "Monthly" : "Yearly";
   };
 
@@ -171,10 +159,9 @@ export function SubscriptionManagement({
               {/* Subscription Status */}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Status</span>
-                <Badge variant={subscription.status === "active" ? "default" : "destructive"}>
-                  {subscription.status === "active" && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                  {subscription.status === "cancelled" && <XCircle className="w-3 h-3 mr-1" />}
-                  {subscription.status.toUpperCase()}
+                <Badge variant={subscription.is_active ? "default" : "destructive"}>
+                  {subscription.is_active ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                  {subscription.is_active ? "ACTIVE" : "INACTIVE"}
                 </Badge>
               </div>
 
@@ -184,58 +171,34 @@ export function SubscriptionManagement({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Plan</span>
-                  <span className="font-medium">PRO - {getPeriodLabel(subscription.period)}</span>
+                  <span className="font-medium">PRO - {getPeriodLabel(subscription.tier)}</span>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    <DollarSign className="w-4 h-4" />
-                    Amount
-                  </span>
-                  <span className="font-medium">{formatAmount(subscription.amount)}</span>
-                </div>
-
-                {subscription.next_billing_date && subscription.status === "active" && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      Next Billing Date
-                    </span>
-                    <span className="font-medium">{formatDate(subscription.next_billing_date)}</span>
-                  </div>
-                )}
-
-                {expiresAt && subscription.status === "cancelled" && (
+                {subscription.expires_at && !subscription.auto_renew && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
                       Access Until
                     </span>
-                    <span className="font-medium">{formatDate(expiresAt)}</span>
+                    <span className="font-medium">{formatDate(subscription.expires_at)}</span>
                   </div>
                 )}
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Subscribed Since</span>
-                  <span className="font-medium">{formatDate(subscription.created_at)}</span>
-                </div>
               </div>
 
               <Separator />
 
               {/* Cancellation Info */}
-              {subscription.status === "cancelled" ? (
+              {!subscription.auto_renew ? (
                 <Alert>
                   <AlertCircle className="w-4 h-4" />
                   <AlertDescription>
-                    Your subscription has been cancelled. You will retain PRO access until {expiresAt ? formatDate(expiresAt) : "the end of your billing period"}.
+                    Your subscription has been cancelled. You will retain PRO access until {expiresAt ? formatDate(expiresAt) : "expiry"}.
                   </AlertDescription>
                 </Alert>
               ) : (
                 <div className="text-sm text-muted-foreground space-y-2">
-                  <p>• Auto-renews on {subscription.next_billing_date ? formatDate(subscription.next_billing_date) : "next billing date"}</p>
+                  <p>• Auto-renews on next billing date</p>
                   <p>• Cancel anytime - keep access until end of billing period</p>
-                  <p>• Payment method: {subscription.period === "MONTHLY" ? "Monthly" : "Annual"} billing</p>
                 </div>
               )}
             </div>
@@ -253,7 +216,7 @@ export function SubscriptionManagement({
               Close
             </Button>
 
-            {subscription && subscription.status === "active" && (
+            {subscription && subscription.auto_renew && (
               <Button
                 variant="destructive"
                 onClick={() => setShowCancelConfirm(true)}
@@ -278,7 +241,7 @@ export function SubscriptionManagement({
           <Alert>
             <AlertCircle className="w-4 h-4" />
             <AlertDescription>
-              You will retain PRO access until {subscription?.next_billing_date ? formatDate(subscription.next_billing_date) : "the end of your billing period"}. After that, your account will be downgraded to FREE.
+              You will retain PRO access until the end of your billing period. After that, your account will be downgraded to FREE.
             </AlertDescription>
           </Alert>
 

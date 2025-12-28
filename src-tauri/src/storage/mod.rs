@@ -1,6 +1,5 @@
 pub mod commands;
 pub mod models;
-pub mod models_v2;
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -13,8 +12,6 @@ pub use models::{
     UploadStatus, YouTubeUploadStatus,
 };
 
-// Re-export V2 types for editor integration
-pub use models_v2::ClipMetadataV2;
 
 #[derive(Debug, Error)]
 pub enum StorageError {
@@ -85,6 +82,24 @@ impl Storage {
         let json = serde_json::to_string_pretty(metadata)?;
         fs::write(metadata_path, json)?;
 
+        Ok(())
+    }
+
+    /// Save game metadata asynchronously (optimized version)
+    pub async fn save_game_metadata_async(&self, game_id: &str, metadata: &GameMetadata) -> Result<()> {
+        let game_path = self.game_path(game_id).clone();
+
+        // Create directory asynchronously
+        tokio::fs::create_dir_all(&game_path).await?;
+
+        // Prepare JSON data
+        let json = serde_json::to_string_pretty(metadata)?;
+
+        // Write file asynchronously
+        let metadata_path = game_path.join("metadata.json");
+        tokio::fs::write(metadata_path, json).await?;
+
+        tracing::info!("Saved game metadata asynchronously: {}", game_id);
         Ok(())
     }
 
@@ -265,215 +280,7 @@ impl Storage {
         })
     }
 
-    // ========================================================================
-    // V2 Metadata Storage (For Editor Integration)
-    // ========================================================================
-
-    /// Save comprehensive clip metadata (V2) alongside video file
-    ///
-    /// This creates an individual JSON file for each clip with rich metadata
-    /// that the video editor can consume.
-    ///
-    /// File structure:
-    /// ```
-    /// clips/<game_id>/clips/
-    ///   ├── clip_xxx.mp4
-    ///   └── clip_xxx.json  ← Rich metadata
-    /// ```
-    pub fn save_clip_metadata_v2(&self, game_id: &str, clip: &ClipMetadataV2) -> Result<()> {
-        let game_clips_dir = self.game_path(game_id).join("clips");
-
-        if !game_clips_dir.exists() {
-            fs::create_dir_all(&game_clips_dir)?;
-        }
-
-        // Generate JSON path from video path
-        let video_path = Path::new(&clip.file_path);
-        let json_path = video_path.with_extension("json");
-
-        // Save individual clip JSON
-        let json = serde_json::to_string_pretty(clip)?;
-        fs::write(&json_path, json)?;
-
-        tracing::debug!("Saved V2 metadata: {:?}", json_path);
-
-        // Also update the clips.json index (lightweight reference)
-        self.update_clips_index_v2(game_id, clip)?;
-
-        Ok(())
-    }
-
-    /// Load comprehensive clip metadata (V2) for a specific clip
-    ///
-    /// Loads from individual JSON file alongside video.
-    pub fn load_clip_metadata_v2(&self, clip_path: &str) -> Result<ClipMetadataV2> {
-        let json_path = Path::new(clip_path).with_extension("json");
-
-        if !json_path.exists() {
-            return Err(StorageError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("Clip metadata not found: {:?}", json_path),
-            )));
-        }
-
-        let json = fs::read_to_string(&json_path)?;
-        let clip = serde_json::from_str(&json)?;
-
-        Ok(clip)
-    }
-
-    /// Load all V2 clip metadata for a game
-    ///
-    /// Returns list of all clips with full metadata for editor display.
-    pub fn load_all_clips_v2(&self, game_id: &str) -> Result<Vec<ClipMetadataV2>> {
-        let clips_dir = self.game_path(game_id).join("clips");
-
-        if !clips_dir.exists() {
-            return Ok(Vec::new());
-        }
-
-        let mut clips = Vec::new();
-
-        for entry in fs::read_dir(clips_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            // Only load JSON files
-            if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                if let Ok(json) = fs::read_to_string(&path) {
-                    if let Ok(clip) = serde_json::from_str::<ClipMetadataV2>(&json) {
-                        clips.push(clip);
-                    }
-                }
-            }
-        }
-
-        // Sort by created_at (most recent first)
-        clips.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-
-        Ok(clips)
-    }
-
-    /// Update the clips.json index with lightweight reference
-    ///
-    /// This maintains backward compatibility with V1 while adding V2 support.
-    fn update_clips_index_v2(&self, game_id: &str, clip: &ClipMetadataV2) -> Result<()> {
-        let game_path = self.game_path(game_id);
-
-        // Load existing V1 clips
-        let mut v1_clips = self.load_clip_metadata(game_id).unwrap_or_default();
-
-        // Convert V2 to V1 for index
-        let v1_clip = ClipMetadata {
-            file_path: clip.file_path.clone(),
-            thumbnail_path: clip.thumbnail_path.clone(),
-            event_type: clip.primary_event.event_type.clone(),
-            event_time: clip.game_time_start,
-            priority: clip.priority,
-            duration: clip.clip_duration,
-            created_at: clip.created_at,
-        };
-
-        // Add or update
-        if let Some(pos) = v1_clips
-            .iter()
-            .position(|c| c.file_path == v1_clip.file_path)
-        {
-            v1_clips[pos] = v1_clip;
-        } else {
-            v1_clips.push(v1_clip);
-        }
-
-        // Save index
-        let clips_path = game_path.join("clips.json");
-        let json = serde_json::to_string_pretty(&v1_clips)?;
-        fs::write(clips_path, json)?;
-
-        Ok(())
-    }
-
-    /// Delete V2 clip metadata (both video and JSON)
-    pub fn delete_clip_v2(&self, game_id: &str, clip_path: &str) -> Result<()> {
-        let video_path = Path::new(clip_path);
-        let json_path = video_path.with_extension("json");
-        let jpg_path = video_path.with_extension("jpg");
-
-        // Delete video file
-        if video_path.exists() {
-            fs::remove_file(video_path)?;
-            tracing::info!("Deleted video: {:?}", video_path);
-        }
-
-        // Delete JSON metadata
-        if json_path.exists() {
-            fs::remove_file(&json_path)?;
-            tracing::info!("Deleted metadata: {:?}", json_path);
-        }
-
-        // Delete thumbnail
-        if jpg_path.exists() {
-            fs::remove_file(&jpg_path)?;
-            tracing::info!("Deleted thumbnail: {:?}", jpg_path);
-        }
-
-        // Update clips.json index
-        self.delete_clip_metadata(game_id, clip_path)?;
-
-        Ok(())
-    }
-
-    /// Search clips by tags
-    pub fn search_clips_by_tags(
-        &self,
-        game_id: &str,
-        tags: &[String],
-    ) -> Result<Vec<ClipMetadataV2>> {
-        let all_clips = self.load_all_clips_v2(game_id)?;
-
-        let filtered = all_clips
-            .into_iter()
-            .filter(|clip| {
-                // Clip must have at least one matching tag
-                tags.iter().any(|tag| clip.tags.contains(tag))
-            })
-            .collect();
-
-        Ok(filtered)
-    }
-
-    /// Get clips by priority threshold
-    pub fn get_clips_by_priority(
-        &self,
-        game_id: &str,
-        min_priority: u8,
-    ) -> Result<Vec<ClipMetadataV2>> {
-        let all_clips = self.load_all_clips_v2(game_id)?;
-
-        let filtered = all_clips
-            .into_iter()
-            .filter(|clip| clip.priority >= min_priority)
-            .collect();
-
-        Ok(filtered)
-    }
-
-    /// Get favorite clips
-    pub fn get_favorite_clips(&self, game_id: &str) -> Result<Vec<ClipMetadataV2>> {
-        let all_clips = self.load_all_clips_v2(game_id)?;
-
-        let filtered = all_clips
-            .into_iter()
-            .filter(|clip| {
-                clip.annotations
-                    .as_ref()
-                    .map(|a| a.favorite)
-                    .unwrap_or(false)
-            })
-            .collect();
-
-        Ok(filtered)
-    }
-
+    
     // ========================================================================
     // Canvas Template Storage
     // ========================================================================
@@ -651,7 +458,7 @@ impl Storage {
 
         if !usage_path.exists() {
             // No usage file exists, create new
-            return Ok(AutoEditUsage::new());
+            return Ok(AutoEditUsage::default());
         }
 
         let json = fs::read_to_string(&usage_path)?;
@@ -913,13 +720,6 @@ impl Storage {
 
         Ok(())
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct StorageStats {
-    pub total_games: usize,
-    pub total_clips: usize,
-    pub total_size_bytes: u64,
 }
 
 /// Canvas template metadata for listing

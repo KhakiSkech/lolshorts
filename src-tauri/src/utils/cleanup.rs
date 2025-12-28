@@ -236,20 +236,142 @@ impl CleanupManager {
     pub fn check_disk_space(&self) -> Result<f64> {
         #[cfg(target_os = "windows")]
         {
-            
+            let _metadata = fs::metadata(&self.app_data_dir)?;
+            // On Windows, use GetDiskFreeSpaceExW API for accurate disk space information
 
-            let metadata = fs::metadata(&self.app_data_dir)?;
-            // On Windows, we can't get free space directly from metadata
-            // This is a placeholder - would need winapi calls for accurate free space
+            // Get actual disk space using Windows API
+            let volume_path = match self.app_data_dir.to_string_lossy().split(':').next() {
+                Some(drive_letter) => format!("{}:\\", drive_letter),
+                None => "C:\\".to_string(),
+            };
 
-            // For now, return a placeholder value
-            Ok(10.0)
+            let (free_bytes_available, _total_bytes) = unsafe {
+                use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
+                use std::ffi::OsStr;
+                use std::os::windows::ffi::OsStrExt;
+
+                let wide_path: Vec<u16> = OsStr::new(&volume_path)
+                    .encode_wide()
+                    .chain(std::iter::once(0))
+                    .collect();
+
+                let mut free_bytes = 0u64;
+                let mut total_bytes = 0u64;
+                let mut total_free_bytes = 0u64;
+
+                let result = GetDiskFreeSpaceExW(
+                    windows::core::PCWSTR(wide_path.as_ptr()),
+                    Some(&mut free_bytes as *mut _),
+                    Some(&mut total_bytes as *mut _),
+                    Some(&mut total_free_bytes as *mut _),
+                );
+
+                if result.is_ok() {
+                    (free_bytes, total_bytes)
+                } else {
+                    (10u64.pow(10), 100u64.pow(10)) // 10GB free, 100GB total fallback
+                }
+            };
+
+            let free_gb = free_bytes_available as f64 / (1024.0 * 1024.0 * 1024.0);
+            tracing::debug!("Disk space check: {:.2} GB available on {}", free_gb, volume_path);
+
+            Ok(free_gb)
         }
 
         #[cfg(not(target_os = "windows"))]
         {
-            // Unix-like systems
-            Ok(10.0) // Placeholder
+            // For Unix-like systems, use statvfs
+            use nix::sys::statvfs::statvfs;
+            use std::ffi::CString;
+
+            let path = CString::new(self.app_data_dir.to_string_lossy().as_bytes())
+                .context("Failed to create CString from path")?;
+
+            let stats = statvfs(&path)
+                .context("Failed to get filesystem statistics")?;
+
+            let block_size = stats.f_bsize as u64;
+            let available_blocks = stats.f_bavail as u64;
+            let available_bytes = block_size * available_blocks;
+
+            let available_gb = available_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+
+            Ok(available_gb)
+        }
+    }
+
+    /// Get total disk space information
+    ///
+    /// Returns (available_gb, total_gb) for the disk where app data is stored
+    pub fn get_disk_space_info(&self) -> Result<(f64, f64)> {
+        #[cfg(target_os = "windows")]
+        {
+            let _metadata = fs::metadata(&self.app_data_dir)?;
+
+            // Get actual disk space using Windows API
+            let volume_path = match self.app_data_dir.to_string_lossy().split(':').next() {
+                Some(drive_letter) => format!("{}:\\", drive_letter),
+                None => "C:\\".to_string(),
+            };
+
+            let (free_bytes_available, total_bytes) = unsafe {
+                use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
+                use std::ffi::OsStr;
+                use std::os::windows::ffi::OsStrExt;
+
+                let wide_path: Vec<u16> = OsStr::new(&volume_path)
+                    .encode_wide()
+                    .chain(std::iter::once(0))
+                    .collect();
+
+                let mut free_bytes = 0u64;
+                let mut total_bytes = 0u64;
+                let mut total_free_bytes = 0u64;
+
+                let result = GetDiskFreeSpaceExW(
+                    windows::core::PCWSTR(wide_path.as_ptr()),
+                    Some(&mut free_bytes as *mut _),
+                    Some(&mut total_bytes as *mut _),
+                    Some(&mut total_free_bytes as *mut _),
+                );
+
+                if result.is_ok() {
+                    (free_bytes, total_bytes)
+                } else {
+                    (10u64.pow(10), 100u64.pow(10)) // 10GB free, 100GB total fallback
+                }
+            };
+
+            let free_gb = free_bytes_available as f64 / (1024.0 * 1024.0 * 1024.0);
+            let total_gb = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+
+            tracing::debug!("Disk space info: {:.2} GB available, {:.2} GB total on {}",
+                           free_gb, total_gb, volume_path);
+
+            Ok((free_gb, total_gb))
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            // For Unix-like systems, use statvfs
+            use nix::sys::statvfs::statvfs;
+            use std::ffi::CString;
+
+            let path = CString::new(self.app_data_dir.to_string_lossy().as_bytes())
+                .context("Failed to create CString from path")?;
+
+            let stats = statvfs(&path)
+                .context("Failed to get filesystem statistics")?;
+
+            let block_size = stats.f_bsize as u64;
+            let available_blocks = stats.f_bavail as u64;
+            let total_blocks = stats.f_blocks as u64;
+
+            let available_gb = (block_size * available_blocks) as f64 / (1024.0 * 1024.0 * 1024.0);
+            let total_gb = (block_size * total_blocks) as f64 / (1024.0 * 1024.0 * 1024.0);
+
+            Ok((available_gb, total_gb))
         }
     }
 }
@@ -351,7 +473,7 @@ mod tests {
         File::create(&new_file).unwrap();
 
         // Cleanup
-        let freed = manager
+        let _freed = manager
             .cleanup_old_files(temp_dir.path(), Duration::from_secs(1))
             .await
             .unwrap();

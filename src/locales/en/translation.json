@@ -24,23 +24,40 @@
     "confirmPassword": "Confirm Password",
     "forgotPassword": "Forgot Password?",
     "noAccount": "Don't have an account?",
-    "hasAccount": "Already have an account?",
+    "haveAccount": "Already have an account?",
     "createAccount": "Create Account",
     "loginWithGoogle": "Login with Google",
-    "loginWithDiscord": "Login with Discord"
+    "loginWithDiscord": "Login with Discord",
+    "googleLogin": "Continue with Google",
+    "googleSignup": "Sign up with Google",
+    "orContinueWith": "Or continue with",
+    "authenticationRequired": "Authentication Required",
+    "pleaseLoginToAccess": "Please login to access {{feature}}",
+    "createAccountOrLogin": "Create an account or login to unlock all features",
+    "loginTitle": "Login to LoLShorts",
+    "loginDescription": "Enter your credentials to access your account",
+    "signupTitle": "Create Account",
+    "signupDescription": "Sign up to start creating League of Legends highlights",
+    "loggingIn": "Logging in...",
+    "signingUp": "Creating account...",
+    "passwordMinLength": "Must be at least 8 characters long",
+    "termsAgreement": "By signing up, you agree to our Terms of Service and Privacy Policy"
   },
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome back, {{name}}!",
+    "lastUpdate": "Last update: {{time}}",
     "lcuStatus": {
       "title": "League of Legends",
       "connected": "Connected",
       "disconnected": "Disconnected",
       "connecting": "Connecting...",
       "error": "Error",
+      "helpTitle": "Need help?",
       "messages": {
         "connected": "Connected to League client",
         "disconnected": "Connect to League client to start",
+        "adminRequired": "Administrator privileges required. Please run LoLShorts as administrator.",
         "autoReconnect": "Auto-reconnecting every {{seconds}} seconds",
         "startLeague": "Make sure League of Legends client is running",
         "readyToDetect": "✓ Ready to detect games",
@@ -57,12 +74,15 @@
         "champion": "Champion:",
         "gameMode": "Game Mode:",
         "gameTime": "Game Time:",
-        "gameId": "Game ID:"
+        "gameId": "Game ID:",
+        "summoner": "Summoner:"
       },
       "messages": {
         "notInGame": "Not in a game",
         "connectFirst": "Connect to League first",
-        "waiting": "Waiting for game to start..."
+        "waiting": "Waiting for game to start...",
+        "activelyRecording": "Recording in progress",
+        "monitoring": "Monitoring game"
       }
     },
     "recordingStatus": {
@@ -113,7 +133,10 @@
     "startRecordingPrompt": "Start recording games from the Dashboard to see them here.",
     "loadingGames": "Loading games...",
     "loadingGameData": "Loading game data...",
+    "goToDashboard": "Go to Dashboard",
     "deleteConfirm": "Are you sure you want to delete this game and all its clips?",
+    "deleteConfirmTitle": "Delete Game",
+    "deleteConfirmDescription": "Are you sure you want to delete this game and all its clips? This action cannot be undone.",
     "deleteFailed": "Failed to delete game",
     "filters": {
       "all": "All Games",
@@ -288,7 +311,11 @@
     "title": "Results",
     "description": "View and manage your generated auto-edit videos",
     "refresh": "Refresh",
+    "loading": "Loading results...",
+    "goToAutoEdit": "Create Auto-Edit",
     "confirmDelete": "Are you sure you want to delete this result? This action cannot be undone.",
+    "deleteConfirmTitle": "Delete Result",
+    "deleteConfirmDescription": "Are you sure you want to delete this auto-edit result? The video file will also be deleted and this action cannot be undone.",
     "notUploaded": "Not Uploaded",
     "queued": "Queued",
     "uploading": "Uploading",
@@ -473,6 +500,7 @@
       "savingSettings": "Saving...",
       "loadError": "Failed to load settings",
       "tabs": {
+        "general": "General",
         "events": "Events",
         "modes": "Game Modes",
         "video": "Video",
@@ -849,7 +877,15 @@
     "undo": "Undo",
     "redo": "Redo",
     "selectAll": "Select All",
-    "deselectAll": "Deselect All"
+    "deselectAll": "Deselect All",
+    "clear": "Clear",
+    "continue": "Continue"
+  },
+  "confirmations": {
+    "clearTimelineTitle": "Clear Timeline",
+    "clearTimelineDescription": "Are you sure you want to clear all clips from the timeline? This action cannot be undone.",
+    "cancelExportTitle": "Cancel Export",
+    "cancelExportDescription": "An export is in progress. Are you sure you want to cancel?"
   },
   "errors": {
     "generic": "An error occurred",
@@ -865,6 +901,42 @@
     "lcuNotConnected": "League client not connected",
     "recordingFailed": "Recording failed",
     "quotaExceeded": "YouTube quota exceeded"
+  },
+  "clips": {
+    "title": "Clip Library",
+    "description": "View and manage your recorded gameplay clips",
+    "selectGame": "Select a game",
+    "unknownChampion": "Unknown Champion",
+    "searchPlaceholder": "Search clips...",
+    "loading": "Loading clips...",
+    "noClipsYet": "No Clips Yet",
+    "noClipsDescription": "Start playing and highlights will be automatically captured!",
+    "noClipsMatchFilters": "No Clips Match Filters",
+    "tryDifferentFilters": "Try adjusting your search or filter settings.",
+    "clearFilters": "Clear Filters",
+    "generatingThumbnail": "Generating...",
+    "at": "at",
+    "deleteSuccess": "Clip Deleted",
+    "deleteDescription": "The clip has been successfully removed",
+    "playingClip": "Playing Clip",
+    "priority": {
+      "legendary": "Legendary",
+      "epic": "Epic",
+      "rare": "Rare",
+      "common": "Common",
+      "basic": "Basic"
+    },
+    "filter": {
+      "allPriorities": "All Priorities"
+    },
+    "actions": {
+      "play": "Play"
+    },
+    "errors": {
+      "loadGamesFailed": "Failed to Load Games",
+      "loadClipsFailed": "Failed to Load Clips",
+      "deleteFailed": "Failed to Delete Clip"
+    }
   },
   "tooltips": {
     "replayBuffer": "Continuously records the last {{seconds}} seconds. Press hotkey to save.",

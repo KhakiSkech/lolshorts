@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from '@tanstack/react-router';
 import { useAutoEditResults } from '@/hooks/useAutoEditResults';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Spinner, SpinnerCenter } from '@/components/ui/spinner';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
-  Video,
   Clock,
   Trash2,
-  Download,
   Play,
   Upload,
   CheckCircle2,
@@ -19,30 +21,41 @@ import {
   AlertCircle,
   Film,
   Calendar,
+  Sparkles,
 } from 'lucide-react';
 import { AutoEditResultMetadata } from '@/types/autoEdit';
 
 export function ResultsViewer() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [results, setResults] = useState<AutoEditResultMetadata[]>([]);
   const { getAllResults, deleteResult, isLoading, error } = useAutoEditResults();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
 
-  // Load results on mount
-  useEffect(() => {
-    loadResults();
-  }, []);
-
-  const loadResults = async () => {
+  const loadResults = useCallback(async () => {
     try {
       const fetchedResults = await getAllResults();
       setResults(fetchedResults);
     } catch (err) {
       console.error('Failed to load results:', err);
     }
-  };
+  }, [getAllResults]);
+
+  // Load results on mount
+  useEffect(() => {
+    loadResults();
+  }, [loadResults]);
 
   const handleDelete = async (resultId: string) => {
-    if (!confirm(t('results.confirmDelete'))) {
+    const confirmed = await confirm({
+      title: t('results.deleteConfirmTitle'),
+      description: t('results.deleteConfirmDescription'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      variant: 'danger',
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -108,7 +121,7 @@ export function ResultsViewer() {
           <p className="text-muted-foreground">{t('results.description')}</p>
         </div>
         <Button onClick={loadResults} disabled={isLoading}>
-          <Loader2 className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          {isLoading ? <Spinner size="sm" className="mr-2" /> : <Film className="w-4 h-4 mr-2" />}
           {t('results.refresh')}
         </Button>
       </div>
@@ -123,17 +136,24 @@ export function ResultsViewer() {
 
       {/* Loading State */}
       {isLoading && results.length === 0 && (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
+        <SpinnerCenter size="lg" label={t('results.loading')} />
       )}
 
       {/* Empty State */}
       {!isLoading && results.length === 0 && (
-        <Card className="flex flex-col items-center justify-center p-12">
-          <Video className="w-16 h-16 text-muted-foreground mb-4" />
-          <CardTitle className="mb-2">{t('results.empty.title')}</CardTitle>
-          <CardDescription>{t('results.empty.description')}</CardDescription>
+        <Card>
+          <CardContent>
+            <EmptyState
+              icon={Sparkles}
+              title={t('results.empty.title')}
+              description={t('results.empty.description')}
+              action={{
+                label: t('results.goToAutoEdit'),
+                onClick: () => navigate({ to: '/auto-edit' }),
+              }}
+              size="lg"
+            />
+          </CardContent>
         </Card>
       )}
 
@@ -212,6 +232,8 @@ export function ResultsViewer() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog />
     </div>
   );
 }

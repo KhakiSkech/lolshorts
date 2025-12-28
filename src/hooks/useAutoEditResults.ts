@@ -1,6 +1,6 @@
-import { invoke } from '@tauri-apps/api/core';
 import { useState, useCallback } from 'react';
 import { AutoEditResultMetadata, YouTubeUploadStatus } from '@/types/autoEdit';
+import { storageApi } from '@/api/storage';
 
 export function useAutoEditResults() {
   const [loading, setLoading] = useState(false);
@@ -10,7 +10,7 @@ export function useAutoEditResults() {
     setLoading(true);
     setError(null);
     try {
-      const results = await invoke<AutoEditResultMetadata[]>('get_auto_edit_results');
+      const results = await storageApi.getAutoEditResults();
       return results;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -25,7 +25,7 @@ export function useAutoEditResults() {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<AutoEditResultMetadata>('get_auto_edit_result', { resultId });
+      const result = await storageApi.getAutoEditResult(resultId);
       return result;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -40,7 +40,7 @@ export function useAutoEditResults() {
     setLoading(true);
     setError(null);
     try {
-      await invoke('delete_auto_edit_result', { resultId, deleteFile });
+      await storageApi.deleteAutoEditResult(resultId, deleteFile);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
@@ -55,7 +55,9 @@ export function useAutoEditResults() {
       setLoading(true);
       setError(null);
       try {
-        await invoke('update_auto_edit_youtube_status', { resultId, status });
+        // Since status is an object/enum, we might need to cast or serialize it if backend expects string
+        // Assuming backend handles the JSON object correctly via cmd wrapper
+        await storageApi.updateAutoEditYoutubeStatus(resultId, status as any); 
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         setError(errorMsg);

@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $FFMPEG_VERSION = "7.1"
 $DOWNLOAD_URL = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
 $TEMP_DIR = ".\temp_ffmpeg"
-$BIN_DIR = "..\bin"
+$BIN_DIR = "..\binaries"
 
 Write-Host "🎬 LoLShorts FFmpeg Preparation" -ForegroundColor Cyan
 Write-Host "=================================" -ForegroundColor Cyan
@@ -20,16 +20,25 @@ if (-not (Test-Path $BIN_DIR)) {
     New-Item -ItemType Directory -Path $BIN_DIR | Out-Null
 }
 
-# Check if FFmpeg already exists
-$ffmpegPath = Join-Path $BIN_DIR "ffmpeg.exe"
-$ffprobePath = Join-Path $BIN_DIR "ffprobe.exe"
+# Target filenames for Tauri Sidecar
+$ffmpegTargetName = "ffmpeg-x86_64-pc-windows-msvc.exe"
+$ffprobeTargetName = "ffprobe-x86_64-pc-windows-msvc.exe"
 
-if ((Test-Path $ffmpegPath) -and (Test-Path $ffprobePath)) {
-    Write-Host "✅ FFmpeg binaries already exist in bin directory" -ForegroundColor Green
+# Check if FFmpeg already exists
+$ffmpegPath = Join-Path $BIN_DIR $ffmpegTargetName
+$ffprobePath = Join-Path $BIN_DIR $ffprobeTargetName
+
+if ((Test-Path $ffmpegPath)) {
+    Write-Host "✅ FFmpeg binaries already exist in binaries directory" -ForegroundColor Green
 
     # Verify versions
     $ffmpegVersion = & $ffmpegPath -version 2>&1 | Select-Object -First 1
     Write-Host "📦 Current version: $ffmpegVersion" -ForegroundColor Cyan
+
+    if ($env:CI -eq "true") {
+        Write-Host "✅ CI Environment detected, skipping re-download" -ForegroundColor Green
+        exit 0
+    }
 
     $response = Read-Host "Do you want to re-download FFmpeg? (y/N)"
     if ($response -ne "y") {
@@ -78,10 +87,14 @@ if (-not $ffmpegSource -or -not $ffprobeSource) {
     exit 1
 }
 
-# Copy to bin directory
-Write-Host "📋 Copying binaries to bin directory..." -ForegroundColor Yellow
-Copy-Item -Path $ffmpegSource.FullName -Destination $BIN_DIR -Force
-Copy-Item -Path $ffprobeSource.FullName -Destination $BIN_DIR -Force
+# Copy to bin directory with sidecar naming
+Write-Host "📋 Copying binaries to binaries directory..." -ForegroundColor Yellow
+Copy-Item -Path $ffmpegSource.FullName -Destination $ffmpegPath -Force
+# Also copy standard name for dev convenience? No, stick to sidecar.
+# Actually, copy standard name too if needed for debugging?
+# Copy-Item -Path $ffmpegSource.FullName -Destination (Join-Path $BIN_DIR "ffmpeg.exe") -Force
+
+Copy-Item -Path $ffprobeSource.FullName -Destination $ffprobePath -Force
 
 # Verify binaries
 Write-Host "✅ Verifying binaries..." -ForegroundColor Green

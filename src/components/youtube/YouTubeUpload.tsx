@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/select';
 import { Upload, Film, CheckCircle } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { PrivacyStatus, VideoMetadata } from '@/types/youtube';
+import { PrivacyStatus } from '@/types/youtube';
+import { UploadMetadata } from '@/hooks/useYouTube';
 
 export function YouTubeUpload() {
   const { t } = useTranslation();
@@ -33,13 +34,11 @@ export function YouTubeUpload() {
 
   const [videoPath, setVideoPath] = useState('');
   const [thumbnailPath, setThumbnailPath] = useState('');
-  const [metadata, setMetadata] = useState<VideoMetadata>({
+  const [metadata, setMetadata] = useState<UploadMetadata>({
     title: '',
     description: '',
     tags: [],
-    privacy_status: 'Unlisted' as PrivacyStatus,
-    made_for_kids: false,
-    category_id: '20', // Gaming category
+    privacy_status: 'unlisted' as PrivacyStatus,
   });
   const [tagsInput, setTagsInput] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -104,7 +103,7 @@ export function YouTubeUpload() {
         .map((tag) => tag.trim())
         .filter((tag) => tag.length > 0);
 
-      const uploadMetadata: VideoMetadata = {
+      const uploadMetadata: UploadMetadata = {
         ...metadata,
         tags,
       };
@@ -123,9 +122,7 @@ export function YouTubeUpload() {
         title: '',
         description: '',
         tags: [],
-        privacy_status: 'Unlisted',
-        made_for_kids: false,
-        category_id: '20',
+        privacy_status: 'unlisted',
       });
       setTagsInput('');
     } catch (err) {
@@ -136,9 +133,7 @@ export function YouTubeUpload() {
 
   const getUploadPercentage = () => {
     if (!uploadProgress) return 0;
-    return Math.round(
-      (uploadProgress.uploaded_bytes / uploadProgress.total_bytes) * 100
-    );
+    return Math.round(uploadProgress.percentage);
   };
 
   if (!authStatus.authenticated) {
@@ -191,7 +186,7 @@ export function YouTubeUpload() {
           </Alert>
         )}
 
-        {uploadProgress && uploadProgress.status !== 'Completed' && (
+        {uploadProgress && uploadProgress.status !== 'complete' && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{t('youtube.upload.uploadProgress')}</span>
@@ -199,7 +194,7 @@ export function YouTubeUpload() {
             </div>
             <Progress value={getUploadPercentage()} />
             <p className="text-xs text-muted-foreground text-center">
-              {getUploadPercentage()}% ({uploadProgress.uploaded_bytes.toLocaleString()} /{' '}
+              {getUploadPercentage()}% ({uploadProgress.bytes_uploaded.toLocaleString()} /{' '}
               {uploadProgress.total_bytes.toLocaleString()} bytes)
             </p>
           </div>
@@ -297,9 +292,9 @@ export function YouTubeUpload() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Public">{t('youtube.upload.privacyOptions.public')}</SelectItem>
-                <SelectItem value="Unlisted">{t('youtube.upload.privacyOptions.unlisted')}</SelectItem>
-                <SelectItem value="Private">{t('youtube.upload.privacyOptions.private')}</SelectItem>
+                <SelectItem value="public">{t('youtube.upload.privacyOptions.public')}</SelectItem>
+                <SelectItem value="unlisted">{t('youtube.upload.privacyOptions.unlisted')}</SelectItem>
+                <SelectItem value="private">{t('youtube.upload.privacyOptions.private')}</SelectItem>
               </SelectContent>
             </Select>
           </div>

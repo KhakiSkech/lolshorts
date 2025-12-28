@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TimelineClip as TimelineClipType } from '@/stores/editorStore';
@@ -14,8 +15,11 @@ interface TimelineClipProps {
 const PIXELS_PER_SECOND = 50;
 const MIN_CLIP_WIDTH = 100;
 
-export function TimelineClip({ clip, zoom }: TimelineClipProps) {
-  const { removeFromTimeline, setSelectedClipId, selectedClipId } = useEditorStore();
+export const TimelineClip = memo(function TimelineClip({ clip, zoom }: TimelineClipProps) {
+  // Performance Optimization: Use granular selectors to prevent unnecessary re-renders
+  const removeFromTimeline = useEditorStore(state => state.removeFromTimeline);
+  const setSelectedClipId = useEditorStore(state => state.setSelectedClipId);
+  const isSelected = useEditorStore(state => state.selectedClipId === clip.clip_id);
 
   const {
     attributes,
@@ -43,13 +47,24 @@ export function TimelineClip({ clip, zoom }: TimelineClipProps) {
     setSelectedClipId(clip.clip_id);
   };
 
-  const formatDuration = (seconds: number): string => {
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleClick();
+    }
+  };
+
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const isSelected = selectedClipId === clip.clip_id;
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Convert thumbnail path
   const thumbnailSrc = clip.thumbnail_path ? convertFileSrc(clip.thumbnail_path) : undefined;
@@ -65,6 +80,11 @@ export function TimelineClip({ clip, zoom }: TimelineClipProps) {
         ${isDragging ? 'shadow-lg' : ''}
       `}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Timeline clip at ${formatTime(clip.start_time)}`}
+      aria-pressed={isSelected}
     >
       {/* Drag Handle */}
       <div
@@ -112,4 +132,13 @@ export function TimelineClip({ clip, zoom }: TimelineClipProps) {
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function for React.memo
+  return (
+    prevProps.clip.clip_id === nextProps.clip.clip_id &&
+    prevProps.clip.duration === nextProps.clip.duration &&
+    prevProps.clip.order === nextProps.clip.order &&
+    prevProps.clip.start_time === nextProps.clip.start_time &&
+    prevProps.zoom === nextProps.zoom
+  );
+});

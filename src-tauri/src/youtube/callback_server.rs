@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::Ipv4Addr;
 use std::sync::Arc;
 use tokio::sync::{oneshot, RwLock};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use warp::Filter;
 
 /// OAuth callback result
@@ -16,6 +16,7 @@ pub struct OAuthCallback {
 pub struct CallbackServer {
     port: u16,
     callback_tx: Arc<RwLock<Option<oneshot::Sender<OAuthCallback>>>>,
+    shutdown_tx: Arc<RwLock<Option<oneshot::Sender<()>>>>,
 }
 
 impl CallbackServer {
@@ -27,6 +28,7 @@ impl CallbackServer {
         Self {
             port,
             callback_tx: Arc::new(RwLock::new(None)),
+            shutdown_tx: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -43,8 +45,16 @@ impl CallbackServer {
             *callback_tx = Some(tx);
         }
 
+        // Create shutdown channel for graceful server termination
+        let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
+        {
+            let mut stored_shutdown = self.shutdown_tx.write().await;
+            *stored_shutdown = Some(shutdown_tx);
+        }
+
         // Clone Arc for the route handler
         let callback_tx_clone = Arc::clone(&self.callback_tx);
+        let shutdown_tx_clone = Arc::clone(&self.shutdown_tx);
 
         // Define callback route
         let callback_route = warp::path("oauth")
@@ -52,14 +62,23 @@ impl CallbackServer {
             .and(warp::query::<CallbackParams>())
             .map(move |params: CallbackParams| {
                 let callback_tx = Arc::clone(&callback_tx_clone);
+                let shutdown_tx = Arc::clone(&shutdown_tx_clone);
 
                 tokio::spawn(async move {
+                    // Send callback result
                     let mut tx_lock = callback_tx.write().await;
                     if let Some(tx) = tx_lock.take() {
                         let _ = tx.send(OAuthCallback {
                             code: params.code,
                             state: params.state,
                         });
+                    }
+
+                    // Signal server shutdown after small delay for response
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    let mut shutdown_lock = shutdown_tx.write().await;
+                    if let Some(tx) = shutdown_lock.take() {
+                        let _ = tx.send(());
                     }
                 });
 
@@ -71,81 +90,36 @@ impl CallbackServer {
 
         debug!("Callback server listening on http://localhost:{}", self.port);
 
-        // Start server in background
+        // Start server with graceful shutdown signal
         let server = warp::serve(callback_route);
-        let (_, server_task) = server.bind_with_graceful_shutdown(addr, async {
-            // Server will shutdown when we receive callback
+        let (_, server_task) = server.bind_with_graceful_shutdown(addr, async move {
+            // Wait for shutdown signal
+            let _ = shutdown_rx.await;
+            info!("OAuth callback server shutting down gracefully");
         });
 
-        tokio::spawn(server_task);
+        let server_handle = tokio::spawn(server_task);
 
-        // Wait for callback
-        let callback = rx
-            .await
-            .context("Failed to receive OAuth callback")?;
+        // Wait for callback with timeout (2 minutes)
+        let callback = tokio::time::timeout(
+            std::time::Duration::from_secs(120),
+            rx,
+        )
+        .await
+        .context("OAuth callback timeout (2 minutes)")?
+        .context("Failed to receive OAuth callback")?;
 
         info!("OAuth callback received successfully");
 
-        // Give server time to send response
+        // Give server time to send response and shutdown
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-        Ok(callback)
-    }
-
-    /// Start server in background (non-blocking)
-    ///
-    /// Use `wait_for_callback()` to wait for the result
-    pub async fn start(&self) -> Result<()> {
-        info!("Starting OAuth callback server on port {}", self.port);
-
-        let callback_tx_clone = Arc::clone(&self.callback_tx);
-
-        let callback_route = warp::path("oauth")
-            .and(warp::path("callback"))
-            .and(warp::query::<CallbackParams>())
-            .map(move |params: CallbackParams| {
-                let callback_tx = Arc::clone(&callback_tx_clone);
-
-                tokio::spawn(async move {
-                    let mut tx_lock = callback_tx.write().await;
-                    if let Some(tx) = tx_lock.take() {
-                        let _ = tx.send(OAuthCallback {
-                            code: params.code,
-                            state: params.state,
-                        });
-                    }
-                });
-
-                warp::reply::html(SUCCESS_HTML)
-            });
-
-        let addr = (Ipv4Addr::new(127, 0, 0, 1), self.port);
-
-        // Start server in background
-        tokio::spawn(async move {
-            warp::serve(callback_route).run(addr).await;
-        });
-
-        debug!("Callback server started on http://localhost:{}", self.port);
-
-        Ok(())
-    }
-
-    /// Wait for OAuth callback
-    ///
-    /// Must be called after `start()`
-    pub async fn wait_for_callback(&self) -> Result<OAuthCallback> {
-        let (tx, rx) = oneshot::channel();
-        {
-            let mut callback_tx = self.callback_tx.write().await;
-            *callback_tx = Some(tx);
+        // Ensure server task completes
+        match tokio::time::timeout(std::time::Duration::from_secs(2), server_handle).await {
+            Ok(Ok(())) => debug!("OAuth server shutdown complete"),
+            Ok(Err(e)) => warn!("OAuth server task error: {}", e),
+            Err(_) => warn!("OAuth server shutdown timeout"),
         }
-
-        let callback = rx
-            .await
-            .context("Failed to receive OAuth callback")?;
-
-        info!("OAuth callback received");
 
         Ok(callback)
     }

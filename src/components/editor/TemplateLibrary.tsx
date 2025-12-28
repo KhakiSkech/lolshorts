@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Trash2, FileImage, Type, AlertCircle } from 'lucide-react';
 import { CanvasTemplate, CanvasTemplateInfo } from '@/types/autoEdit';
 import { useAutoEdit } from '@/hooks/useAutoEdit';
+import { getErrorMessage } from '@/lib/utils';
 
 interface TemplateLibraryProps {
   open: boolean;
@@ -39,7 +40,7 @@ export function TemplateLibrary({ open, onOpenChange, onTemplateSelect }: Templa
       setTemplates(templateList);
     } catch (err) {
       console.error('Failed to fetch templates:', err);
-      setError(err as string);
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +59,7 @@ export function TemplateLibrary({ open, onOpenChange, onTemplateSelect }: Templa
       onOpenChange(false);
     } catch (err) {
       console.error('Failed to load template:', err);
-      setError(err as string);
+      setError(getErrorMessage(err));
     }
   };
 
@@ -70,7 +71,7 @@ export function TemplateLibrary({ open, onOpenChange, onTemplateSelect }: Templa
       await fetchTemplates(); // Refresh list
     } catch (err) {
       console.error('Failed to delete template:', err);
-      setError(err as string);
+      setError(getErrorMessage(err));
     } finally {
       setDeletingId(null);
     }

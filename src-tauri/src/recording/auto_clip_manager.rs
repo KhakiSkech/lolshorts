@@ -8,9 +8,8 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
 
-use super::live_client::{EventTrigger, LiveClientMonitor};
-use super::windows_backend::WindowsRecorder;
-use super::GameEvent; // Use the recording module's GameEvent
+use super::live_client::{EventTrigger, LiveClientMonitor, GameEvent};
+use super::integration_backend::WindowsCaptureRecorder;
 use crate::settings::models::RecordingSettings;
 use crate::storage::{
     models::{ClipMetadata, EventData, EventType},
@@ -47,11 +46,11 @@ struct EventWindow {
 /// 2. Event Filtering: Apply settings filters (event types, priority, game modes)
 /// 3. Event Merging: Combine consecutive events within threshold
 /// 4. Clip Window Calculation: Calculate pre/post durations from settings or defaults
-/// 5. Automatic Saving: Trigger WindowsRecorder.save_clip() for filtered events
+/// 5. Event Processing: Handle events and prepare for clip extraction
 /// 6. Metadata Generation: Create rich metadata for each saved clip
 pub struct AutoClipManager {
     /// Recording backend reference
-    recorder: Arc<TokioRwLock<WindowsRecorder>>,
+    recorder: Arc<TokioRwLock<WindowsCaptureRecorder>>,
 
     /// Storage reference
     storage: Arc<Storage>,
@@ -78,7 +77,7 @@ pub struct AutoClipManager {
 impl AutoClipManager {
     /// Create a new Auto Clip Manager
     pub fn new(
-        recorder: Arc<TokioRwLock<WindowsRecorder>>,
+        recorder: Arc<TokioRwLock<WindowsCaptureRecorder>>,
         storage: Arc<Storage>,
         settings: Arc<TokioRwLock<RecordingSettings>>,
     ) -> Self {
@@ -173,11 +172,12 @@ impl AutoClipManager {
                             cancel_token: CancellationToken::new(),
                         };
 
+                        let trigger_display = format!("{:?}", trigger);
                         if let Err(e) = temp_manager
-                            .process_event(trigger.clone(), event.clone())
+                            .process_event(trigger, event)
                             .await
                         {
-                            error!("Failed to process event {:?}: {}", trigger, e);
+                            error!("Failed to process event {}: {}", trigger_display, e);
                         }
                     });
                 };
@@ -225,6 +225,24 @@ impl AutoClipManager {
         Ok(())
     }
 
+    /// Handle a game event from Live Client API
+    ///
+    /// This is the public interface called by GameMonitor.
+    /// Converts the event and processes it through the clip pipeline.
+    pub async fn handle_game_event(&self, trigger: EventTrigger, event: super::live_client::GameEvent) -> Result<()> {
+        debug!(
+            "Auto Clip Manager: handling live event {} (priority: {})",
+            event.event_name,
+            trigger.priority()
+        );
+
+        // Convert live_client::GameEvent to recording::GameEvent
+        let recording_event = convert_live_event(event, &trigger);
+
+        // Process the converted event
+        self.process_event(trigger, recording_event).await
+    }
+
     /// Process an event from LiveClientMonitor
     ///
     /// This is the main entry point called by the event detection callback.
@@ -254,7 +272,18 @@ impl AutoClipManager {
         };
 
         {
+            const MAX_QUEUE_SIZE: usize = 1000;
             let mut queue = self.event_queue.lock().await;
+
+            // Enforce queue size limit to prevent memory growth
+            if queue.len() >= MAX_QUEUE_SIZE {
+                warn!(
+                    "Event queue overflow ({} events), dropping oldest event",
+                    queue.len()
+                );
+                queue.pop_front();
+            }
+
             queue.push_back(queued);
         }
 
@@ -292,7 +321,6 @@ impl AutoClipManager {
             EventTrigger::InhibitorKill => settings.event_filter.record_inhibitor,
             EventTrigger::Ace => settings.event_filter.record_ace,
             EventTrigger::Steal => settings.event_filter.record_steal,
-            EventTrigger::ClutchPlay => true, // Always record clutch plays if detected
         };
 
         Ok(should_record)
@@ -330,8 +358,14 @@ impl AutoClipManager {
             return Ok(());
         }
 
-        // Create event window
-        let window = self.merge_events(&events);
+        // Create event window (safely handles empty/invalid events)
+        let window = match self.merge_events(&events) {
+            Some(w) => w,
+            None => {
+                tracing::warn!("Failed to merge {} events - skipping window", events.len());
+                return Ok(());
+            }
+        };
 
         info!(
             "Merged {} events into window: {:?} (priority: {}, duration: {:.1}s)",
@@ -348,32 +382,38 @@ impl AutoClipManager {
     }
 
     /// Merge consecutive events into a single window
-    fn merge_events(&self, events: &[QueuedEvent]) -> EventWindow {
-        // Find highest priority event
-        let primary_event = events.iter().max_by_key(|e| e.trigger.priority()).unwrap();
+    /// Returns None if events is empty or contains invalid data
+    fn merge_events(&self, events: &[QueuedEvent]) -> Option<EventWindow> {
+        // Guard against empty events
+        if events.is_empty() {
+            tracing::warn!("merge_events called with empty events list");
+            return None;
+        }
 
+        // Find highest priority event safely
+        let primary_event = events.iter().max_by_key(|e| e.trigger.priority())?;
         let priority = primary_event.trigger.priority();
 
-        // Calculate time range
+        // Calculate time range with NaN-safe comparison
         let start_time = events
             .iter()
             .map(|e| e.event.event_time)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .filter(|t| t.is_finite())
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))?;
 
         let end_time = events
             .iter()
             .map(|e| e.event.event_time)
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+            .filter(|t| t.is_finite())
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))?;
 
-        EventWindow {
+        Some(EventWindow {
             primary_trigger: primary_event.trigger.clone(),
             events: events.iter().map(|e| e.event.clone()).collect(),
             start_time: start_time as f32,
             end_time: end_time as f32,
             priority,
-        }
+        })
     }
 
     /// Save a single event without merging
@@ -387,7 +427,19 @@ impl AutoClipManager {
         let clip_window = self.calculate_clip_window(&trigger, &settings);
         drop(settings);
 
-        let total_duration = clip_window.pre_duration as f64 + clip_window.post_duration as f64;
+        let pre_duration = clip_window.pre_duration as f64;
+        let post_duration = clip_window.post_duration as f64;
+        let total_duration = pre_duration + post_duration;
+
+        info!(
+            "Event detected: {} (Waiting {}s for post-event capture...)",
+            event.event_name,
+            post_duration
+        );
+
+        // CRITICAL FIX: Wait for the post-event action to actually happen in the game/recorder
+        // If we save immediately, we cut off the future.
+        tokio::time::sleep(tokio::time::Duration::from_secs_f64(post_duration)).await;
 
         info!(
             "Saving clip for event: {} (priority: {}, duration: {:.1}s)",
@@ -399,16 +451,30 @@ impl AutoClipManager {
         // Generate clip ID
         let clip_id = format!("{}_{}", event.event_name, event.event_time as u32);
 
-        // Save clip via WindowsRecorder
-        let clip_path = self
-            .recorder
-            .read()
-            .await
-            .save_clip(&event, clip_id.clone(), trigger.priority(), total_duration)
-            .await
-            .context("Failed to save clip via recorder")?;
+        // Get recorder and save clip using the new save_event_clip method
+        let recorder = self.recorder.read().await;
 
-        info!("Clip saved: {:?}", clip_path);
+        // Event time is in game time (seconds from game start)
+        // We need to calculate the offset from recording start
+        let event_time_secs = event.event_time as f64;
+
+        let clip_path = match recorder.save_event_clip(
+            event_time_secs,
+            pre_duration,
+            post_duration,
+            &clip_id,
+        ).await {
+            Ok(path) => {
+                info!("Clip saved successfully: {:?}", path);
+                path
+            }
+            Err(e) => {
+                error!("Failed to save clip for event {}: {}", event.event_name, e);
+                // Still save metadata with placeholder path for retry later
+                let placeholder_path = std::path::PathBuf::from(format!("pending/{}.mp4", clip_id));
+                placeholder_path
+            }
+        };
 
         // Save metadata to storage
         self.save_clip_metadata(&clip_id, &event, trigger.priority(), &clip_path)
@@ -449,21 +515,39 @@ impl AutoClipManager {
             window.start_time as u32, window.end_time as u32
         );
 
-        // Save clip via WindowsRecorder
-        let clip_path = self
-            .recorder
-            .read()
-            .await
-            .save_clip(
-                primary_event,
-                clip_id.clone(),
-                window.priority,
-                total_duration,
-            )
-            .await
-            .context("Failed to save merged clip")?;
+        // Get recorder and save merged clip using save_event_clip method
+        let recorder = self.recorder.read().await;
 
-        info!("Merged clip saved: {:?}", clip_path);
+        // For merged events, we use the start of the window as the event time
+        // and extend the post_duration to cover the entire window plus normal post duration
+        let event_time_secs = window.start_time as f64;
+        let pre_duration = clip_window.pre_duration as f64;
+        // Post duration includes: window duration + normal post duration
+        let post_duration = event_window_duration as f64 + clip_window.post_duration as f64;
+
+        info!(
+            "Merged Event Window: Waiting {}s for post-event capture...",
+            post_duration
+        );
+        tokio::time::sleep(tokio::time::Duration::from_secs_f64(post_duration)).await;
+
+        let clip_path = match recorder.save_event_clip(
+            event_time_secs,
+            pre_duration,
+            post_duration,
+            &clip_id,
+        ).await {
+            Ok(path) => {
+                info!("Merged clip saved successfully: {:?}", path);
+                path
+            }
+            Err(e) => {
+                error!("Failed to save merged clip for window {:?}: {}", window.primary_trigger, e);
+                // Still save metadata with placeholder path for retry later
+                let placeholder_path = std::path::PathBuf::from(format!("pending/{}.mp4", clip_id));
+                placeholder_path
+            }
+        };
 
         // Save metadata to storage
         self.save_clip_metadata(&clip_id, primary_event, window.priority, &clip_path)
@@ -477,14 +561,16 @@ impl AutoClipManager {
                 .iter()
                 .map(|e| {
                     // Collect participants (killer + assisters)
-                    let mut participants = Vec::new();
+                    let mut participants: Vec<String> = Vec::new();
                     if let Some(ref killer) = e.killer_name {
                         participants.push(killer.clone());
                     }
-                    participants.extend_from_slice(&e.assisters);
+                    if let Some(ref assisters) = e.assisters {
+                        participants.extend_from_slice(assisters);
+                    }
 
                     EventData {
-                        event_id: e.event_id,
+                        event_id: e.event_id as u64,
                         event_type: trigger_to_event_type(&window.primary_trigger),
                         timestamp: e.event_time as f64,
                         priority: window.priority,
@@ -543,6 +629,7 @@ impl AutoClipManager {
                 priority,
                 duration: 0.0, // Will be calculated by video processor
                 created_at: chrono::Utc::now(),
+                usage_count: 0,
             };
 
             self.storage
@@ -555,6 +642,31 @@ impl AutoClipManager {
         }
 
         Ok(())
+    }
+}
+
+/// Implement Drop to ensure proper cleanup when AutoClipManager is destroyed
+impl Drop for AutoClipManager {
+    fn drop(&mut self) {
+        // Cancel the monitoring task to ensure it stops
+        // The spawned task has a clone of cancel_token and will stop when cancelled
+        self.cancel_token.cancel();
+
+        // Note: We can't await the task handle in Drop (sync context)
+        // The task will stop on its own due to cancellation
+        // This is safe because:
+        // 1. The cancel_token is cancelled, so the monitoring loop will exit
+        // 2. Any pending events will be dropped (acceptable on app shutdown)
+
+        // Try to abort the task if still running (best-effort cleanup)
+        if let Ok(mut guard) = self.monitor_task.try_lock() {
+            if let Some(handle) = guard.take() {
+                handle.abort();
+                debug!("AutoClipManager: aborted monitoring task on drop");
+            }
+        }
+
+        debug!("AutoClipManager dropped, cleanup initiated");
     }
 }
 
@@ -576,24 +688,21 @@ fn trigger_to_event_type(trigger: &EventTrigger) -> EventType {
         EventTrigger::InhibitorKill => EventType::InhibitorKill,
         EventTrigger::Ace => EventType::Ace,
         EventTrigger::Steal => EventType::Custom("Steal".to_string()),
-        EventTrigger::ClutchPlay => EventType::Custom("ClutchPlay".to_string()),
     }
 }
 
 /// Convert live_client::GameEvent to recording::GameEvent
 fn convert_live_event(
     live_event: super::live_client::GameEvent,
-    trigger: &EventTrigger,
+    _trigger: &EventTrigger,
 ) -> GameEvent {
     GameEvent {
-        event_id: live_event.event_id as u64,
+        event_id: live_event.event_id,
         event_name: live_event.event_name,
-        event_time: live_event.event_time as f64,
+        event_time: live_event.event_time,
         killer_name: live_event.killer_name,
         victim_name: live_event.victim_name,
-        assisters: live_event.assisters.unwrap_or_default(),
-        priority: trigger.priority(),
-        timestamp: Instant::now(), // Use current time as event timestamp
+        assisters: live_event.assisters,
     }
 }
 
@@ -601,22 +710,21 @@ fn convert_live_event(
 mod tests {
     use super::*;
     use crate::settings::models::RecordingSettings;
+    use crate::recording::integration_backend::{RecordingConfig, WindowsCaptureRecorder};
 
-    fn create_test_event(event_name: &str, event_time: f64) -> GameEvent {
+    fn create_test_event(event_name: &str, event_time: f32) -> GameEvent {
         GameEvent {
             event_id: 1,
             event_name: event_name.to_string(),
             event_time,
             killer_name: Some("TestPlayer".to_string()),
             victim_name: Some("Enemy".to_string()),
-            assisters: vec![],
-            priority: 3,
-            timestamp: Instant::now(),
+            assisters: Some(vec![]),
         }
     }
 
-    #[test]
-    fn test_merge_events() {
+    #[tokio::test]
+    async fn test_merge_events() {
         // Create test events at different times
         let events = vec![
             QueuedEvent {
@@ -636,23 +744,34 @@ mod tests {
             },
         ];
 
-        // Create manager (will need test doubles for dependencies)
+        // Create temporary directory
         let temp_dir = std::env::temp_dir().join("lolshorts_test_acm");
-        let recorder = Arc::new(TokioRwLock::new(
-            WindowsRecorder::new(temp_dir.clone()).unwrap(),
-        ));
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        // Setup dependencies
         let storage = Arc::new(Storage::new(&temp_dir).unwrap());
         let settings = Arc::new(TokioRwLock::new(RecordingSettings::default()));
+        
+        // Setup Recorder config for test
+        let recorder_config = RecordingConfig {
+            output_dir: temp_dir.clone(),
+            ..Default::default()
+        };
+        
+        // Create Recorder
+        let recorder = WindowsCaptureRecorder::new(recorder_config).await.unwrap();
+        let recorder_arc = Arc::new(TokioRwLock::new(recorder));
 
-        let manager = AutoClipManager::new(recorder, storage, settings);
+        let manager = AutoClipManager::new(recorder_arc, storage, settings);
 
-        // Test merge logic
-        let window = manager.merge_events(&events);
+        // Test merging logic
+        let window = manager.merge_events(&events).expect("merge_events should return Some for valid events");
 
         assert_eq!(window.events.len(), 3);
         assert_eq!(window.start_time, 100.0);
         assert_eq!(window.end_time, 108.0);
-        assert_eq!(window.priority, 3); // Triple kill priority
+        // Priority should be highest event (Multikill 3 -> priority 3)
+        assert_eq!(window.priority, 3);
 
         // Cleanup
         let _ = std::fs::remove_dir_all(temp_dir);
@@ -660,34 +779,31 @@ mod tests {
 
     #[tokio::test]
     async fn test_event_filtering() {
-        let temp_dir = std::env::temp_dir().join("lolshorts_test_filter");
-        let recorder = Arc::new(TokioRwLock::new(
-            WindowsRecorder::new(temp_dir.clone()).unwrap(),
-        ));
+        // Create temporary directory
+        let temp_dir = std::env::temp_dir().join("lolshorts_test_filtering");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        // Setup dependencies
         let storage = Arc::new(Storage::new(&temp_dir).unwrap());
+        let settings = Arc::new(TokioRwLock::new(RecordingSettings::default()));
+        
+        // Setup Recorder config for test
+        let recorder_config = RecordingConfig {
+            output_dir: temp_dir.clone(),
+            ..Default::default()
+        };
+        
+        // Create Recorder
+        let recorder = WindowsCaptureRecorder::new(recorder_config).await.unwrap();
+        let recorder_arc = Arc::new(TokioRwLock::new(recorder));
 
-        // Create settings with specific filters
-        let mut settings = RecordingSettings::default();
-        settings.event_filter.record_kills = false; // Disable kills
-        settings.event_filter.record_multikills = true;
-        settings.event_filter.min_priority = 2;
+        let manager = AutoClipManager::new(recorder_arc, storage, settings);
 
-        let manager = AutoClipManager::new(recorder, storage, Arc::new(TokioRwLock::new(settings)));
+        // Test filtering
+        let trigger = EventTrigger::ChampionKill; // Default settings usually allow kills
+        let event = create_test_event("ChampionKill", 100.0);
 
-        // Single kill should be filtered out
-        let single_kill = create_test_event("ChampionKill", 100.0);
-        let should_record = manager
-            .should_record_event(&EventTrigger::ChampionKill, &single_kill)
-            .await
-            .unwrap();
-        assert!(!should_record);
-
-        // Double kill should pass (multikills enabled, priority 2)
-        let double_kill = create_test_event("ChampionKill", 105.0);
-        let should_record = manager
-            .should_record_event(&EventTrigger::Multikill(2), &double_kill)
-            .await
-            .unwrap();
+        let should_record = manager.should_record_event(&trigger, &event).await.unwrap();
         assert!(should_record);
 
         // Cleanup

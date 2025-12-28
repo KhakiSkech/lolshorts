@@ -24,23 +24,40 @@
     "confirmPassword": "비밀번호 확인",
     "forgotPassword": "비밀번호를 잊으셨나요?",
     "noAccount": "계정이 없으신가요?",
-    "hasAccount": "이미 계정이 있으신가요?",
+    "haveAccount": "이미 계정이 있으신가요?",
     "createAccount": "계정 만들기",
     "loginWithGoogle": "Google로 로그인",
-    "loginWithDiscord": "Discord로 로그인"
+    "loginWithDiscord": "Discord로 로그인",
+    "googleLogin": "Google로 계속하기",
+    "googleSignup": "Google로 가입하기",
+    "orContinueWith": "또는 다음으로 계속하기",
+    "authenticationRequired": "인증 필요",
+    "pleaseLoginToAccess": "{{feature}}에 접근하려면 로그인하세요",
+    "createAccountOrLogin": "모든 기능을 사용하려면 계정을 만들거나 로그인하세요",
+    "loginTitle": "LoLShorts 로그인",
+    "loginDescription": "계정에 접근하려면 자격 증명을 입력하세요",
+    "signupTitle": "계정 만들기",
+    "signupDescription": "리그 오브 레전드 하이라이트 제작을 시작하려면 가입하세요",
+    "loggingIn": "로그인 중...",
+    "signingUp": "계정 생성 중...",
+    "passwordMinLength": "최소 8자 이상이어야 합니다",
+    "termsAgreement": "가입하시면 서비스 약관 및 개인정보 보호정책에 동의하는 것으로 간주됩니다"
   },
   "dashboard": {
     "title": "대시보드",
     "welcome": "환영합니다, {{name}}님!",
+    "lastUpdate": "마지막 업데이트: {{time}}",
     "lcuStatus": {
       "title": "리그 오브 레전드",
       "connected": "연결됨",
       "disconnected": "연결 안 됨",
       "connecting": "연결 중...",
       "error": "오류",
+      "helpTitle": "도움이 필요하신가요?",
       "messages": {
         "connected": "리그 클라이언트 연결됨",
         "disconnected": "시작하려면 리그 클라이언트에 연결하세요",
+        "adminRequired": "관리자 권한이 필요합니다. LoLShorts를 관리자로 실행하세요.",
         "autoReconnect": "{{seconds}}초마다 자동 재연결",
         "startLeague": "리그 오브 레전드 클라이언트가 실행 중인지 확인하세요",
         "readyToDetect": "✓ 게임 감지 준비 완료",
@@ -57,12 +74,15 @@
         "champion": "챔피언:",
         "gameMode": "게임 모드:",
         "gameTime": "게임 시간:",
-        "gameId": "게임 ID:"
+        "gameId": "게임 ID:",
+        "summoner": "소환사:"
       },
       "messages": {
         "notInGame": "게임에 참여하지 않음",
         "connectFirst": "먼저 리그에 연결하세요",
-        "waiting": "게임 시작 대기 중..."
+        "waiting": "게임 시작 대기 중...",
+        "activelyRecording": "녹화 진행 중",
+        "monitoring": "게임 모니터링 중"
       }
     },
     "recordingStatus": {
@@ -112,7 +132,10 @@
     "startRecordingPrompt": "게임을 녹화하려면 대시보드에서 녹화를 시작하세요.",
     "loadingGames": "게임 로딩 중...",
     "loadingGameData": "게임 데이터 로딩 중...",
+    "goToDashboard": "대시보드로 이동",
     "deleteConfirm": "이 게임과 모든 클립을 삭제하시겠습니까?",
+    "deleteConfirmTitle": "게임 삭제",
+    "deleteConfirmDescription": "이 게임과 모든 클립을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "deleteFailed": "게임 삭제 실패",
     "filters": {
       "all": "모든 게임",
@@ -240,7 +263,11 @@
     "title": "결과 보기",
     "description": "생성된 자동 편집 비디오를 보고 관리하세요",
     "refresh": "새로고침",
+    "loading": "결과 로딩 중...",
+    "goToAutoEdit": "자동 편집 만들기",
     "confirmDelete": "이 결과를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+    "deleteConfirmTitle": "결과 삭제",
+    "deleteConfirmDescription": "이 자동 편집 결과를 삭제하시겠습니까? 비디오 파일도 함께 삭제되며 이 작업은 되돌릴 수 없습니다.",
     "notUploaded": "업로드 안 됨",
     "queued": "대기 중",
     "uploading": "업로드 중",
@@ -413,6 +440,7 @@
       "savingSettings": "저장 중...",
       "loadError": "설정을 불러오지 못했습니다",
       "tabs": {
+        "general": "일반",
         "events": "이벤트",
         "modes": "게임 모드",
         "video": "비디오",
@@ -804,7 +832,17 @@
     "undo": "실행 취소",
     "redo": "다시 실행",
     "selectAll": "모두 선택",
-    "deselectAll": "모두 선택 해제"
+    "deselectAll": "모두 선택 해제",
+    "clear": "지우기",
+    "continue": "계속"
+  },
+  "confirmations": {
+    "clearTimelineTitle": "타임라인 지우기",
+    "clearTimelineDescription": "타임라인의 모든 클립을 지우시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "cancelExportTitle": "내보내기 취소",
+    "cancelExportDescription": "내보내기가 진행 중입니다. 정말 취소하시겠습니까?",
+    "cancelExport": "내보내기가 진행 중입니다. 취소하시겠습니까?",
+    "clearTimeline": "타임라인을 지우시겠습니까? 이 작업은 취소할 수 없습니다."
   },
   "errors": {
     "generic": "오류가 발생했습니다",
@@ -823,6 +861,42 @@
     "fileSelectionFailed": "파일 선택에 실패했습니다. 다시 시도해 주세요.",
     "selectAtLeastOneGame": "게임을 하나 이상 선택해 주세요",
     "todoFeature": "TODO: {{action}}"
+  },
+  "clips": {
+    "title": "클립 라이브러리",
+    "description": "녹화된 게임플레이 클립을 보고 관리하세요",
+    "selectGame": "게임 선택",
+    "unknownChampion": "알 수 없는 챔피언",
+    "searchPlaceholder": "클립 검색...",
+    "loading": "클립 로딩 중...",
+    "noClipsYet": "아직 클립이 없습니다",
+    "noClipsDescription": "플레이를 시작하면 하이라이트가 자동으로 캡처됩니다!",
+    "noClipsMatchFilters": "필터와 일치하는 클립 없음",
+    "tryDifferentFilters": "검색 또는 필터 설정을 조정해 보세요.",
+    "clearFilters": "필터 초기화",
+    "generatingThumbnail": "생성 중...",
+    "at": "",
+    "deleteSuccess": "클립 삭제됨",
+    "deleteDescription": "클립이 성공적으로 제거되었습니다",
+    "playingClip": "클립 재생 중",
+    "priority": {
+      "legendary": "전설급",
+      "epic": "에픽",
+      "rare": "레어",
+      "common": "일반",
+      "basic": "기본"
+    },
+    "filter": {
+      "allPriorities": "모든 우선순위"
+    },
+    "actions": {
+      "play": "재생"
+    },
+    "errors": {
+      "loadGamesFailed": "게임 로드 실패",
+      "loadClipsFailed": "클립 로드 실패",
+      "deleteFailed": "클립 삭제 실패"
+    }
   },
   "confirmations": {
     "cancelExport": "내보내기가 진행 중입니다. 취소하시겠습니까?",

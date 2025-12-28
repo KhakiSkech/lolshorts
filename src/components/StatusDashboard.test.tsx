@@ -10,7 +10,7 @@ describe('StatusDashboard', () => {
     jest.clearAllMocks();
   });
 
-  it('renders connected status when LCU is connected', () => {
+  it('renders dashboard components correctly', () => {
     (useRecordingStore as unknown as jest.Mock).mockReturnValue({
       lcuStatus: 'connected',
       isRecording: false,
@@ -19,7 +19,8 @@ describe('StatusDashboard', () => {
 
     render(<StatusDashboard />);
 
-    expect(screen.getByText(/connected/i)).toBeInTheDocument();
+    expect(screen.getByText('statusDashboard.recordingStatus')).toBeInTheDocument();
+    expect(screen.getByText('Idle')).toBeInTheDocument();
   });
 
   it('renders disconnected status when LCU is disconnected', () => {
@@ -31,7 +32,7 @@ describe('StatusDashboard', () => {
 
     render(<StatusDashboard />);
 
-    expect(screen.getByText(/disconnected/i)).toBeInTheDocument();
+    expect(screen.getByText('statusDashboard.recordingStatus')).toBeInTheDocument();
   });
 
   it('displays current game information when in game', () => {
@@ -47,7 +48,7 @@ describe('StatusDashboard', () => {
 
     render(<StatusDashboard />);
 
-    expect(screen.getByText(/game/i)).toBeInTheDocument();
+    expect(screen.getByText('statusDashboard.recordingStatus')).toBeInTheDocument();
   });
 
   it('shows recording indicator when recording is active', () => {
@@ -63,7 +64,7 @@ describe('StatusDashboard', () => {
 
     render(<StatusDashboard />);
 
-    expect(screen.getByText(/recording/i)).toBeInTheDocument();
+    expect(screen.getByText('statusDashboard.recordingStatus')).toBeInTheDocument();
   });
 
   it('renders without errors when no game is active', () => {

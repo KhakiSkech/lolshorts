@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::State;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use super::callback_server::CallbackServer;
 use super::models::{AuthStatus, QuotaInfo, UploadHistoryEntry};

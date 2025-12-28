@@ -12,9 +12,16 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mic, Volume2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
 type SampleRate = "hz44100" | "hz48000";
 type AudioBitrate = "kbps128" | "kbps192" | "kbps256" | "kbps320";
+
+interface AudioDevice {
+  name: string;
+  device_type: "Microphone" | "SystemAudio";
+}
 
 interface AudioSettings {
   record_microphone: boolean;
@@ -34,12 +41,39 @@ interface AudioSettingsProps {
 
 export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
   const { t } = useTranslation();
+  const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
+  const [_isLoading, setIsLoading] = useState(false);
+
+  // Fetch audio devices on component mount
+  useEffect(() => {
+    const fetchAudioDevices = async () => {
+      setIsLoading(true);
+      try {
+        const devices = await invoke<AudioDevice[]>("list_audio_devices");
+        setAudioDevices(devices);
+        console.log("Audio devices found:", devices);
+      } catch (error) {
+        console.error("Failed to fetch audio devices:", error);
+        // Fallback to empty list if failed
+        setAudioDevices([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAudioDevices();
+  }, []);
+
   const updateSetting = <K extends keyof AudioSettings>(
     key: K,
     value: AudioSettings[K]
   ) => {
     onChange({ ...settings, [key]: value });
   };
+
+  // Filter devices by type
+  const microphoneDevices = audioDevices.filter(device => device.device_type === "Microphone");
+  const systemAudioDevices = audioDevices.filter(device => device.device_type === "SystemAudio");
 
   const getSampleRateLabel = (rate: SampleRate): string => {
     const labels: Record<SampleRate, string> = {
@@ -99,7 +133,11 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="default">{t('settings.recordingConfig.audioSettings.microphoneRecording.defaultDevice')}</SelectItem>
-                    {/* TODO: List actual audio input devices via Tauri command */}
+                    {microphoneDevices.map((device, index) => (
+                      <SelectItem key={`mic-${index}`} value={device.name}>
+                        {device.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -166,7 +204,11 @@ export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="default">{t('settings.recordingConfig.audioSettings.systemAudioRecording.defaultDevice')}</SelectItem>
-                    {/* TODO: List actual audio output devices via Tauri command */}
+                    {systemAudioDevices.map((device, index) => (
+                      <SelectItem key={`sys-${index}`} value={device.name}>
+                        {device.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

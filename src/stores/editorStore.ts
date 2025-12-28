@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ClipMetadata } from '@/hooks/useStorage';
+import { ClipMetadata } from '@/types/storage';
 
 export interface TimelineClip extends ClipMetadata {
   order: number;

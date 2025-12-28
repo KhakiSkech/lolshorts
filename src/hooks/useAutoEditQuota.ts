@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useState, useCallback, useEffect } from 'react';
 import { AutoEditQuotaInfo } from '@/types/autoEdit';
+import { getErrorMessage } from '@/lib/utils';
 
 /**
  * Hook for managing auto-edit quota
@@ -26,7 +27,7 @@ export function useAutoEditQuota() {
       setQuota(quotaInfo);
       return quotaInfo;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = getErrorMessage(err);
       setError(errorMsg);
       console.error('Failed to fetch auto-edit quota:', err);
       return null;

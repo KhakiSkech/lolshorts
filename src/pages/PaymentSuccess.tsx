@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { invoke } from "@tauri-apps/api/core";
+import { paymentApi } from "@/api/payment";
+import { useAuthStore } from "@/lib/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import { useAuthStore } from "@/lib/auth";
+import { getErrorMessage } from "@/lib/utils";
 
 export function PaymentSuccess() {
   const searchParams = useSearch({ from: "/payment/success" }) as Record<string, string>;
@@ -43,12 +44,8 @@ export function PaymentSuccess() {
         throw new Error("Payment amount mismatch");
       }
 
-      // Confirm payment with backend
-      await invoke("confirm_payment", {
-        paymentKey,
-        orderId,
-        amount: parseInt(amount)
-      });
+      // Confirm payment with backend using API
+      await paymentApi.confirmPayment(paymentKey, orderId, parseInt(amount));
 
       // Clear stored order info
       sessionStorage.removeItem("pending_order_id");
@@ -60,7 +57,7 @@ export function PaymentSuccess() {
       setStatus("success");
     } catch (error) {
       console.error("Payment confirmation failed:", error);
-      setErrorMessage(error as string);
+      setErrorMessage(getErrorMessage(error));
       setStatus("error");
     }
   };
@@ -96,7 +93,7 @@ export function PaymentSuccess() {
               Payment Confirmation Failed
             </CardTitle>
             <CardDescription>
-              We couldn't verify your payment
+              We couldn&apos;t verify your payment
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -106,7 +103,7 @@ export function PaymentSuccess() {
             </Alert>
             <p className="text-sm text-muted-foreground">
               If you were charged, please contact support with your order information.
-              We'll resolve this as soon as possible.
+              We&apos;ll resolve this as soon as possible.
             </p>
             <div className="flex gap-2">
               <Button

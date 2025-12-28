@@ -7,7 +7,7 @@ use tokio;
 
 #[tokio::test]
 async fn test_video_processor_initialization() {
-    let processor = VideoProcessor::new();
+    let processor = VideoProcessor::new_with_fallback();
 
     // Verify processor can be created
     assert!(true);
@@ -120,7 +120,7 @@ async fn test_thumbnail_generation_params() {
 async fn test_concurrent_video_processing() {
     use tokio::task;
 
-    let processor = VideoProcessor::new();
+    let processor = VideoProcessor::new_with_fallback();
 
     // Simulate multiple concurrent validation requests
     let mut handles = vec![];

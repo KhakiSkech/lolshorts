@@ -150,13 +150,19 @@ impl YouTubeOAuthClient {
     /// Refresh access token using refresh token
     pub async fn refresh_token(&self) -> Result<YouTubeCredentials> {
         let current_creds = self.credentials.read().await;
-        let refresh_token = current_creds
+        let refresh_token_str = current_creds
             .as_ref()
             .and_then(|c| c.refresh_token.as_ref())
-            .context("No refresh token available")?;
+            .context("No refresh token available")?
+            .clone();
 
-        let refresh_token = RefreshToken::new(refresh_token.clone());
-        drop(current_creds); // Release lock
+        // Store existing refresh token before releasing lock (avoid blocking_read later)
+        let existing_refresh_token = current_creds
+            .as_ref()
+            .and_then(|c| c.refresh_token.clone());
+
+        let refresh_token = RefreshToken::new(refresh_token_str);
+        drop(current_creds); // Release lock before async call
 
         let token_response = self
             .oauth_client
@@ -175,13 +181,7 @@ impl YouTubeOAuthClient {
             refresh_token: token_response
                 .refresh_token()
                 .map(|t| t.secret().clone())
-                .or_else(|| {
-                    // Keep existing refresh token if new one not provided
-                    self.credentials
-                        .blocking_read()
-                        .as_ref()
-                        .and_then(|c| c.refresh_token.clone())
-                }),
+                .or(existing_refresh_token), // Use pre-fetched value instead of blocking_read
             expires_at,
             token_type: "Bearer".to_string(),
         };

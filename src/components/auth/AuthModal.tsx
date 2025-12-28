@@ -1,36 +1,41 @@
 import { useState } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
 
 interface AuthModalProps {
+  open: boolean;
   onClose: () => void;
+  defaultMode?: "login" | "signup";
 }
 
-export function AuthModal({ onClose }: AuthModalProps) {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+export function AuthModal({ open, onClose, defaultMode = "login" }: AuthModalProps) {
+  const [mode, setMode] = useState<"login" | "signup">(defaultMode);
+
+  const handleClose = () => {
+    // Reset to default mode when closing
+    setMode(defaultMode);
+    onClose();
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative">
-        <button
-          onClick={onClose}
-          className="absolute -top-4 -right-4 z-10 w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center hover:bg-accent"
-        >
-          ✕
-        </button>
-
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogTitle className="sr-only">
+          {mode === "login" ? "Sign In" : "Create Account"}
+        </DialogTitle>
         {mode === "login" ? (
           <LoginForm
             onSwitchToSignup={() => setMode("signup")}
-            onSuccess={onClose}
+            onSuccess={handleClose}
           />
         ) : (
           <SignupForm
             onSwitchToLogin={() => setMode("login")}
-            onSuccess={onClose}
+            onSuccess={handleClose}
           />
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

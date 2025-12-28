@@ -1,8 +1,11 @@
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 import { useState, useCallback, useEffect } from 'react';
-import { ClipMetadata } from './useStorage';
+import { ClipMetadata } from '@/types/storage';
 import { useEditorStore, CompositionSettings, TimelineClip } from '@/stores/editorStore';
+import { videoApi } from '@/api/video';
+import { AppError } from '@/api/client';
+import { getErrorMessage } from '@/lib/utils';
 
 export interface ClipInput {
   file_path: string;
@@ -74,12 +77,12 @@ export function useEditor() {
     setError(null);
 
     try {
-      // Get all clips for the game
-      const clips = await invoke<ClipMetadata[]>('get_game_clips', { gameId });
-      setAvailableClips(clips);
-      return clips;
+      const clips = await videoApi.getClips(gameId);
+      // Note: The API returns specific metadata type, casting to useStorage type if needed
+      setAvailableClips(clips as any);
+      return clips as any;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof AppError ? err.message : 'Failed to load clips';
       setError(errorMsg);
       throw err;
     } finally {
@@ -92,14 +95,16 @@ export function useEditor() {
    */
   const generateThumbnail = useCallback(async (
     videoPath: string,
-    timestamp: number
+    timestamp: number,
+    outputPath?: string // Optional, needed for new API
   ): Promise<string> => {
     try {
-      const thumbnailPath = await invoke<string>('generate_thumbnail', {
-        videoPath,
-        timestamp,
-      });
-      return thumbnailPath;
+      if (outputPath) {
+          return await videoApi.generateThumbnail(videoPath, outputPath, timestamp);
+      } else {
+          // Fallback to auto-generation if no output path provided (using preview logic)
+          return await videoApi.generateClipThumbnail(videoPath);
+      }
     } catch (err) {
       console.error('Failed to generate thumbnail:', err);
       throw err;
@@ -124,8 +129,8 @@ export function useEditor() {
       // Convert TimelineClip[] to ClipInput[]
       const clipInputs: ClipInput[] = timelineClips.map(clip => ({
         file_path: clip.file_path,
-        start_time: clip.trimStart || clip.start_time,
-        end_time: clip.trimEnd || clip.end_time,
+        start_time: clip.trimStart || clip.start_time || 0, // Fallback to 0 if undefined
+        end_time: clip.trimEnd || clip.end_time || clip.duration, // Fallback to duration
         order: clip.order,
       }));
 
@@ -141,7 +146,7 @@ export function useEditor() {
       setExportOutputPath(result);
       return result;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = getErrorMessage(err);
       setError(errorMsg);
       setExportStatus('error');
       setExportError(errorMsg);
@@ -153,26 +158,21 @@ export function useEditor() {
 
   /**
    * Extract a single clip from game footage
+   * Updated to match Backend Signature: inputPath, outputPath, startTime, duration
    */
   const extractClip = useCallback(async (
-    gameId: string,
-    eventId: number,
+    inputPath: string,
+    outputPath: string,
     startTime: number,
-    endTime: number
+    duration: number
   ): Promise<string> => {
     setLoading(true);
     setError(null);
 
     try {
-      const clipPath = await invoke<string>('extract_clip', {
-        gameId,
-        eventId,
-        startTime,
-        endTime,
-      });
-      return clipPath;
+      return await videoApi.extractClip(inputPath, outputPath, startTime, duration);
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = err instanceof AppError ? err.message : 'Extraction failed';
       setError(errorMsg);
       throw err;
     } finally {
@@ -180,12 +180,51 @@ export function useEditor() {
     }
   }, []);
 
+  /**
+   * Create a long-form montage from clips
+   */
+  const createMontage = useCallback(async (
+    timelineClips: TimelineClip[],
+    outputPath: string
+  ): Promise<string> => {
+    setLoading(true);
+    setError(null);
+    setExportStatus('exporting');
+    setExportProgress(0);
+    setExportError(null);
+
+    try {
+      const clipPaths = timelineClips.map(c => c.file_path || '');
+      // Filter out empty paths
+      const validPaths = clipPaths.filter(p => p.length > 0);
+      
+      if (validPaths.length === 0) {
+        throw new Error("No valid clips to export");
+      }
+
+      const result = await videoApi.createLongformVideo(validPaths, outputPath);
+
+      setExportStatus('complete');
+      setExportOutputPath(result);
+      return result;
+    } catch (err) {
+      const errorMsg = err instanceof AppError ? err.message : 'Montage export failed';
+      setError(errorMsg);
+      setExportStatus('error');
+      setExportError(errorMsg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setExportStatus, setExportProgress, setExportError, setExportOutputPath]);
+
   return {
     isLoading: loading,
     error,
     loadGameClips,
     generateThumbnail,
     composeShorts,
+    createMontage,
     extractClip,
   };
 }

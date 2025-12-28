@@ -31,6 +31,7 @@ export default tseslint.config(
 
       // React Hooks rules
       ...reactHooks.configs.recommended.rules,
+      'react-hooks/set-state-in-effect': 'off', // Allow setState in effects for data loading patterns
 
       // Accessibility rules
       ...jsxA11y.configs.recommended.rules,
@@ -60,11 +61,43 @@ export default tseslint.config(
       'node_modules/**',
       'dist/**',
       'build/**',
+      'target/**',
       'src-tauri/target/**',
       '**/*.config.js',
       '**/*.config.ts',
       'playwright.config.ts',
       'vite.config.ts',
+      'jest.setup.js',
+      '__mocks__/**',
+      'coverage/**',
+      '.cache/**',
     ],
+  },
+
+  // Jest and test files configuration
+  {
+    files: ['**/*.test.ts', '**/*.test.tsx', 'jest.setup.js', '__mocks__/**/*.js', 'tests/**/*.ts'],
+    languageOptions: {
+      globals: {
+        require: 'readonly',
+        global: 'readonly',
+        jest: 'readonly',
+        window: 'readonly',
+        module: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-undef': 'off',
+      'no-console': 'off',
+    },
   }
 );

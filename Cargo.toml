@@ -1,3 +1,16 @@
 [workspace]
 members = ["src-tauri"]
 resolver = "2"
+
+# Production Build Optimizations - Gaming Software Tuned
+[profile.release]
+opt-level = 3              # Maximum optimization
+lto = "thin"               # Thin LTO for faster compiles, good optimization
+codegen-units = 4          # Balanced optimization vs compile time
+strip = true               # Strip symbols for smaller binary
+panic = "abort"            # Smaller binary, faster panics
+debug = false              # Remove debug info
+overflow-checks = false    # Disable overflow checks for performance
+
+[profile.release.package."*"]
+opt-level = 2              # Optimize dependencies for faster builds

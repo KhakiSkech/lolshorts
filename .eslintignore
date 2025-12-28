@@ -1,0 +1,22 @@
+# Build outputs
+target/
+dist/
+build/
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Cache
+.cache/
+.turbo/
+
+# Tauri generated files
+src-tauri/target/
+
+# Test files
+coverage/
+
+# Generated files
+*.generated.*

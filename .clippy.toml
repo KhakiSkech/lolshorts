@@ -1,0 +1,85 @@
+# Clippy configuration for LoLShorts
+# This file configures Rust linting rules for the project
+
+# Allow certain pedantic lints but warn on others
+pedantic = "warn"
+
+# Enable additional checks
+nursery = "warn"
+
+# Complex threshold configuration
+cognitive-complexity-threshold = 15
+too-many-arguments-threshold = 7
+type-complexity-threshold = 250
+
+# Function size limits
+too-many-lines-threshold = 100
+
+# Allow certain casts
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+
+# Allow certain conversions
+char_lit_as_u8 = "allow"
+checked_conversions = "allow"
+
+# Allow certain naming conventions
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+
+# Allow certain functions
+unwrap_used = "allow"
+expect_used = "allow"
+panic = "allow"
+unimplemented = "allow"
+todo = "allow"
+unreachable = "allow"
+
+# Disable certain lints for this project
+wildcard_imports = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_inception = "allow"
+
+# Performance lints
+inline_always = "warn"
+vec_box = "warn"
+redundant_allocation = "warn"
+
+# Style lints
+enum_variant_names = "warn"
+large_enum_variant = "warn"
+struct_excessive_bools = "warn"
+fn_params_excessive_bools = "warn"
+
+# Documentation lints
+doc_markdown = "warn"
+missing_docs_in_private_items = "allow"
+
+# Suppress warnings in external macros
+macro_use_imports = "allow"
+
+# Async-related lints
+async_yields_async = "warn"
+await_holding_lock = "warn"
+await_holding_refcell_ref = "warn"
+
+# Security-related lints
+unsafe_derive_deserialize = "warn"
+string_to_string = "warn"
+uninlined_format_args = "warn"
+unused_self = "warn"
+used_underscore_binding = "warn"
+verbose_bit_mask = "warn"
+verbose_file_reads = "warn"
+
+# Special configuration for cross-platform code
+[target.'cfg(windows)'.warnings]
+windows_crate = "allow"
+
+[target.'cfg(target_os = "macos")'.warnings]
+objc_method_call = "allow"
+
+[target.'cfg(target_os = "linux")'.warnings]
+manual_strip = "allow"

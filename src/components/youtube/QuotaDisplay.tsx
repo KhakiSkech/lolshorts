@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useYouTube } from '@/hooks/useYouTube';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -11,20 +11,20 @@ export function QuotaDisplay() {
   const { authStatus, getQuotaInfo } = useYouTube();
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
 
-  useEffect(() => {
-    if (authStatus.authenticated) {
-      loadQuota();
-    }
-  }, [authStatus.authenticated]);
-
-  const loadQuota = async () => {
+  const loadQuota = useCallback(async () => {
     try {
       const data = await getQuotaInfo();
       setQuota(data);
     } catch (err) {
       console.error('Failed to load quota:', err);
     }
-  };
+  }, [getQuotaInfo]);
+
+  useEffect(() => {
+    if (authStatus.authenticated) {
+      loadQuota();
+    }
+  }, [authStatus.authenticated, loadQuota]);
 
   const getQuotaPercentage = () => {
     if (!quota) return 0;
@@ -128,7 +128,7 @@ export function QuotaDisplay() {
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              You're approaching your daily quota limit. Consider waiting until
+              You&apos;re approaching your daily quota limit. Consider waiting until
               reset to avoid hitting the limit.
             </AlertDescription>
           </Alert>

@@ -66,6 +66,14 @@ claudedocs/
 *.tmp.*
 clippy_output.txt
 
+# FFmpeg binaries (too large for GitHub - downloaded at build time)
+src-tauri/binaries/ffmpeg-master-latest-win64-gpl/
+src-tauri/binaries/ffmpeg.zip
+src-tauri/binaries/ffmpeg.exe
+src-tauri/binaries/ffmpeg
+src-tauri/binaries/*.exe
+src-tauri/test_ffmpeg.exe
+
 # OS
 Thumbs.db
 .DS_Store

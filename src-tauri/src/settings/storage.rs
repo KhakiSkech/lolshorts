@@ -1,7 +1,9 @@
 use super::models::RecordingSettings;
+use super::platform_config::{PlatformConfig, PlatformConfigError};
 use std::fs;
 use std::path::PathBuf;
 use thiserror::Error;
+use serde_json;
 
 #[derive(Debug, Error)]
 pub enum SettingsError {
@@ -13,6 +15,12 @@ pub enum SettingsError {
 
     #[error("JSON serialization error: {0}")]
     Json(#[from] serde_json::Error),
+
+    #[error("Platform configuration error: {0}")]
+    PlatformConfig(#[from] PlatformConfigError),
+
+    #[error("Settings validation error: {0}")]
+    Validation(String),
 }
 
 pub type Result<T> = std::result::Result<T, SettingsError>;
@@ -73,6 +81,252 @@ impl RecordingSettings {
         settings.save()?;
         tracing::info!("Settings reset to default");
         Ok(settings)
+    }
+
+    /// Load settings with platform-specific optimization
+    ///
+    /// Detects platform hardware and applies optimizations
+    pub async fn load_with_platform_optimization() -> Result<Self> {
+        let mut settings = Self::load()?;
+
+        // Detect platform configuration
+        let platform_config = PlatformConfig::detect().await?;
+
+        // Apply platform-specific defaults for new settings
+        settings.apply_platform_defaults(&platform_config);
+
+        // Optimize settings based on hardware
+        platform_config.optimize_settings(&mut settings);
+
+        // Validate settings against platform capabilities
+        platform_config.validate_settings(&settings)?;
+
+        // Save optimized settings
+        settings.save()?;
+
+        tracing::info!("Settings loaded and optimized for platform: {:?}", platform_config.platform);
+        Ok(settings)
+    }
+
+    /// Apply platform-specific defaults
+    fn apply_platform_defaults(&mut self, platform_config: &PlatformConfig) {
+        // Override with platform-specific defaults
+        let defaults = &platform_config.default_overrides;
+
+        // Apply video settings if user hasn't customized
+        if !self.is_customized_video() {
+            self.video = defaults.video.clone();
+        }
+
+        // Apply audio settings if user hasn't customized
+        if !self.is_customized_audio() {
+            self.audio = defaults.audio.clone();
+        }
+
+        // Platform-specific overrides
+        match platform_config.platform {
+            super::platform_config::Platform::MacOS => {
+                self.minimize_to_tray = false; // macOS uses dock instead of tray
+            }
+            super::platform_config::Platform::Linux => {
+                self.minimize_to_tray = false; // Linux tray support varies
+            }
+            _ => {}
+        }
+    }
+
+    /// Check if video settings have been customized by user
+    fn is_customized_video(&self) -> bool {
+        let default = RecordingSettings::default();
+        self.video.resolution != default.video.resolution ||
+        self.video.frame_rate != default.video.frame_rate ||
+        self.video.bitrate_preset != default.video.bitrate_preset ||
+        self.video.codec != default.video.codec ||
+        self.video.encoder != default.video.encoder
+    }
+
+    /// Check if audio settings have been customized by user
+    fn is_customized_audio(&self) -> bool {
+        let default = RecordingSettings::default();
+        self.audio.record_microphone != default.audio.record_microphone ||
+        self.audio.record_system_audio != default.audio.record_system_audio ||
+        self.audio.sample_rate != default.audio.sample_rate ||
+        self.audio.bitrate != default.audio.bitrate
+    }
+
+    /// Get migration status for settings version upgrades
+    pub fn needs_migration() -> Result<bool> {
+        let migration_path = Self::get_migration_path()?;
+        Ok(!migration_path.exists())
+    }
+
+    /// Perform settings migration from previous version
+    pub async fn migrate_settings() -> Result<Self> {
+        tracing::info!("Starting settings migration...");
+
+        // Load existing settings
+        let mut settings = Self::load().unwrap_or_else(|_| {
+            tracing::warn!("Could not load existing settings, using defaults");
+            Self::default()
+        });
+
+        // Perform version-specific migrations
+        settings = Self::migrate_from_v1_to_v2(settings);
+        settings = Self::migrate_from_v2_to_v3(settings);
+
+        // Apply platform optimization after migration
+        let platform_config = PlatformConfig::detect().await?;
+        platform_config.optimize_settings(&mut settings);
+
+        // Save migrated settings
+        settings.save()?;
+
+        // Mark migration as complete
+        Self::mark_migration_complete()?;
+
+        tracing::info!("Settings migration completed successfully");
+        Ok(settings)
+    }
+
+    /// Migration from version 1 to version 2
+    fn migrate_from_v1_to_v2(mut settings: Self) -> Self {
+        // Add new fields introduced in v2
+        tracing::debug!("Migrating settings from v1 to v2");
+
+        // Example: Add new clip timing settings if they don't exist
+        if settings.clip_timing.event_timings.is_empty() {
+            settings.clip_timing = RecordingSettings::default().clip_timing;
+        }
+
+        settings
+    }
+
+    /// Migration from version 2 to version 3
+    fn migrate_from_v2_to_v3(mut settings: Self) -> Self {
+        // Add new fields introduced in v3
+        tracing::debug!("Migrating settings from v2 to v3");
+
+        // Example: Update event filter settings
+        if settings.event_filter.min_priority == 0 {
+            settings.event_filter.min_priority = 1; // Fix invalid default
+        }
+
+        settings
+    }
+
+    /// Get migration marker file path
+    fn get_migration_path() -> Result<PathBuf> {
+        let config_dir = dirs::config_dir().ok_or(SettingsError::ConfigDirNotFound)?;
+        let lolshorts_dir = config_dir.join("LoLShorts");
+        Ok(lolshorts_dir.join(".migrated_v3"))
+    }
+
+    /// Mark migration as complete
+    fn mark_migration_complete() -> Result<()> {
+        let migration_path = Self::get_migration_path()?;
+
+        if let Some(parent) = migration_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        fs::write(&migration_path, "migrated")?;
+        Ok(())
+    }
+
+    /// Export settings to file for backup
+    pub fn export_settings(&self, path: &PathBuf) -> Result<()> {
+        let json = serde_json::to_string_pretty(self)?;
+        fs::write(path, json)?;
+        tracing::info!("Settings exported to: {:?}", path);
+        Ok(())
+    }
+
+    /// Import settings from file
+    pub fn import_settings(path: &PathBuf) -> Result<Self> {
+        let json = fs::read_to_string(path)?;
+        let settings: RecordingSettings = serde_json::from_str(&json)?;
+
+        // Validate imported settings
+        if settings.event_filter.min_priority == 0 || settings.event_filter.min_priority > 5 {
+            return Err(SettingsError::Validation(
+                "Invalid event filter priority range".to_string()
+            ));
+        }
+
+        tracing::info!("Settings imported from: {:?}", path);
+        Ok(settings)
+    }
+
+    /// Validate settings integrity
+    pub fn validate_integrity(&self) -> Result<()> {
+        // Validate event filter settings
+        if self.event_filter.min_priority == 0 || self.event_filter.min_priority > 5 {
+            return Err(SettingsError::Validation(
+                "Event filter priority must be between 1 and 5".to_string()
+            ));
+        }
+
+        // Validate audio volume settings
+        if self.audio.microphone_volume > 200 {
+            return Err(SettingsError::Validation(
+                "Microphone volume cannot exceed 200%".to_string()
+            ));
+        }
+
+        if self.audio.system_audio_volume > 200 {
+            return Err(SettingsError::Validation(
+                "System audio volume cannot exceed 200%".to_string()
+            ));
+        }
+
+        // Validate clip timing settings
+        if self.clip_timing.default_pre_duration > 60 {
+            return Err(SettingsError::Validation(
+                "Pre-event duration cannot exceed 60 seconds".to_string()
+            ));
+        }
+
+        if self.clip_timing.default_post_duration > 60 {
+            return Err(SettingsError::Validation(
+                "Post-event duration cannot exceed 60 seconds".to_string()
+            ));
+        }
+
+        // Validate merge threshold
+        if self.clip_timing.merge_time_threshold < 1.0 || self.clip_timing.merge_time_threshold > 300.0 {
+            return Err(SettingsError::Validation(
+                "Event merge threshold must be between 1 and 300 seconds".to_string()
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Get settings summary for diagnostics
+    pub fn get_diagnostics_summary(&self) -> String {
+        format!(
+            r#"Settings Diagnostics:
+- Event Filter: priority={}, kills={}, multikills={}
+- Video: resolution={:?}, framerate={:?}, codec={:?}
+- Audio: microphone={}, system_audio={}, bitrate={:?}
+- Clip Timing: pre={}s, post={}s, merge={}
+- General: auto_start={}, minimize_to_tray={}, notifications={}"#,
+            self.event_filter.min_priority,
+            self.event_filter.record_kills,
+            self.event_filter.record_multikills,
+            self.video.resolution,
+            self.video.frame_rate,
+            self.video.codec,
+            self.audio.record_microphone,
+            self.audio.record_system_audio,
+            self.audio.bitrate,
+            self.clip_timing.default_pre_duration,
+            self.clip_timing.default_post_duration,
+            self.clip_timing.merge_consecutive_events,
+            self.auto_start_with_league,
+            self.minimize_to_tray,
+            self.show_notifications,
+        )
     }
 }
 
@@ -154,11 +408,11 @@ mod tests {
 
         // Reset
         let reset_settings = RecordingSettings::reset_to_default().unwrap();
-        assert_eq!(reset_settings.event_filter.min_priority, 2); // default value
+        assert_eq!(reset_settings.event_filter.min_priority, 1); // default value
 
         // Verify persisted
         let loaded = RecordingSettings::load().unwrap();
-        assert_eq!(loaded.event_filter.min_priority, 2);
+        assert_eq!(loaded.event_filter.min_priority, 1);
 
         // Cleanup
         let path = RecordingSettings::get_settings_path().unwrap();

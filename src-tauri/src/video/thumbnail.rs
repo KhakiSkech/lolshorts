@@ -8,7 +8,7 @@ pub async fn auto_generate_thumbnail(
     clip_path: impl AsRef<Path>,
     output_dir: impl AsRef<Path>,
 ) -> Result<PathBuf> {
-    let processor = VideoProcessor::new();
+    let processor = VideoProcessor::new_with_fallback();
 
     // Get video duration to find midpoint
     let duration = processor.get_duration(&clip_path).await?;
@@ -39,7 +39,7 @@ pub async fn generate_event_thumbnail(
     event_time: f64,
     event_name: &str,
 ) -> Result<PathBuf> {
-    let processor = VideoProcessor::new();
+    let processor = VideoProcessor::new_with_fallback();
 
     let thumbnail_name = format!("{}_{:.1}s.jpg", event_name, event_time);
     let thumbnail_path = output_dir.as_ref().join(thumbnail_name);

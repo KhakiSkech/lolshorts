@@ -30,10 +30,9 @@ pub struct KDA {
 
 impl KDA {
     pub fn ratio(&self) -> f64 {
-        if self.deaths == 0 {
-            (self.kills + self.assists) as f64
-        } else {
-            (self.kills + self.assists) as f64 / self.deaths as f64
+        match self.deaths {
+            0 => (self.kills + self.assists) as f64,
+            deaths => (self.kills + self.assists) as f64 / deaths as f64,
         }
     }
 }
@@ -67,11 +66,13 @@ impl EventType {
     pub fn default_priority(&self) -> u8 {
         match self {
             EventType::ChampionKill => 1,
-            EventType::Multikill(2) => 2, // Double kill
-            EventType::Multikill(3) => 3, // Triple kill
-            EventType::Multikill(4) => 4, // Quadra kill
-            EventType::Multikill(5) => 5, // Penta kill
-            EventType::Multikill(_) => 3,
+            EventType::Multikill(kills) => match kills {
+                2 => 2, // Double kill
+                3 => 3, // Triple kill
+                4 => 4, // Quadra kill
+                5 => 5, // Penta kill
+                _ => 3, // Other multikills
+            },
             EventType::TurretKill => 2,
             EventType::InhibitorKill => 3,
             EventType::DragonKill => 3,
@@ -93,6 +94,8 @@ pub struct ClipMetadata {
     pub priority: u8,
     pub duration: f64, // Clip duration in seconds
     pub created_at: DateTime<Utc>,
+    #[serde(default)]
+    pub usage_count: u32, // Number of times this clip has been used in auto-edits
 }
 
 // ============================================================================
@@ -132,11 +135,6 @@ impl Default for AutoEditUsage {
 }
 
 impl AutoEditUsage {
-    /// Create new usage tracking for current month
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Get current month identifier
     pub fn current_month() -> String {
         Utc::now().format("%Y-%m").to_string()

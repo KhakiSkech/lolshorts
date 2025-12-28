@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Crown, Check, AlertCircle } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
+import { getErrorMessage } from "@/lib/utils";
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -48,7 +49,7 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
       onClose();
     } catch (err) {
       console.error("Failed to create subscription:", err);
-      setError(err as string);
+      setError(getErrorMessage(err));
     } finally {
       setIsProcessing(false);
     }
@@ -73,12 +74,21 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
             <div className="space-y-3">
               {/* Monthly Plan */}
               <div
+                role="button"
+                tabIndex={0}
                 className={`relative flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                   period === "MONTHLY"
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-primary/50"
                 }`}
                 onClick={() => setPeriod("MONTHLY")}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setPeriod("MONTHLY");
+                  }
+                }}
+                aria-label="Select monthly plan for ₩9,900 per month"
               >
                 <RadioGroupItem value="MONTHLY" id="monthly" className="mt-1" />
                 <Label htmlFor="monthly" className="flex-1 ml-3 cursor-pointer">
@@ -96,12 +106,21 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
 
               {/* Yearly Plan */}
               <div
+                role="button"
+                tabIndex={0}
                 className={`relative flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                   period === "YEARLY"
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-primary/50"
                 }`}
                 onClick={() => setPeriod("YEARLY")}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setPeriod("YEARLY");
+                  }
+                }}
+                aria-label="Select yearly plan for ₩99,000 per year, save 17%"
               >
                 <RadioGroupItem value="YEARLY" id="yearly" className="mt-1" />
                 <Label htmlFor="yearly" className="flex-1 ml-3 cursor-pointer">
@@ -182,7 +201,7 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
           </div>
 
           <p className="text-xs text-center text-muted-foreground">
-            You'll be redirected to Toss Payments to complete your purchase securely
+            You&apos;ll be redirected to Toss Payments to complete your purchase securely
           </p>
         </div>
       </DialogContent>

@@ -32,9 +32,7 @@ impl QuotaInfo {
     /// YouTube Data API v3 daily quota limit (10,000 units)
     pub const DAILY_LIMIT: u64 = 10_000;
 
-    /// Upload cost (1600 units per video)
-    pub const UPLOAD_COST: u64 = 1_600;
-
+    
     /// Create new quota info
     pub fn new(used: u64) -> Self {
         let now = chrono::Utc::now();
@@ -54,45 +52,5 @@ impl QuotaInfo {
             reset_at: pacific_midnight.timestamp(),
         }
     }
-
-    /// Check if quota allows upload
-    pub fn can_upload(&self) -> bool {
-        self.remaining >= Self::UPLOAD_COST
-    }
-
-    /// Get uploads remaining today
-    pub fn uploads_remaining(&self) -> u64 {
-        self.remaining / Self::UPLOAD_COST
-    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_quota_info_creation() {
-        let quota = QuotaInfo::new(5000);
-        assert_eq!(quota.daily_limit, 10_000);
-        assert_eq!(quota.used, 5000);
-        assert_eq!(quota.remaining, 5000);
-    }
-
-    #[test]
-    fn test_quota_can_upload() {
-        let quota = QuotaInfo::new(0);
-        assert!(quota.can_upload());
-
-        let quota = QuotaInfo::new(9000);
-        assert!(!quota.can_upload());
-    }
-
-    #[test]
-    fn test_uploads_remaining() {
-        let quota = QuotaInfo::new(0);
-        assert_eq!(quota.uploads_remaining(), 6); // 10,000 / 1,600 = 6
-
-        let quota = QuotaInfo::new(5000);
-        assert_eq!(quota.uploads_remaining(), 3); // 5,000 / 1,600 = 3
-    }
-}

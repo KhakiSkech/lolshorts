@@ -1,4 +1,5 @@
 import { useAutoEditQuota } from '@/hooks/useAutoEditQuota';
+import { authApi } from '@/api/auth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,14 +11,39 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Sparkles, Crown, AlertCircle, Loader2 } from 'lucide-react';
+import { Sparkles, Crown, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { open } from '@tauri-apps/plugin-shell';
 
 export function AutoEditQuotaBadge() {
   const { t } = useTranslation();
   const { quota, isLoading, getQuotaWarningLevel } = useAutoEditQuota();
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState<string | null>(null);
+
+  const handleUpgradeClick = async () => {
+    setUpgradeLoading(true);
+    setUpgradeMessage(null);
+
+    try {
+      const message = await authApi.openPaymentPage();
+      setUpgradeMessage(message);
+
+      // Open the pricing page in the default browser
+      try {
+        await open('https://lolshorts.app/pricing');
+      } catch {
+        // Browser open may fail silently, message is still shown
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setUpgradeMessage(errorMessage);
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
 
   if (isLoading || !quota) {
     return (
@@ -119,6 +145,15 @@ export function AutoEditQuotaBadge() {
                 </AlertDescription>
               </Alert>
             )}
+
+            {upgradeMessage && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  {upgradeMessage}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <DialogFooter>
@@ -127,13 +162,14 @@ export function AutoEditQuotaBadge() {
             </Button>
             <Button
               className="bg-gradient-to-r from-yellow-400 to-yellow-600"
-              onClick={() => {
-                // TODO: Navigate to payment page
-                alert('Navigate to payment page');
-                setShowUpgradeDialog(false);
-              }}
+              onClick={handleUpgradeClick}
+              disabled={upgradeLoading}
             >
-              <Crown className="w-4 h-4 mr-2" />
+              {upgradeLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <ExternalLink className="w-4 h-4 mr-2" />
+              )}
               {t('autoEdit.upgradeToPro')}
             </Button>
           </DialogFooter>
@@ -142,3 +178,4 @@ export function AutoEditQuotaBadge() {
     </>
   );
 }
+

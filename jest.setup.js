@@ -1,6 +1,13 @@
 // Jest setup file for testing environment
 require('@testing-library/jest-dom');
 
+// Mock ResizeObserver (required by Radix UI components)
+global.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 // Mock Tauri API since it's not available in test environment
 global.window = global.window || {};
 global.window.__TAURI__ = {
@@ -9,7 +16,53 @@ global.window.__TAURI__ = {
     listen: jest.fn(),
     emit: jest.fn(),
   },
+  dialog: {
+    ask: jest.fn(),
+    confirm: jest.fn(),
+    message: jest.fn(),
+    open: jest.fn(),
+    save: jest.fn(),
+  },
+  shell: {
+    open: jest.fn(),
+    command: jest.fn(),
+  },
 };
+
+// Enhanced Tauri invoke mock with specific functions
+const mockInvoke = jest.fn();
+mockInvoke.mockImplementation(async (cmd, args) => {
+  // Mock common Tauri commands
+  switch (cmd) {
+    case 'get_auth_status':
+      return { authenticated: false, tier: 'FREE' };
+    case 'list_audio_devices':
+      return [
+        { id: 'default', name: 'Default Audio Device', device_type: 'SystemAudio' },
+        { id: 'microphone', name: 'Microphone', device_type: 'Microphone' }
+      ];
+    case 'get_recording_status':
+      return 'idle';
+    case 'get_detailed_recording_status':
+      return {
+        status: 'Idle',
+        is_monitoring: false,
+        buffer_duration_secs: 120
+      };
+    case 'get_saved_clips':
+      return [];
+    case 'get_system_info':
+      return {
+        platform: 'win32',
+        arch: 'x64',
+        version: '1.2.0'
+      };
+    default:
+      return null;
+  }
+});
+
+global.window.__TAURI__.invoke = mockInvoke;
 
 // Mock matchMedia (required by some UI components)
 Object.defineProperty(window, 'matchMedia', {
@@ -25,3 +78,80 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: jest.fn(),
   })),
 });
+
+// Mock import.meta.env for ESM modules
+Object.defineProperty(global, 'import', {
+  value: {
+    meta: {
+      env: {
+        VITE_SUPABASE_URL: 'http://localhost:54321',
+        VITE_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE',
+      },
+    },
+  },
+  writable: true,
+});
+
+// Define process.env for non-module contexts
+process.env = {
+  NODE_ENV: 'test',
+  VITE_SUPABASE_URL: 'http://localhost:54321',
+  VITE_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE',
+};
+
+// Mock react-i18next to prevent initialization warnings
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key) => key,
+    i18n: {
+      language: 'en',
+      changeLanguage: jest.fn(),
+    },
+  }),
+  initReactI18next: {},
+}));
+
+// Mock i18next
+jest.mock('i18next', () => ({
+  init: jest.fn(() => Promise.resolve()),
+  t: (key) => key,
+}));
+
+// Mock sessionStorage
+Object.defineProperty(window, 'sessionStorage', {
+  value: {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+    clear: jest.fn(),
+  },
+  writable: true,
+});
+
+// Mock supabase to avoid import.meta.env issues
+jest.mock('./src/lib/supabase', () => ({
+  supabase: {
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          single: jest.fn(() => Promise.resolve({ data: null, error: null }))
+        })),
+        order: jest.fn(() => Promise.resolve({ data: [], error: null }))
+      })),
+      insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      update: jest.fn(() => ({
+        eq: jest.fn(() => Promise.resolve({ data: null, error: null }))
+      })),
+      delete: jest.fn(() => ({
+        eq: jest.fn(() => Promise.resolve({ data: null, error: null }))
+      }))
+    })),
+    auth: {
+      getUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
+      signInWithOAuth: jest.fn(),
+      signInWithPassword: jest.fn(),
+      signOut: jest.fn(() => Promise.resolve({ error: null })),
+      onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } }))
+    }
+  }
+}));

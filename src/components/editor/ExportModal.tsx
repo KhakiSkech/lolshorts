@@ -8,15 +8,21 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, XCircle, Loader2, FolderOpen, Film, Settings, Clock } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
+import { CheckCircle2, XCircle, Loader2, FolderOpen, Film, Settings, Clock, LayoutTemplate } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { open as openPath } from '@tauri-apps/plugin-shell';
 import { join, dirname } from '@tauri-apps/api/path';
+import { getErrorMessage } from '@/lib/utils';
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+type ExportFormat = 'shorts' | 'montage';
 
 export function ExportModal({ isOpen, onClose }: ExportModalProps) {
   const { t } = useTranslation();
@@ -34,8 +40,10 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
     setExportOutputPath,
   } = useEditorStore();
 
-  const { composeShorts, isLoading } = useEditor();
+  const { composeShorts, createMontage, isLoading } = useEditor();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('shorts');
 
   // Reset modal state when opened
   useEffect(() => {
@@ -44,18 +52,21 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
       setExportProgress(0);
       setExportError(null);
       setSelectedPath(null);
+      setExportFormat('shorts');
     }
-  }, [isOpen, setExportStatus, setExportProgress, setExportError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const handleSelectPath = async () => {
     try {
+      const defaultName = exportFormat === 'shorts' ? 'lolshorts_export.mp4' : 'lol_montage.mp4';
       const selected = await open({
         title: 'Save Exported Video',
         filters: [{
           name: 'Video Files',
           extensions: ['mp4'],
         }],
-        defaultPath: await join(await dirname(''), 'lolshorts_export.mp4'),
+        defaultPath: await join(await dirname(''), defaultName),
       });
 
       if (selected && typeof selected === 'string') {
@@ -73,15 +84,23 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
     }
 
     try {
-      const outputPath = await composeShorts(
-        timelineClips,
-        compositionSettings,
-        selectedPath
-      );
+      let outputPath = '';
+      if (exportFormat === 'shorts') {
+        outputPath = await composeShorts(
+          timelineClips,
+          compositionSettings,
+          selectedPath
+        );
+      } else {
+        outputPath = await createMontage(
+          timelineClips,
+          selectedPath
+        );
+      }
       setExportOutputPath(outputPath);
     } catch (error) {
       console.error('Export failed:', error);
-      setExportError(error as string);
+      setExportError(getErrorMessage(error));
       setExportStatus('error');
     }
   };
@@ -97,9 +116,17 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (exportStatus === 'exporting') {
-      if (!confirm(t('confirmations.cancelExport'))) {
+      const confirmed = await confirm({
+        title: t('confirmations.cancelExportTitle'),
+        description: t('confirmations.cancelExportDescription'),
+        confirmText: t('common.cancel'),
+        cancelText: t('common.continue'),
+        variant: 'warning',
+      });
+
+      if (!confirmed) {
         return;
       }
     }
@@ -155,6 +182,42 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
           {/* Export Summary */}
           {exportStatus === 'idle' && (
             <>
+              {/* Format Selection */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Export Format</Label>
+                <RadioGroup 
+                  defaultValue="shorts" 
+                  value={exportFormat}
+                  onValueChange={(val) => setExportFormat(val as ExportFormat)}
+                  className="grid grid-cols-2 gap-4"
+                >
+                  <div>
+                    <RadioGroupItem value="shorts" id="shorts" className="peer sr-only" />
+                    <Label
+                      htmlFor="shorts"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                      <LayoutTemplate className="mb-2 h-6 w-6" />
+                      <span className="font-semibold">Shorts (9:16)</span>
+                      <span className="text-xs text-muted-foreground mt-1">Mobile optimized</span>
+                    </Label>
+                  </div>
+                  <div>
+                    <RadioGroupItem value="montage" id="montage" className="peer sr-only" />
+                    <Label
+                      htmlFor="montage"
+                      className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                    >
+                      <Film className="mb-2 h-6 w-6" />
+                      <span className="font-semibold">Montage (16:9)</span>
+                      <span className="text-xs text-muted-foreground mt-1">Full screen HD</span>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <Separator />
+
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground flex items-center gap-2">
@@ -170,38 +233,34 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
                   </span>
                   <Badge variant="outline">{formatDuration(totalDuration)}</Badge>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Settings className="w-4 h-4" />
-                    Aspect Ratio
-                  </span>
-                  <Badge variant="outline">{compositionSettings.aspectRatio}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Settings className="w-4 h-4" />
-                    Transitions
-                  </span>
-                  <Badge variant="outline">
-                    {compositionSettings.transitionType === 'none'
-                      ? 'None'
-                      : `${compositionSettings.transitionType} (${compositionSettings.transitionDuration}s)`
-                    }
-                  </Badge>
-                </div>
+                {exportFormat === 'shorts' && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      Transitions
+                    </span>
+                    <Badge variant="outline">
+                      {compositionSettings.transitionType === 'none'
+                        ? 'None'
+                        : `${compositionSettings.transitionType} (${compositionSettings.transitionDuration}s)`
+                      }
+                    </Badge>
+                  </div>
+                )}
               </div>
 
               <Separator />
 
               {/* File Path Selection */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Save Location</label>
+                <span className="text-sm font-medium" id="save-location-label">Save Location</span>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleSelectPath}
                     className="flex-1 justify-start"
+                    aria-labelledby="save-location-label"
                   >
                     <FolderOpen className="w-4 h-4 mr-2" />
                     {selectedPath ? 'Change Location' : 'Select Location'}
@@ -226,8 +285,9 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
               <Alert>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <AlertDescription>
-                  Processing video clips and applying transitions...
-                  This may take a few minutes.
+                  {exportFormat === 'shorts' 
+                    ? 'Processing clips, cropping to 9:16, and applying effects...' 
+                    : 'Merging clips into a full-length montage...'}
                 </AlertDescription>
               </Alert>
             </div>
@@ -309,6 +369,7 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
           )}
         </DialogFooter>
       </DialogContent>
+      <ConfirmDialog />
     </Dialog>
   );
 }

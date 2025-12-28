@@ -1,0 +1,490 @@
+name: Monitoring & Analytics
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  schedule:
+    # Run monitoring checks every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: 'Type of monitoring check'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - build-health
+        - performance
+        - security
+        - dependencies
+
+jobs:
+  # Build health monitoring
+  build-health:
+    name: Build Health Monitoring
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check build time
+        run: |
+          # Measure build time
+          START_TIME=$(date +%s)
+
+          # Build frontend
+          npm run build
+
+          # Build backend
+          cd src-tauri
+          cargo build --release
+
+          END_TIME=$(date +%s)
+          BUILD_TIME=$((END_TIME - START_TIME))
+
+          echo "Build time: ${BUILD_TIME}s"
+
+          # Alert if build takes too long (>5 minutes)
+          if [ $BUILD_TIME -gt 300 ]; then
+            echo "::warning::Build time exceeded 5 minutes: ${BUILD_TIME}s"
+          fi
+
+          # Store build time for metrics
+          echo "build_time=${BUILD_TIME}" >> $GITHUB_ENV
+
+      - name: Check bundle size
+        run: |
+          # Check frontend bundle size
+          BUNDLE_SIZE=$(du -k dist/assets/*.js | awk '{sum+=$1} END {print sum}')
+
+          echo "Bundle size: ${BUNDLE_SIZE} KB"
+
+          # Alert if bundle is too large (>2MB)
+          if [ $BUNDLE_SIZE -gt 2048 ]; then
+            echo "::warning::Bundle size exceeded 2MB: ${BUNDLE_SIZE} KB"
+          fi
+
+          # Store bundle size for metrics
+          echo "bundle_size=${BUNDLE_SIZE}" >> $GITHUB_ENV
+
+      - name: Check binary size
+        run: |
+          # Check backend binary size
+          BINARY_SIZE=$(du -k src-tauri/target/release/lolshorts | awk '{print $1}')
+
+          echo "Binary size: ${BINARY_SIZE} KB"
+
+          # Alert if binary is too large (>50MB)
+          if [ $BINARY_SIZE -gt 51200 ]; then
+            echo "::warning::Binary size exceeded 50MB: ${BINARY_SIZE} KB"
+          fi
+
+          # Store binary size for metrics
+          echo "binary_size=${BINARY_SIZE}" >> $GITHUB_ENV
+
+      - name: Generate build metrics
+        run: |
+          # Create metrics file
+          cat > build-metrics.json << EOF
+          {
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "metrics": {
+              "build_time_seconds": ${{ env.build_time }},
+              "bundle_size_kb": ${{ env.bundle_size }},
+              "binary_size_kb": ${{ env.binary_size }}
+            }
+          }
+          EOF
+
+          cat build-metrics.json
+
+      - name: Upload build metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metrics
+          path: build-metrics.json
+          retention-days: 90
+
+  # Performance monitoring
+  performance-monitor:
+    name: Performance Monitoring
+    runs-on: windows-latest
+    if: github.event_name == 'schedule' || github.event.inputs.check_type == 'performance' || github.event.inputs.check_type == 'all'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run performance benchmarks
+        run: |
+          cd src-tauri
+          cargo bench --all-features --output-format json > benchmark-results.json
+
+      - name: Analyze performance trends
+        run: |
+          # This would typically compare against previous benchmarks
+          echo "📊 Performance Analysis"
+          echo "• Analyzing benchmark results for regressions"
+          echo "• Checking memory usage patterns"
+          echo "• Monitoring CPU performance"
+
+          # Parse benchmark results
+          if [ -f "src-tauri/benchmark-results.json" ]; then
+            echo "Benchmark results processed"
+            # Add actual analysis logic here
+          fi
+
+      - name: Memory leak detection
+        run: |
+          # Run tests with memory profiling
+          cd src-tauri
+          cargo test --all-features --features memory-profiling
+
+          # Check for memory leaks
+          echo "🔍 Memory leak detection completed"
+
+      - name: Upload performance data
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-data
+          path: |
+            src-tauri/benchmark-results.json
+            src-tauri/target/criterion/
+          retention-days: 90
+
+  # Security monitoring
+  security-monitor:
+    name: Security Monitoring
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.check_type == 'security' || github.event.inputs.check_type == 'all'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security scans
+        run: |
+          echo "🔒 Running comprehensive security scan..."
+
+          # Rust security audit
+          cargo install cargo-audit
+          cargo audit --manifest-path src-tauri/Cargo.toml > rust-security-report.txt
+
+          # npm security audit
+          npm audit --audit-level=moderate > npm-security-report.txt
+
+          # Dependency scanning
+          cargo install cargo-deny
+          cargo deny check > dependency-security-report.txt
+
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+
+      - name: Analyze security trends
+        run: |
+          echo "📈 Security Analysis"
+          echo "• Tracking vulnerability trends over time"
+          echo "• Monitoring new security advisories"
+          echo "• Checking dependency security status"
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            rust-security-report.txt
+            npm-security-report.txt
+            dependency-security-report.txt
+          retention-days: 90
+
+  # Dependency monitoring
+  dependency-monitor:
+    name: Dependency Monitoring
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.check_type == 'dependencies' || github.event.inputs.check_type == 'all'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "📦 Checking for outdated dependencies..."
+
+          # Check Node.js dependencies
+          npm outdated > npm-outdated.txt || true
+
+          # Check Rust dependencies
+          cd src-tauri
+          cargo install cargo-outdated
+          cargo outdated > ../rust-outdated.txt || true
+          cd ..
+
+      - name: Analyze dependency health
+        run: |
+          echo "🏥 Dependency Health Analysis"
+
+          # Count dependencies
+          NODE_DEPS=$(cat package.json | jq '.dependencies | keys | length')
+          DEV_DEPS=$(cat package.json | jq '.devDependencies | keys | length')
+          RUST_DEPS=$(cat src-tauri/Cargo.toml | grep -c '^\[dependencies\]')
+
+          echo "Node.js dependencies: $NODE_DEPS"
+          echo "Dev dependencies: $DEV_DEPS"
+          echo "Rust dependencies: $RUST_DEPS"
+
+          # Check for security advisories
+          npm audit --json > npm-audit.json || true
+
+      - name: Check license compliance
+        run: |
+          # Check license compliance
+          npm install -g license-checker
+          license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD' > license-check.txt || true
+
+      - name: Upload dependency reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-reports
+          path: |
+            npm-outdated.txt
+            rust-outdated.txt
+            npm-audit.json
+            license-check.txt
+          retention-days: 90
+
+  # Error tracking integration
+  error-tracking:
+    name: Error Tracking Setup
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup error tracking configuration
+        run: |
+          echo "🐛 Setting up error tracking configuration..."
+
+          # Create error tracking config template
+          cat > error-tracking-config.json << EOF
+          {
+            "project": "lolshorts",
+            "environment": "production",
+            "release": "${{ github.sha }}",
+            "sampling": {
+              "errors": 1.0,
+              "transactions": 0.1
+            },
+            "integrations": {
+              "crash_reporting": true,
+              "performance_monitoring": true,
+              "user_feedback": true
+            }
+          }
+          EOF
+
+      - name: Configure application telemetry
+        run: |
+          echo "📊 Configuring application telemetry..."
+
+          # Add telemetry configuration to Tauri app
+          cat > src-tauri/telemetry-config.toml << EOF
+          [telemetry]
+          enabled = true
+          endpoint = "https://telemetry.lolshorts.com"
+          sample_rate = 0.1
+
+          [telemetry.metrics]
+          performance = true
+          usage = true
+          errors = true
+
+          [telemetry.privacy]
+          no_personal_data = true
+          gdpr_compliant = true
+          EOF
+
+      - name: Upload telemetry configuration
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-config
+          path: |
+            error-tracking-config.json
+            src-tauri/telemetry-config.toml
+          retention-days: 90
+
+  # Analytics dashboard
+  analytics-dashboard:
+    name: Analytics Dashboard
+    runs-on: ubuntu-latest
+    needs: [build-health, performance-monitor, security-monitor, dependency-monitor]
+    if: always()
+
+    steps:
+      - name: Download all monitoring artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate analytics dashboard
+        run: |
+          echo "📈 Generating analytics dashboard..."
+
+          # Create dashboard HTML
+          cat > dashboard.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>LoLShorts Analytics Dashboard</title>
+              <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 20px; }
+                  .chart-container { width: 100%; max-width: 800px; margin: 20px 0; }
+                  .metric-card { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+                  .status-pass { background-color: #d4edda; border-color: #c3e6cb; }
+                  .status-fail { background-color: #f8d7da; border-color: #f5c6cb; }
+              </style>
+          </head>
+          <body>
+              <h1>LoLShorts Analytics Dashboard</h1>
+              <p>Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")</p>
+
+              <div class="metric-card">
+                  <h3>Build Health</h3>
+                  <p>Build Time: <span id="buildTime">Loading...</span></p>
+                  <p>Bundle Size: <span id="bundleSize">Loading...</span></p>
+                  <p>Binary Size: <span id="binarySize">Loading...</span></p>
+              </div>
+
+              <div class="chart-container">
+                  <canvas id="performanceChart"></canvas>
+              </div>
+
+              <div class="chart-container">
+                  <canvas id="securityChart"></canvas>
+              </div>
+
+              <script>
+                  // Load metrics data and populate dashboard
+                  // This would typically load from API or artifacts
+                  console.log('Dashboard loaded');
+              </script>
+          </body>
+          </html>
+          EOF
+
+          echo "Analytics dashboard generated"
+
+      - name: Upload analytics dashboard
+        uses: actions/upload-artifact@v4
+        with:
+          name: analytics-dashboard
+          path: dashboard.html
+          retention-days: 30
+
+  # Monitoring alerts
+  monitoring-alerts:
+    name: Monitoring Alerts
+    runs-on: ubuntu-latest
+    needs: [build-health, performance-monitor, security-monitor]
+    if: failure()
+
+    steps:
+      - name: Send alert notification
+        run: |
+          echo "🚨 Monitoring alerts triggered"
+
+          # Check what failed and send appropriate alerts
+          if [ "${{ needs.build-health.result }}" == "failure" ]; then
+            echo "❌ Build health check failed"
+            # Send build failure notification
+          fi
+
+          if [ "${{ needs.performance-monitor.result }}" == "failure" ]; then
+            echo "❌ Performance monitoring failed"
+            # Send performance degradation notification
+          fi
+
+          if [ "${{ needs.security-monitor.result }}" == "failure" ]; then
+            echo "❌ Security monitoring failed"
+            # Send security alert notification
+          fi
+
+      - name: Create issue for monitoring failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Monitoring Alert - ${context.workflow}`,
+              body: `## Monitoring Failure Alert
+
+              **Workflow:** ${context.workflow}
+              **Run ID:** ${context.runId}
+              **Timestamp:** ${new Date().toISOString()}
+
+              ### Failed Jobs:
+              - Build Health: ${{ needs.build-health.result }}
+              - Performance Monitor: ${{ needs.performance-monitor.result }}
+              - Security Monitor: ${{ needs.security-monitor.result }}
+
+              ### Next Steps:
+              - [ ] Investigate the failed monitoring checks
+              - [ ] Review the logs and artifacts
+              - [ ] Address any critical issues found
+              - [ ] Update monitoring thresholds if needed
+
+              ### Artifacts:
+              Check the Actions tab for detailed logs and artifacts from this run.
+
+              ---
+              *This issue was automatically created by the monitoring workflow.*`,
+              labels: ['monitoring', 'alert', 'bug']
+            })

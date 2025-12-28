@@ -65,38 +65,29 @@ export function StatusDashboard() {
     const interval = setInterval(async () => {
       try {
         // Fetch recording status
-        const status = await invoke<RecordingStatus>('get_recording_status');
+        const status = await invoke<RecordingStatus>('get_detailed_recording_status');
         setRecordingStatus(status);
 
         // Fetch performance metrics if recording
         if (status.status === 'Buffering' || status.status === 'Recording') {
-          // Note: These would be actual backend commands
-          // For now, simulating with placeholder data
-          const recMetrics: RecordingMetrics = {
-            fps: 60.0,
-            frame_drops: 0,
-            bitrate_kbps: 8000,
-            cpu_percent: 45.0,
-            memory_mb: 512.0,
-            buffer_segments: 6,
-            buffer_size_mb: 1250.0
-          };
-          setRecordingMetrics(recMetrics);
+          // Fetch actual metrics from backend
+          const recMetrics = await invoke<RecordingMetrics>('get_recording_metrics');
+          if (recMetrics) {
+            setRecordingMetrics(recMetrics);
+          }
 
-          const sysMetrics: SystemMetrics = {
-            total_cpu_percent: 35.0,
-            available_ram_gb: 8.5,
-            available_disk_gb: 150.0
-          };
+          const sysMetrics = await invoke<SystemMetrics>('get_system_metrics');
           setSystemMetrics(sysMetrics);
 
-          // Determine health status
-          if (recMetrics.fps < 45 || recMetrics.cpu_percent > 95) {
-            setHealthStatus('Critical');
-          } else if (recMetrics.fps < 55 || recMetrics.cpu_percent > 80) {
-            setHealthStatus('Warning');
-          } else {
-            setHealthStatus('Healthy');
+          // Determine health status (only if recMetrics exists)
+          if (recMetrics) {
+            if (recMetrics.fps < 45 || recMetrics.cpu_percent > 95) {
+              setHealthStatus('Critical');
+            } else if (recMetrics.fps < 55 || recMetrics.cpu_percent > 80) {
+              setHealthStatus('Warning');
+            } else {
+              setHealthStatus('Healthy');
+            }
           }
         }
       } catch (error) {

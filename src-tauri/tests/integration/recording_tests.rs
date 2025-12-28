@@ -28,7 +28,7 @@ async fn test_recording_state_transitions() {
     // Start recording (will fail without actual Game DVR, but test state change logic)
     {
         let mut mgr = manager.write().await;
-        let result = mgr.start_replay_buffer().await;
+        let result = mgr.start_recording().await;
 
         // May fail in test environment without Game DVR, which is expected
         // Just verify we handle the error gracefully
@@ -156,4 +156,41 @@ async fn test_game_detection_flow() {
             _ => (), // Other transitions are possible but not tested here
         }
     }
+}
+
+#[tokio::test]
+async fn test_windows_capture_recorder_basic_functionality() {
+    use lolshorts_tauri::recording::integration_backend::{
+        WindowsCaptureRecorder, RecordingConfig, VideoEncoder, RecordingStatus
+    };
+    use std::path::PathBuf;
+
+    // Create test configuration
+    let config = RecordingConfig {
+        fps: 30,
+        bitrate: 5_000_000,
+        resolution: (640, 480), // Small for testing
+        encoder: VideoEncoder::H264,
+        output_dir: PathBuf::from("./test_recordings"),
+        buffer_duration_secs: 30,
+        audio_config: None, // No audio for basic test
+    };
+
+    // Test recorder creation
+    let recorder_result = WindowsCaptureRecorder::new(config).await;
+    assert!(recorder_result.is_ok(), "Failed to create WindowsCaptureRecorder");
+
+    let recorder = recorder_result.unwrap();
+
+    // Test initial state
+    let status = recorder.get_status().await;
+    assert_eq!(status, RecordingStatus::Idle);
+
+    // Test initial stats
+    let stats = recorder.get_stats().await;
+    assert_eq!(stats.total_frames, 0);
+    assert_eq!(stats.uptime_seconds, 0.0);
+    assert_eq!(stats.current_fps, 0.0);
+
+    println!("✅ WindowsCaptureRecorder basic functionality test passed");
 }

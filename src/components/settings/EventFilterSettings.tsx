@@ -38,9 +38,11 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
   };
 
   const applyPreset = (preset: "highlights" | "everything" | "minimal") => {
+    let newSettings: EventFilterSettings;
+
     switch (preset) {
       case "highlights":
-        onChange({
+        newSettings = {
           record_kills: true,
           record_multikills: true,
           record_first_blood: true,
@@ -57,11 +59,11 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
           record_ace: true,
           record_game_end: true,
           record_steal: true,
-          min_priority: 1, // Allow single kills too
-        });
+          min_priority: 2, // Important events and above
+        };
         break;
       case "everything":
-        onChange({
+        newSettings = {
           record_kills: true,
           record_multikills: true,
           record_first_blood: true,
@@ -78,11 +80,11 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
           record_ace: true,
           record_game_end: true,
           record_steal: true,
-          min_priority: 1,
-        });
+          min_priority: 1, // All events
+        };
         break;
       case "minimal":
-        onChange({
+        newSettings = {
           record_kills: false,
           record_multikills: true,
           record_first_blood: true,
@@ -99,10 +101,12 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
           record_ace: true,
           record_game_end: true,
           record_steal: true,
-          min_priority: 3,
-        });
+          min_priority: 3, // High priority only
+        };
         break;
     }
+
+    onChange(newSettings);
   };
 
   const getPriorityLabel = (priority: number): string => {
@@ -122,13 +126,28 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
       <div>
         <h3 className="text-sm font-semibold mb-3">{t('settings.recordingConfig.eventFilter.quickPresets')}</h3>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => applyPreset("highlights")}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => applyPreset("highlights")}
+            data-testid="preset-highlights"
+          >
             {t('settings.recordingConfig.eventFilter.highlightsOnly')}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => applyPreset("everything")}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => applyPreset("everything")}
+            data-testid="preset-everything"
+          >
             {t('settings.recordingConfig.eventFilter.everything')}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => applyPreset("minimal")}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => applyPreset("minimal")}
+            data-testid="preset-minimal"
+          >
             {t('settings.recordingConfig.eventFilter.minimal')}
           </Button>
         </div>
@@ -155,6 +174,7 @@ export function EventFilterSettings({ settings, onChange }: EventFilterSettingsP
               max={5}
               step={1}
               className="w-full"
+              data-testid="priority-filter-slider"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{t('settings.recordingConfig.eventFilter.priorityScale.all')}</span>

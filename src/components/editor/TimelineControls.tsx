@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/stores/editorStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ZoomIn, ZoomOut, RotateCcw, Trash2 } from 'lucide-react';
 
 export function TimelineControls() {
@@ -15,6 +16,7 @@ export function TimelineControls() {
     resetZoom,
     clearTimeline,
   } = useEditorStore();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -22,8 +24,16 @@ export function TimelineControls() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleClearTimeline = () => {
-    if (confirm(t('confirmations.clearTimeline'))) {
+  const handleClearTimeline = async () => {
+    const confirmed = await confirm({
+      title: t('confirmations.clearTimelineTitle'),
+      description: t('confirmations.clearTimelineDescription'),
+      confirmText: t('common.clear'),
+      cancelText: t('common.cancel'),
+      variant: 'warning',
+    });
+
+    if (confirmed) {
       clearTimeline();
     }
   };
@@ -91,6 +101,8 @@ export function TimelineControls() {
           Clear
         </Button>
       </div>
+
+      <ConfirmDialog />
     </div>
   );
 }

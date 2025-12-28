@@ -5,6 +5,7 @@ import { useAutoEditStore } from '@/stores/autoEditStore';
 import { useAutoEdit } from '@/hooks/useAutoEdit';
 import { useStorage } from '@/hooks/useStorage';
 import { useAutoEditQuota } from '@/hooks/useAutoEditQuota';
+import { useAuthStore } from '@/lib/auth';
 import { CanvasEditor } from './CanvasEditor';
 import { AudioMixer } from './AudioMixer';
 import { AutoEditQuotaBadge } from './AutoEditQuotaBadge';
@@ -16,6 +17,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { utilsApi } from '@/api/utils';
+import { storageApi } from '@/api/storage';
 import {
   Video,
   Clock,
@@ -32,11 +35,13 @@ import {
   ChevronUp,
   RotateCcw,
   XCircle,
+  Info,
 } from 'lucide-react';
 import { DurationOption, GameSelection } from '@/types/autoEdit';
 
 export function AutoEditPanel() {
   const { t } = useTranslation();
+  const { user } = useAuthStore();
   const searchParams = useSearch({ from: '/auto-edit' }) as { gameId?: string };
   const [localLoading, setLocalLoading] = useState(false);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
@@ -74,24 +79,37 @@ export function AutoEditPanel() {
 
   const { hasQuota, fetchQuota } = useAutoEditQuota();
 
-  // Load available games on mount
+  // Load available games on mount with clip counts
   useEffect(() => {
     const loadGames = async () => {
       try {
         const games = await getAllGames();
-
         const preSelectedGameId = searchParams.gameId;
 
-        const gameSelections: GameSelection[] = games.map(game => ({
-          game_id: game.game_id,
-          champion: game.champion,
-          game_mode: game.game_mode,
-          date: new Date(game.game_start_time).toLocaleDateString(),
-          clip_count: 0, // TODO: Add clip count from backend
-          selected: preSelectedGameId === game.game_id, // Pre-select if gameId in URL
-        }));
+        // Fetch clip counts for all games in parallel
+        const gameSelectionsWithClips: GameSelection[] = await Promise.all(
+          games.map(async (game) => {
+            let clipCount = 0;
+            try {
+              const clips = await storageApi.listClips(game.game_id);
+              clipCount = clips.length;
+            } catch {
+              // If fetching clips fails, default to 0
+              console.warn(`Failed to fetch clips for game ${game.game_id}`);
+            }
 
-        setAvailableGames(gameSelections);
+            return {
+              game_id: game.game_id,
+              champion: game.champion,
+              game_mode: game.game_mode,
+              date: new Date(game.game_start_time).toLocaleDateString(),
+              clip_count: clipCount,
+              selected: preSelectedGameId === game.game_id,
+            };
+          })
+        );
+
+        setAvailableGames(gameSelectionsWithClips);
 
         // Auto-toggle selection for pre-selected game
         if (preSelectedGameId) {
@@ -190,6 +208,18 @@ export function AutoEditPanel() {
         </div>
       </div>
 
+      {/* Free Tier Watermark Warning */}
+      {user?.tier === 'FREE' && currentStep === 'configure' && (
+        <div className="px-6 pt-6 pb-0">
+          <Alert className="border-yellow-500/50 bg-yellow-500/10 text-yellow-600">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Free tier videos include a watermark. <span className="font-bold underline cursor-pointer">Upgrade to PRO</span> to remove it.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {currentStep === 'configure' && (
@@ -222,11 +252,10 @@ export function AutoEditPanel() {
                     {availableGames.map(game => (
                       <Card
                         key={game.game_id}
-                        className={`cursor-pointer transition-all ${
-                          selectedGameIds.includes(game.game_id)
+                        className={`cursor-pointer transition-all ${selectedGameIds.includes(game.game_id)
                             ? 'ring-2 ring-primary bg-primary/5'
                             : 'hover:bg-muted/50'
-                        }`}
+                          }`}
                         onClick={() => toggleGameSelection(game.game_id)}
                       >
                         <CardContent className="p-4">
@@ -276,11 +305,10 @@ export function AutoEditPanel() {
                   {([60, 120, 180] as DurationOption[]).map(duration => (
                     <Card
                       key={duration}
-                      className={`cursor-pointer transition-all ${
-                        targetDuration === duration
+                      className={`cursor-pointer transition-all ${targetDuration === duration
                           ? 'ring-2 ring-primary bg-primary/5'
                           : 'hover:bg-muted/50'
-                      }`}
+                        }`}
                       onClick={() => setTargetDuration(duration)}
                     >
                       <CardContent className="p-6 text-center">
@@ -414,13 +442,12 @@ export function AutoEditPanel() {
                   ].map(({ stage, label }) => (
                     <div
                       key={stage}
-                      className={`flex items-center gap-2 text-sm ${
-                        progress.status === stage
+                      className={`flex items-center gap-2 text-sm ${progress.status === stage
                           ? 'text-primary font-medium'
                           : progress.progress_percentage > getStageProgress(stage)
-                          ? 'text-green-600'
-                          : 'text-muted-foreground'
-                      }`}
+                            ? 'text-green-600'
+                            : 'text-muted-foreground'
+                        }`}
                     >
                       {progress.status === stage ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -497,9 +524,14 @@ export function AutoEditPanel() {
                 {/* Actions */}
                 <div className="flex gap-3">
                   <Button
-                    onClick={() => {
-                      // TODO: Open file location
-                      alert(t('errors.todoFeature', { action: 'Open file location: ' + result.output_path }));
+                    onClick={async () => {
+                      try {
+                        // Open file location
+                        await utilsApi.showInFolder(result.output_path);
+                      } catch (error) {
+                        console.error('Failed to show in folder:', error);
+                        alert(t('errors.failedToOpenFileLocation', { error: String(error) }));
+                      }
                     }}
                     className="flex-1"
                   >
@@ -507,9 +539,14 @@ export function AutoEditPanel() {
                     {t('autoEdit.openFileLocation')}
                   </Button>
                   <Button
-                    onClick={() => {
-                      // TODO: Play video
-                      alert(t('errors.todoFeature', { action: 'Play video: ' + result.output_path }));
+                    onClick={async () => {
+                      try {
+                        // Open video file
+                        await utilsApi.openFileWithDefaultApp(result.output_path);
+                      } catch (error) {
+                        console.error('Failed to open video:', error);
+                        alert(t('errors.failedToPlayVideo', { error: String(error) }));
+                      }
                     }}
                     variant="outline"
                     className="flex-1"

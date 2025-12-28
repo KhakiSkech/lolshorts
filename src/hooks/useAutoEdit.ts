@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   CanvasTemplate,
@@ -9,6 +8,8 @@ import {
   VideoError,
 } from '@/types/autoEdit';
 import { useAutoEditStore } from '@/stores/autoEditStore';
+import { videoApi } from '@/api/video';
+import { getErrorMessage } from '@/lib/utils';
 
 /**
  * Parse backend error string into structured VideoError
@@ -103,7 +104,7 @@ export function useAutoEdit() {
 
     try {
       // Call backend to start auto-edit
-      const result = await invoke<AutoEditResult>('start_auto_edit', { config });
+      const result = await videoApi.startAutoEdit(config);
 
       // Store job ID for progress tracking
       setJobId(result.job_id);
@@ -111,7 +112,7 @@ export function useAutoEdit() {
 
       return result;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = getErrorMessage(err);
       const parsedError = parseVideoError(errorMsg);
       setError(errorMsg);
       setStoreError(parsedError);
@@ -126,7 +127,7 @@ export function useAutoEdit() {
    */
   const pollProgress = useCallback(async (): Promise<AutoEditProgress | null> => {
     try {
-      const progress = await invoke<AutoEditProgress | null>('get_auto_edit_progress');
+      const progress = await videoApi.getAutoEditProgress();
 
       if (progress) {
         setProgress(progress);
@@ -185,9 +186,9 @@ export function useAutoEdit() {
     setError(null);
 
     try {
-      await invoke('save_canvas_template', { template });
+      await videoApi.saveCanvasTemplate(template);
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = getErrorMessage(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -205,12 +206,10 @@ export function useAutoEdit() {
     setError(null);
 
     try {
-      const template = await invoke<CanvasTemplate>('load_canvas_template', {
-        templateId,
-      });
+      const template = await videoApi.loadCanvasTemplate(templateId);
       return template;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = getErrorMessage(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -226,10 +225,10 @@ export function useAutoEdit() {
     setError(null);
 
     try {
-      const templates = await invoke<CanvasTemplateInfo[]>('list_canvas_templates');
+      const templates = await videoApi.listCanvasTemplates();
       return templates;
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = getErrorMessage(err);
       setError(errorMsg);
       throw err;
     } finally {
@@ -247,9 +246,9 @@ export function useAutoEdit() {
     setError(null);
 
     try {
-      await invoke('delete_canvas_template', { templateId });
+      await videoApi.deleteCanvasTemplate(templateId);
     } catch (err) {
-      const errorMsg = err as string;
+      const errorMsg = getErrorMessage(err);
       setError(errorMsg);
       throw err;
     } finally {

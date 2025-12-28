@@ -179,6 +179,7 @@ impl PerformanceProfiler {
     /// Collect system metadata
     fn collect_metadata() -> PerformanceMetadata {
         use sysinfo::{Disks, System};
+        use crate::utils::ffmpeg;
 
         let mut sys = System::new_all();
         sys.refresh_all();
@@ -195,13 +196,34 @@ impl PerformanceProfiler {
             .map(|disk| disk.available_space() / 1024 / 1024)
             .unwrap_or(0);
 
+        // Query FFmpeg version and hardware acceleration
+        let (ffmpeg_version, hardware_accel) = match ffmpeg::get_ffmpeg_info() {
+            Ok(info) => {
+                let hw_encoders: Vec<String> = info
+                    .available_encoders
+                    .iter()
+                    .filter(|e| e.is_hardware_accelerated && e.can_encode)
+                    .map(|e| e.name.clone())
+                    .collect();
+
+                let hw_accel = if !hw_encoders.is_empty() {
+                    Some(hw_encoders.join(", "))
+                } else {
+                    None
+                };
+
+                (Some(info.version), hw_accel)
+            }
+            Err(_) => (None, None),
+        };
+
         PerformanceMetadata {
-            ffmpeg_version: None, // TODO: Query FFmpeg version
+            ffmpeg_version,
             cpu_model,
             cpu_cores,
             total_memory_mb,
             available_disk_mb,
-            hardware_accel: None, // TODO: Detect hardware acceleration
+            hardware_accel,
         }
     }
 

@@ -120,7 +120,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {t('settings.recordingConfig.hotkeys.manualSaveClip.defaultKey')}
+            {t('settings.recordingConfig.hotkeys.manualSaveClip.defaultF8')}
           </p>
         </CardContent>
       </Card>
@@ -157,7 +157,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {t('settings.recordingConfig.hotkeys.toggleRecording.defaultKey')}
+            {t('settings.recordingConfig.hotkeys.toggleRecording.defaultF9')}
           </p>
         </CardContent>
       </Card>
@@ -194,7 +194,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {t('settings.recordingConfig.hotkeys.deleteLastClip.defaultKey')}
+            {t('settings.recordingConfig.hotkeys.deleteLastClip.defaultF10')}
           </p>
         </CardContent>
       </Card>
@@ -203,7 +203,7 @@ export function HotkeySettings({ settings, onChange }: HotkeySettingsProps) {
       <div className="pt-4">
         <Button variant="outline" onClick={resetToDefaults}>
           <RotateCcw className="w-4 h-4 mr-2" />
-          {t('settings.recordingConfig.hotkeys.resetAll')}
+          {t('settings.recordingConfig.hotkeys.resetAllHotkeys')}
         </Button>
       </div>
     </div>

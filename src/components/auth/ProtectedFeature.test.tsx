@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { ProtectedFeature } from './ProtectedFeature';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/lib/auth';
 
 // Mock the auth store
-jest.mock('@/stores/authStore');
+jest.mock('@/lib/auth');
 
 describe('ProtectedFeature', () => {
   beforeEach(() => {

@@ -21,4 +21,92 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+
+  // Production build optimizations
+  build: {
+    // Target modern browsers for better tree-shaking
+    target: 'esnext',
+
+    // Minification settings
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,        // Remove console.log in production
+        drop_debugger: true,        // Remove debugger statements
+        pure_funcs: ['console.log', 'console.info', 'console.debug'],
+      },
+    },
+
+    // Chunk size warnings
+    chunkSizeWarningLimit: 600,  // Increase to 600 KB (from 500 KB default)
+
+    // Manual chunk splitting for better caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core
+          'react-vendor': ['react', 'react-dom'],
+
+          // React Router
+          'router': ['@tanstack/react-router'],
+
+          // UI components library
+          'ui-vendor': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-progress',
+            '@radix-ui/react-slider',
+            '@radix-ui/react-switch',
+          ],
+
+          // Drag and drop
+          'dnd-vendor': [
+            '@dnd-kit/core',
+            '@dnd-kit/sortable',
+            '@dnd-kit/utilities',
+          ],
+
+          // State management
+          'state-vendor': ['zustand'],
+
+          // i18n
+          'i18n-vendor': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
+
+          // Icons
+          'icons-vendor': ['lucide-react', '@radix-ui/react-icons'],
+
+          // Tauri
+          'tauri-vendor': [
+            '@tauri-apps/api',
+            '@tauri-apps/plugin-dialog',
+            '@tauri-apps/plugin-shell',
+          ],
+        },
+      },
+    },
+
+    // Source map for production debugging (optional)
+    sourcemap: false,  // Set to true if you need source maps in production
+
+    // Optimize dependencies
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true,
+    },
+  },
+
+  // Dependency optimization
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      '@tanstack/react-router',
+      'zustand',
+      'i18next',
+      'react-i18next',
+    ],
+    exclude: ['@tauri-apps/api', '@tauri-apps/plugin-shell', '@tauri-apps/plugin-dialog'],
+  },
 }));

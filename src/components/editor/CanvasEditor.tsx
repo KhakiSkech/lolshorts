@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import {
   CanvasTemplate,
   CanvasElement,
@@ -29,10 +29,12 @@ import {
   AlertCircle,
   Save,
   FolderOpen,
+  Loader2,
 } from 'lucide-react';
 import { useAutoEdit } from '@/hooks/useAutoEdit';
 import { TemplateLibrary } from './TemplateLibrary';
 import { useTranslation } from 'react-i18next';
+import { getErrorMessage } from '@/lib/utils';
 
 interface CanvasEditorProps {
   template: CanvasTemplate | null;
@@ -50,13 +52,13 @@ export function CanvasEditor({ template, onTemplateChange }: CanvasEditorProps) 
   const [saveError, setSaveError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Initialize template if null
-  const currentTemplate: CanvasTemplate = template || {
+  // Initialize template if null - memoize to prevent dependency changes on every render
+  const currentTemplate: CanvasTemplate = useMemo(() => template || {
     id: `template_${Date.now()}`,
     name: 'New Template',
     background: { type: 'Color', value: '#000000' },
     elements: [],
-  };
+  }, [template]);
 
   const updateTemplate = useCallback((updates: Partial<CanvasTemplate>) => {
     onTemplateChange({ ...currentTemplate, ...updates });
@@ -165,7 +167,7 @@ export function CanvasEditor({ template, onTemplateChange }: CanvasEditorProps) 
       setSaveTemplateName('');
     } catch (err) {
       console.error('Failed to save template:', err);
-      setSaveError(err as string);
+      setSaveError(getErrorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -216,6 +218,7 @@ export function CanvasEditor({ template, onTemplateChange }: CanvasEditorProps) 
         {/* Canvas Preview (9:16 aspect ratio) */}
         <div className="flex-1 p-6 flex items-center justify-center bg-muted/20">
           <div className="relative">
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
             <div
               ref={canvasRef}
               className="relative bg-black rounded-lg overflow-hidden shadow-2xl cursor-crosshair"
@@ -247,6 +250,9 @@ export function CanvasEditor({ template, onTemplateChange }: CanvasEditorProps) 
               {currentTemplate.elements.map((element, index) => (
                 <div
                   key={index}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Select ${element.type === 'Text' ? 'text' : 'image'} element ${index + 1}`}
                   className={`absolute cursor-pointer transition-all ${
                     selectedElementIndex === index ? 'ring-2 ring-primary' : ''
                   }`}
@@ -258,6 +264,13 @@ export function CanvasEditor({ template, onTemplateChange }: CanvasEditorProps) 
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedElementIndex(index);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedElementIndex(index);
+                    }
                   }}
                 >
                   {element.type === 'Text' ? (

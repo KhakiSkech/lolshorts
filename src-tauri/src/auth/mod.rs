@@ -20,7 +20,7 @@ pub enum AuthError {
 
 pub type Result<T> = std::result::Result<T, AuthError>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SubscriptionTier {
     Free,
     Pro,
@@ -78,48 +78,34 @@ impl AuthManager {
     }
 
     pub fn login(&self, user: User) -> Result<()> {
-        let mut current_user = self
-            .current_user
-            .write()
-            .map_err(|e| AuthError::Failed(e.to_string()))?;
+        let mut current_user = self.current_user.write().map_err(|e| AuthError::Failed(e.to_string()))?;
         *current_user = Some(user);
         Ok(())
     }
 
     pub fn logout(&self) -> Result<()> {
-        let mut current_user = self
-            .current_user
-            .write()
-            .map_err(|e| AuthError::Failed(e.to_string()))?;
+        let mut current_user = self.current_user.write().map_err(|e| AuthError::Failed(e.to_string()))?;
         *current_user = None;
         Ok(())
     }
 
     pub fn get_current_user(&self) -> Result<Option<User>> {
-        let current_user = self
-            .current_user
-            .read()
-            .map_err(|e| AuthError::Failed(e.to_string()))?;
+        let current_user = self.current_user.read().map_err(|e| AuthError::Failed(e.to_string()))?;
         Ok(current_user.clone())
     }
 
     pub fn get_tier(&self) -> Result<SubscriptionTier> {
-        let current_user = self
-            .current_user
-            .read()
-            .map_err(|e| AuthError::Failed(e.to_string()))?;
-
-        match &*current_user {
-            Some(user) => Ok(user.tier.clone()),
-            None => Ok(SubscriptionTier::Free), // Default to Free for unauthenticated users
-        }
+        let current_user = self.current_user.read().map_err(|e| AuthError::Failed(e.to_string()))?;
+        Ok(match &*current_user {
+            Some(user) => user.tier.clone(),
+            None => SubscriptionTier::Free, // Default to Free for unauthenticated users
+        })
     }
 
     pub fn is_authenticated(&self) -> bool {
         self.current_user
             .read()
-            .map(|user| user.is_some())
-            .unwrap_or(false)
+            .map_or(false, |user| user.is_some())
     }
 }
 

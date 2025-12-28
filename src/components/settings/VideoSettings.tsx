@@ -1,4 +1,6 @@
 import { useTranslation } from "react-i18next";
+import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   Select,
   SelectContent,
@@ -29,8 +31,42 @@ interface VideoSettingsProps {
   onChange: (settings: VideoSettings) => void;
 }
 
+interface EncoderInfo {
+  id: string;
+  name: string;
+  type: "hardware" | "software";
+  vendor: string;
+  codecs: string[];
+  performance: string;
+  quality: string;
+}
+
+interface EncoderDetectionResult {
+  available: EncoderInfo[];
+  auto_detected: string;
+  total_count: number;
+}
+
 export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
   const { t } = useTranslation();
+  const [availableEncoders, setAvailableEncoders] = useState<EncoderInfo[]>([]);
+  const [autoDetected, setAutoDetected] = useState<string>("software");
+  const [isDetecting, setIsDetecting] = useState(true);
+
+  // Detect available encoders on mount
+  useEffect(() => {
+    invoke<EncoderDetectionResult>("detect_available_encoders")
+      .then((result) => {
+        setAvailableEncoders(result.available);
+        setAutoDetected(result.auto_detected);
+        setIsDetecting(false);
+      })
+      .catch((error) => {
+        console.error("Failed to detect encoders:", error);
+        setIsDetecting(false);
+      });
+  }, []);
+
   const updateSetting = <K extends keyof VideoSettings>(
     key: K,
     value: VideoSettings[K]
@@ -84,7 +120,22 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
       amf: t('settings.recordingConfig.videoSettings.encoderPreference.labels.amf'),
       software: t('settings.recordingConfig.videoSettings.encoderPreference.labels.software'),
     };
+
+    // Show detected hardware for "auto" option
+    if (encoder === "auto" && !isDetecting && autoDetected !== "software") {
+      const detectedEncoder = availableEncoders.find(e => e.id === autoDetected);
+      if (detectedEncoder) {
+        return `${labels[encoder]} (${detectedEncoder.name})`;
+      }
+    }
+
     return labels[encoder];
+  };
+
+  // Check if an encoder is available
+  const isEncoderAvailable = (encoderId: string): boolean => {
+    if (encoderId === "auto") return true; // Auto is always available
+    return availableEncoders.some(e => e.id === encoderId);
   };
 
   const getEstimatedSize = (): string => {
@@ -246,26 +297,79 @@ export function VideoSettings({ settings, onChange }: VideoSettingsProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Select
-                value={settings.encoder}
-                onValueChange={(value) => updateSetting("encoder", value as EncoderPreference)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">{getEncoderLabel("auto")}</SelectItem>
-                  <SelectItem value="nvenc">{getEncoderLabel("nvenc")}</SelectItem>
-                  <SelectItem value="qsv">{getEncoderLabel("qsv")}</SelectItem>
-                  <SelectItem value="amf">{getEncoderLabel("amf")}</SelectItem>
-                  <SelectItem value="software">{getEncoderLabel("software")}</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Select
+                  value={settings.encoder}
+                  onValueChange={(value) => updateSetting("encoder", value as EncoderPreference)}
+                  disabled={isDetecting}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Auto option always available */}
+                    <SelectItem value="auto">{getEncoderLabel("auto")}</SelectItem>
+
+                    {/* Only show available hardware encoders */}
+                    {isEncoderAvailable("nvenc") && (
+                      <SelectItem value="nvenc">
+                        <div className="flex items-center gap-2">
+                          <span>{getEncoderLabel("nvenc")}</span>
+                          <Badge variant="outline" className="text-xs">Hardware</Badge>
+                        </div>
+                      </SelectItem>
+                    )}
+
+                    {isEncoderAvailable("qsv") && (
+                      <SelectItem value="qsv">
+                        <div className="flex items-center gap-2">
+                          <span>{getEncoderLabel("qsv")}</span>
+                          <Badge variant="outline" className="text-xs">Hardware</Badge>
+                        </div>
+                      </SelectItem>
+                    )}
+
+                    {isEncoderAvailable("amf") && (
+                      <SelectItem value="amf">
+                        <div className="flex items-center gap-2">
+                          <span>{getEncoderLabel("amf")}</span>
+                          <Badge variant="outline" className="text-xs">Hardware</Badge>
+                        </div>
+                      </SelectItem>
+                    )}
+
+                    {/* Software encoder always available */}
+                    <SelectItem value="software">
+                      <div className="flex items-center gap-2">
+                        <span>{getEncoderLabel("software")}</span>
+                        <Badge variant="secondary" className="text-xs">CPU</Badge>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {settings.encoder === "auto" && (
+                <Badge variant="secondary">{t('settings.recordingConfig.videoSettings.encoderPreference.recommended')}</Badge>
+              )}
             </div>
-            {settings.encoder === "auto" && (
-              <Badge variant="secondary">{t('settings.recordingConfig.videoSettings.encoderPreference.recommended')}</Badge>
+
+            {/* Hardware detection status */}
+            {isDetecting && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Info className="w-4 h-4" />
+                <span>Detecting hardware encoders...</span>
+              </div>
+            )}
+
+            {!isDetecting && availableEncoders.length > 1 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Info className="w-4 h-4" />
+                <span>
+                  {availableEncoders.filter(e => e.type === "hardware").length} hardware encoder(s) detected
+                </span>
+              </div>
             )}
           </div>
         </CardContent>

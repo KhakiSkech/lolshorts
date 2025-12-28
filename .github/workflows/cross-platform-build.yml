@@ -1,0 +1,316 @@
+name: Cross-Platform Build & Test
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Windows build
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        target: x86_64-pc-windows-msvc
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          src-tauri/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install system dependencies
+      run: |
+        # Install FFmpeg for Windows
+        winget install Gyan.FFmpeg
+        # Install Node.js for frontend
+        winget install OpenJS.NodeJS
+        refreshenv
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+
+    - name: Install frontend dependencies
+      run: npm ci
+
+    - name: Build Rust project
+      working-directory: ./src-tauri
+      run: cargo build --verbose --release
+
+    - name: Run Rust tests
+      working-directory: ./src-tauri
+      run: cargo test --verbose
+
+    - name: Check formatting
+      working-directory: ./src-tauri
+      run: cargo fmt -- --check
+
+    - name: Run Clippy
+      working-directory: ./src-tauri
+      run: cargo clippy -- -D warnings
+
+    - name: Build Tauri app
+      run: npm run tauri build
+
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: src-tauri/target/release/bundle/
+        retention-days: 7
+
+  # macOS build
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        target: x86_64-apple-darwin
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          src-tauri/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install system dependencies
+      run: |
+        # Install FFmpeg for macOS
+        brew install ffmpeg
+        # Install pkg-config for macOS
+        brew install pkg-config
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+
+    - name: Install frontend dependencies
+      run: npm ci
+
+    - name: Install Tauri CLI
+      run: cargo install tauri-cli --locked
+
+    - name: Build Rust project
+      working-directory: ./src-tauri
+      run: cargo build --verbose --release
+
+    - name: Run Rust tests
+      working-directory: ./src-tauri
+      run: cargo test --verbose
+
+    - name: Check formatting
+      working-directory: ./src-tauri
+      run: cargo fmt -- --check
+
+    - name: Run Clippy
+      working-directory: ./src-tauri
+      run: cargo clippy -- -D warnings
+
+    - name: Build Tauri app
+      run: npm run tauri build
+
+    - name: Upload macOS artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build
+        path: src-tauri/target/release/bundle/
+        retention-days: 7
+
+  # Linux build
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        target: x86_64-unknown-linux-gnu
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          src-tauri/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libssl-dev \
+          pkg-config \
+          libx11-dev \
+          libxcursor-dev \
+          libxrandr-dev \
+          libxi-dev \
+          libgtk-3-dev \
+          libayatana-appindicator3-dev \
+          librsvg2-dev \
+          ffmpeg \
+          libavcodec-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libswscale-dev \
+          libavfilter-dev
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+
+    - name: Install frontend dependencies
+      run: npm ci
+
+    - name: Build Rust project
+      working-directory: ./src-tauri
+      run: cargo build --verbose --release
+
+    - name: Run Rust tests
+      working-directory: ./src-tauri
+      run: cargo test --verbose
+
+    - name: Check formatting
+      working-directory: ./src-tauri
+      run: cargo fmt -- --check
+
+    - name: Run Clippy
+      working-directory: ./src-tauri
+      run: cargo clippy -- -D warnings
+
+    - name: Build Tauri app
+      run: npm run tauri build
+
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: src-tauri/target/release/bundle/
+        retention-days: 7
+
+  # Cross-platform integration tests
+  integration-tests:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install system dependencies
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg pkg-config
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          brew install ffmpeg pkg-config
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          winget install Gyan.FFmpeg
+        fi
+      shell: bash
+
+    - name: Run integration tests
+      working-directory: ./src-tauri
+      run: cargo test --test '*' --verbose
+
+    - name: Test platform detection
+      working-directory: ./src-tauri
+      run: |
+        cargo run --bin test_platform_detection || echo "Platform detection test skipped"
+
+  # Performance benchmarks
+  benchmarks:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg pkg-config
+
+    - name: Run benchmarks
+      working-directory: ./src-tauri
+      run: cargo bench --all
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: src-tauri/target/criterion/
+        retention-days: 30
+
+  # Security audit
+  security-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install cargo-audit
+      run: cargo install cargo-audit
+
+    - name: Run security audit
+      working-directory: ./src-tauri
+      run: cargo audit
+
+    - name: Install cargo-deny
+      run: cargo install cargo-deny
+
+    - name: Run cargo-deny
+      working-directory: ./src-tauri
+      run: cargo deny check

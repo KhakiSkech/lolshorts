@@ -117,6 +117,10 @@ jobs:
           cd src-tauri/build_scripts
           .\prepare_ffmpeg.ps1
 
+      - name: Run tests
+        run: |
+          cargo test --manifest-path src-tauri/Cargo.toml --verbose
+
       - name: Build application (Release)
         run: cargo tauri build --verbose
         env:

@@ -1,6 +1,6 @@
 use crate::auth::middleware::require_auth;
 use crate::auth::SubscriptionTier;
-use crate::storage::{AutoEditUsage, ClipMetadata, EventData, GameMetadata, StorageStats};
+use crate::storage::{ClipMetadata, EventData, GameMetadata, StorageStats};
 use crate::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::State;

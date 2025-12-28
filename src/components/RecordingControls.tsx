@@ -4,7 +4,7 @@
  * Manual control interface for recording operations
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -16,14 +16,17 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { invoke } from '@tauri-apps/api/core';
+import { recordingApi } from '@/api/recording';
+import { settingsApi } from '@/api/settings';
 import { Play, Square, Save, Settings } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { VideoQuality, RecordingSettings } from '@/types';
 
-interface RecordingSettings {
+// Simplified interface for this simplified UI component
+interface SimpleSettings {
   audio_enabled: boolean;
   audio_device_id: string;
-  video_quality: 'low' | 'medium' | 'high' | 'ultra';
+  video_quality: VideoQuality;
   hardware_encoding: boolean;
 }
 
@@ -31,17 +34,44 @@ export function RecordingControls() {
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [replayDuration, setReplayDuration] = useState(60);
-  const [settings, setSettings] = useState<RecordingSettings>({
+  
+  // Store full settings to preserve other fields
+  const [fullSettings, setFullSettings] = useState<RecordingSettings | null>(null);
+  
+  // Local state for UI
+  const [simpleSettings, setSimpleSettings] = useState<SimpleSettings>({
     audio_enabled: true,
     audio_device_id: 'default',
     video_quality: 'high',
     hardware_encoding: true
   });
 
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const settings = await settingsApi.getRecordingSettings();
+      setFullSettings(settings);
+      
+      // Map Nested -> Flat
+      setSimpleSettings({
+        audio_enabled: settings.audio.record_system_audio || settings.audio.record_microphone,
+        audio_device_id: settings.audio.system_audio_device || 'default',
+        video_quality: 'high', // Note: This mapping is lossy as backend doesn't have explicit 'quality' enum field in top level
+        hardware_encoding: settings.video.encoder !== 'software'
+      });
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
+
   const handleStartAutoCapture = async () => {
     setIsLoading(true);
     try {
-      await invoke('start_auto_capture');
+      await recordingApi.startAutoCapture();
       setIsRecording(true);
       toast({
         title: 'Auto-Capture Started',
@@ -61,7 +91,7 @@ export function RecordingControls() {
   const handleStopAutoCapture = async () => {
     setIsLoading(true);
     try {
-      await invoke('stop_auto_capture');
+      await recordingApi.stopAutoCapture();
       setIsRecording(false);
       toast({
         title: 'Auto-Capture Stopped',
@@ -81,9 +111,7 @@ export function RecordingControls() {
   const handleSaveReplay = async () => {
     setIsLoading(true);
     try {
-      await invoke<string>('save_replay', {
-        durationSecs: replayDuration
-      });
+      await recordingApi.saveReplay(replayDuration);
       toast({
         title: 'Replay Saved',
         description: `Saved ${replayDuration}s replay`,
@@ -100,9 +128,29 @@ export function RecordingControls() {
   };
 
   const handleSaveSettings = async () => {
+    if (!fullSettings) return;
+
     setIsLoading(true);
     try {
-      await invoke('save_recording_settings', { settings });
+      // Map Flat -> Nested (preserve other fields from fullSettings)
+      const newSettings: RecordingSettings = {
+        ...fullSettings,
+        audio: {
+          ...fullSettings.audio,
+          record_system_audio: simpleSettings.audio_enabled,
+          system_audio_device: simpleSettings.audio_device_id === 'default' ? null : simpleSettings.audio_device_id,
+        },
+        video: {
+          ...fullSettings.video,
+          // Simple logic: if hardware encoding enabled, assume auto (which prefers GPU)
+          encoder: simpleSettings.hardware_encoding ? 'auto' : 'software',
+          // Note: video_quality mapping logic would go here if we implemented presets fully
+        }
+      };
+
+      await settingsApi.saveRecordingSettings(newSettings);
+      setFullSettings(newSettings);
+      
       toast({
         title: 'Settings Saved',
         description: 'Recording settings updated successfully',
@@ -220,9 +268,9 @@ export function RecordingControls() {
           <div className="space-y-2">
             <Label>Video Quality</Label>
             <Select
-              value={settings.video_quality}
-              onValueChange={(value: any) =>
-                setSettings({ ...settings, video_quality: value })
+              value={simpleSettings.video_quality}
+              onValueChange={(value: VideoQuality) =>
+                setSimpleSettings({ ...simpleSettings, video_quality: value })
               }
             >
               <SelectTrigger>
@@ -241,16 +289,16 @@ export function RecordingControls() {
           <div className="flex items-center justify-between">
             <Label>Hardware Encoding</Label>
             <Button
-              variant={settings.hardware_encoding ? 'default' : 'outline'}
+              variant={simpleSettings.hardware_encoding ? 'default' : 'outline'}
               size="sm"
               onClick={() =>
-                setSettings({
-                  ...settings,
-                  hardware_encoding: !settings.hardware_encoding,
+                setSimpleSettings({
+                  ...simpleSettings,
+                  hardware_encoding: !simpleSettings.hardware_encoding,
                 })
               }
             >
-              {settings.hardware_encoding ? 'Enabled' : 'Disabled'}
+              {simpleSettings.hardware_encoding ? 'Enabled' : 'Disabled'}
             </Button>
           </div>
 
@@ -258,20 +306,20 @@ export function RecordingControls() {
           <div className="flex items-center justify-between">
             <Label>Audio Capture</Label>
             <Button
-              variant={settings.audio_enabled ? 'default' : 'outline'}
+              variant={simpleSettings.audio_enabled ? 'default' : 'outline'}
               size="sm"
               onClick={() =>
-                setSettings({
-                  ...settings,
-                  audio_enabled: !settings.audio_enabled,
+                setSimpleSettings({
+                  ...simpleSettings,
+                  audio_enabled: !simpleSettings.audio_enabled,
                 })
               }
             >
-              {settings.audio_enabled ? 'Enabled' : 'Disabled'}
+              {simpleSettings.audio_enabled ? 'Enabled' : 'Disabled'}
             </Button>
           </div>
 
-          <Button onClick={handleSaveSettings} disabled={isLoading} className="w-full">
+          <Button onClick={handleSaveSettings} disabled={isLoading || !fullSettings} className="w-full">
             Save Settings
           </Button>
         </CardContent>

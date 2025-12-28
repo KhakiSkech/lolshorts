@@ -1,89 +1,76 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { RecordingControls } from './RecordingControls';
-import { useRecordingStore } from '@/stores/recordingStore';
 
-// Mock the recording store
-jest.mock('@/stores/recordingStore');
-
-// Mock Tauri invoke
+// Mock Tauri API
 const mockInvoke = jest.fn();
-global.window.__TAURI__.invoke = mockInvoke;
+global.window.__TAURI__ = {
+  invoke: mockInvoke,
+  event: {
+    listen: jest.fn(),
+    emit: jest.fn(),
+  },
+};
+
+// Mock toast
+jest.mock('@/components/ui/use-toast', () => ({
+  toast: jest.fn(),
+}));
 
 describe('RecordingControls', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockInvoke.mockResolvedValue(undefined);
   });
 
-  it('renders start button when not recording', () => {
-    (useRecordingStore as unknown as jest.Mock).mockReturnValue({
-      isRecording: false,
-      startRecording: jest.fn(),
-      stopRecording: jest.fn(),
-    });
-
+  test('renders recording controls correctly', () => {
     render(<RecordingControls />);
 
-    expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+    expect(screen.getByText('Auto-Capture Controls')).toBeInTheDocument();
+    expect(screen.getByText('Manual Replay Save')).toBeInTheDocument();
+    expect(screen.getByText('Recording Settings')).toBeInTheDocument();
   });
 
-  it('renders stop button when recording', () => {
-    (useRecordingStore as unknown as jest.Mock).mockReturnValue({
-      isRecording: true,
-      startRecording: jest.fn(),
-      stopRecording: jest.fn(),
-    });
-
+  test('start auto capture button is present and clickable', () => {
     render(<RecordingControls />);
 
-    expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument();
+    const startButton = screen.getByText('Start Auto-Capture');
+
+    // Verify button exists and is enabled
+    expect(startButton).toBeInTheDocument();
+    expect(startButton).not.toBeDisabled();
   });
 
-  it('calls startRecording when start button is clicked', async () => {
-    const mockStartRecording = jest.fn();
-    (useRecordingStore as unknown as jest.Mock).mockReturnValue({
-      isRecording: false,
-      startRecording: mockStartRecording,
-      stopRecording: jest.fn(),
-    });
-
+  test('only start button is visible initially', () => {
     render(<RecordingControls />);
 
-    const startButton = screen.getByRole('button', { name: /start/i });
-    fireEvent.click(startButton);
-
-    await waitFor(() => {
-      expect(mockStartRecording).toHaveBeenCalled();
-    });
+    // Only start button should be visible initially
+    expect(screen.getByText('Start Auto-Capture')).toBeInTheDocument();
+    // Stop button should not be in DOM initially
+    expect(screen.queryByText('Stop Auto-Capture')).not.toBeInTheDocument();
   });
 
-  it('calls stopRecording when stop button is clicked', async () => {
-    const mockStopRecording = jest.fn();
-    (useRecordingStore as unknown as jest.Mock).mockReturnValue({
-      isRecording: true,
-      startRecording: jest.fn(),
-      stopRecording: mockStopRecording,
-    });
-
+  test('save replay button is present', () => {
     render(<RecordingControls />);
 
-    const stopButton = screen.getByRole('button', { name: /stop/i });
-    fireEvent.click(stopButton);
-
-    await waitFor(() => {
-      expect(mockStopRecording).toHaveBeenCalled();
-    });
+    const saveButton = screen.getByText('Save Replay');
+    expect(saveButton).toBeInTheDocument();
   });
 
-  it('displays recording status badge when recording', () => {
-    (useRecordingStore as unknown as jest.Mock).mockReturnValue({
-      isRecording: true,
-      startRecording: jest.fn(),
-      stopRecording: jest.fn(),
-    });
-
+  test('save settings button is present', () => {
     render(<RecordingControls />);
 
-    expect(screen.getByText(/recording/i)).toBeInTheDocument();
+    const saveSettingsButton = screen.getByText('Save Settings');
+    expect(saveSettingsButton).toBeInTheDocument();
+  });
+
+  test('replay duration slider works', () => {
+    render(<RecordingControls />);
+
+    // Check for specific duration values in the component
+    // Use getAllByText since '60s' might appear multiple times
+    expect(screen.getAllByText('60s')).toHaveLength(2); // Once for display, once for slider label
+    expect(screen.getByText('10s')).toBeInTheDocument();
+    expect(screen.getByText('30s')).toBeInTheDocument();
   });
 });

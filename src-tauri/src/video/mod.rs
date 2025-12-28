@@ -2,12 +2,14 @@ pub mod auto_composer;
 pub mod commands;
 pub mod performance;
 pub mod processor;
+pub mod statistics;
 pub mod thumbnail;
 
 pub use auto_composer::{
     AutoComposer, AutoEditConfig, AutoEditProgress, AutoEditResult, CanvasTemplate,
 };
 pub use processor::VideoProcessor;
+pub use statistics::get_global_stats;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -223,12 +225,15 @@ pub async fn execute_ffmpeg_command(command: &mut tokio::process::Command) -> Re
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClipInfo {
     pub id: i64,
+    pub game_id: String, // Added for tracking and storage update
     pub event_type: String,
     pub event_time: f64,
     pub priority: i32,
     pub file_path: String,
     pub thumbnail_path: Option<String>,
     pub duration: Option<f64>,
+    #[serde(default)]
+    pub usage_count: u32, // Track usage for filtering
 }
 
 #[cfg(test)]

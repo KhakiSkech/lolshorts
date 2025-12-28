@@ -119,7 +119,9 @@ export function VideoPreview() {
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={() => pause()}
-          />
+          >
+            <track kind="captions" label="No captions available" />
+          </video>
         ) : (
           <div className="text-center p-8">
             <Play className="w-24 h-24 mx-auto text-muted-foreground mb-4" />

@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
+// invoke import removed
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/lib/auth";
+import { settingsApi } from "@/api/settings"; // Import API
+import { authApi } from "@/api/auth"; // Import API
 import { AuthModal } from "@/components/auth";
 import { PaymentModal } from "@/components/PaymentModal";
 import { SubscriptionManagement } from "@/components/SubscriptionManagement";
+import { RecordingSettings } from "@/types";
 import { EventFilterSettings } from "@/components/settings/EventFilterSettings";
 import { GameModeSettings } from "@/components/settings/GameModeSettings";
 import { VideoSettings } from "@/components/settings/VideoSettings";
@@ -17,6 +20,7 @@ import { AudioSettings } from "@/components/settings/AudioSettings";
 import { ClipTimingSettings } from "@/components/settings/ClipTimingSettings";
 import { HotkeySettings } from "@/components/settings/HotkeySettings";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
+import { GeneralSettings } from "@/components/settings/GeneralSettings";
 import {
   Settings as SettingsIcon,
   CreditCard,
@@ -33,17 +37,6 @@ interface LicenseInfo {
   is_active: boolean;
 }
 
-interface RecordingSettings {
-  event_filter: any;
-  game_mode: any;
-  video: any;
-  audio: any;
-  clip_timing: any;
-  hotkeys: any;
-  auto_start_with_league: boolean;
-  minimize_to_tray: boolean;
-  show_notifications: boolean;
-}
 
 export function Settings() {
   const { t } = useTranslation();
@@ -72,7 +65,8 @@ export function Settings() {
   const loadLicenseInfo = async () => {
     setIsLoadingLicense(true);
     try {
-      const licenseData = await invoke<LicenseInfo>("get_user_license");
+      // Use authApi
+      const licenseData = await authApi.getUserLicense() as unknown as LicenseInfo; // Type casting for compatibility if needed
       setLicense(licenseData);
     } catch (error) {
       console.error("Failed to load license info:", error);
@@ -84,7 +78,8 @@ export function Settings() {
   const loadRecordingSettings = async () => {
     setIsLoadingSettings(true);
     try {
-      const settings = await invoke<RecordingSettings>("get_recording_settings");
+      // Use settingsApi
+      const settings = await settingsApi.getRecordingSettings();
       setRecordingSettings(settings);
     } catch (error) {
       console.error("Failed to load recording settings:", error);
@@ -96,7 +91,8 @@ export function Settings() {
   const saveRecordingSettings = async (settings: RecordingSettings) => {
     setIsSavingSettings(true);
     try {
-      await invoke("save_recording_settings", { settings });
+      // Use settingsApi
+      await settingsApi.saveRecordingSettings(settings);
       setRecordingSettings(settings);
     } catch (error) {
       console.error("Failed to save recording settings:", error);
@@ -108,7 +104,9 @@ export function Settings() {
   const resetSettingsToDefault = async () => {
     setIsSavingSettings(true);
     try {
-      const defaultSettings = await invoke<RecordingSettings>("reset_settings_to_default");
+      // Use settingsApi
+      await settingsApi.resetToDefault();
+      const defaultSettings = await settingsApi.getRecordingSettings();
       setRecordingSettings(defaultSettings);
     } catch (error) {
       console.error("Failed to reset settings:", error);
@@ -190,17 +188,35 @@ export function Settings() {
                 <p className="text-sm text-muted-foreground">{t('settings.recordingConfig.loadingSettings')}</p>
               </div>
             ) : recordingSettings ? (
-              <Tabs defaultValue="events" className="w-full">
-                <TabsList className="grid w-full grid-cols-6">
-                  <TabsTrigger value="events">{t('settings.recordingConfig.tabs.events')}</TabsTrigger>
-                  <TabsTrigger value="modes">{t('settings.recordingConfig.tabs.modes')}</TabsTrigger>
-                  <TabsTrigger value="video">{t('settings.recordingConfig.tabs.video')}</TabsTrigger>
-                  <TabsTrigger value="audio">{t('settings.recordingConfig.tabs.audio')}</TabsTrigger>
-                  <TabsTrigger value="timing">{t('settings.recordingConfig.tabs.timing')}</TabsTrigger>
-                  <TabsTrigger value="hotkeys">{t('settings.recordingConfig.tabs.hotkeys')}</TabsTrigger>
-                </TabsList>
+              <Tabs defaultValue="general" className="w-full">
+                <div className="overflow-x-auto -mx-1 px-1">
+                  <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-1">
+                    <TabsTrigger value="general" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.general')}</TabsTrigger>
+                    <TabsTrigger value="events" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.events')}</TabsTrigger>
+                    <TabsTrigger value="modes" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.modes')}</TabsTrigger>
+                    <TabsTrigger value="video" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.video')}</TabsTrigger>
+                    <TabsTrigger value="audio" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.audio')}</TabsTrigger>
+                    <TabsTrigger value="timing" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.timing')}</TabsTrigger>
+                    <TabsTrigger value="hotkeys" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.hotkeys')}</TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <div className="mt-6">
+                  <TabsContent value="general" className="space-y-4">
+                    <GeneralSettings
+                      settings={{
+                        auto_start_with_league: recordingSettings.auto_start_with_league,
+                        minimize_to_tray: recordingSettings.minimize_to_tray,
+                        show_notifications: recordingSettings.show_notifications,
+                        show_replay_popup: recordingSettings.show_replay_popup,
+                      }}
+                      onChange={(updatedGeneral) => {
+                        const updated = { ...recordingSettings, ...updatedGeneral };
+                        saveRecordingSettings(updated);
+                      }}
+                    />
+                  </TabsContent>
+
                   <TabsContent value="events" className="space-y-4">
                     <EventFilterSettings
                       settings={recordingSettings.event_filter}
@@ -464,7 +480,7 @@ export function Settings() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">{t('settings.accountInfo.licenseTier')}</span>
-                  <Badge variant={user.tier === "Pro" ? "default" : "secondary"}>
+                  <Badge variant={user.tier === "PRO" ? "default" : "secondary"}>
                     {user.tier}
                   </Badge>
                 </div>
@@ -475,7 +491,7 @@ export function Settings() {
       </div>
 
       {/* Auth Modal */}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal open={showAuthModal} onClose={() => setShowAuthModal(false)} />}
 
       {/* Payment Modal */}
       <PaymentModal

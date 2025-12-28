@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useYouTube } from '@/hooks/useYouTube';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { History, ExternalLink, Eye, ThumbsUp, MessageCircle } from 'lucide-react';
+import { History, ExternalLink, Eye } from 'lucide-react';
 import { UploadHistoryEntry } from '@/types/youtube';
 import { open } from '@tauri-apps/plugin-shell';
 
@@ -14,27 +14,28 @@ export function YouTubeHistory() {
   const { authStatus, isLoading, error, getUploadHistory } = useYouTube();
   const [history, setHistory] = useState<UploadHistoryEntry[]>([]);
 
-  useEffect(() => {
-    if (authStatus.authenticated) {
-      loadHistory();
-    }
-  }, [authStatus.authenticated]);
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     try {
       const data = await getUploadHistory();
       setHistory(data);
     } catch (err) {
       console.error('Failed to load history:', err);
     }
-  };
+  }, [getUploadHistory]);
+
+  useEffect(() => {
+    if (authStatus.authenticated) {
+      loadHistory();
+    }
+  }, [authStatus.authenticated, loadHistory]);
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
-  const formatNumber = (num: number): string => {
+  const formatNumber = (num: number | null): string => {
+    if (num === null) return '0';
     if (num >= 1_000_000) {
       return (num / 1_000_000).toFixed(1) + 'M';
     } else if (num >= 1_000) {
@@ -43,8 +44,8 @@ export function YouTubeHistory() {
     return num.toString();
   };
 
-  const handleOpenVideo = (url: string) => {
-    open(url);
+  const handleOpenVideo = (videoId: string) => {
+    open(`https://www.youtube.com/watch?v=${videoId}`);
   };
 
   if (!authStatus.authenticated) {
@@ -107,44 +108,39 @@ export function YouTubeHistory() {
           <div className="space-y-3">
             {history.map((entry) => (
               <div
-                key={entry.video.video_id}
+                key={entry.video_id}
                 className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 {/* Thumbnail */}
                 <div className="flex-shrink-0">
-                  <img
-                    src={entry.video.thumbnail_url}
-                    alt={entry.video.title}
-                    className="w-32 h-18 object-cover rounded"
-                  />
+                  {entry.thumbnail_url ? (
+                    <img
+                      src={entry.thumbnail_url}
+                      alt={entry.title}
+                      className="w-32 h-18 object-cover rounded"
+                    />
+                  ) : (
+                    <div className="w-32 h-18 bg-muted rounded flex items-center justify-center">
+                      <History className="h-8 w-8 opacity-30" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Video Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{entry.video.title}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                        {entry.video.description || t('youtube.history.noDescription')}
-                      </p>
+                      <h3 className="font-medium truncate">{entry.title}</h3>
                     </div>
                     <Badge variant="secondary" className="flex-shrink-0">
-                      {entry.video.privacy_status}
+                      {entry.privacy_status}
                     </Badge>
                   </div>
 
                   <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Eye className="h-3 w-3" />
-                      {formatNumber(entry.video.view_count)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ThumbsUp className="h-3 w-3" />
-                      {formatNumber(entry.video.like_count)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageCircle className="h-3 w-3" />
-                      {formatNumber(entry.video.comment_count)}
+                      {formatNumber(entry.view_count)}
                     </span>
                     <span className="ml-auto">
                       {t('youtube.history.uploaded')}: {formatDate(entry.uploaded_at)}
@@ -155,14 +151,11 @@ export function YouTubeHistory() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleOpenVideo(entry.video.url)}
+                      onClick={() => handleOpenVideo(entry.video_id)}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />
                       {t('youtube.history.viewOnYouTube')}
                     </Button>
-                    <span className="text-xs text-muted-foreground truncate">
-                      {entry.local_file_path}
-                    </span>
                   </div>
                 </div>
               </div>
