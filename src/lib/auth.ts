@@ -215,8 +215,11 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         set({ isLoading: true, error: null });
         try {
+          // Stop token refresh before logging out
+          get().stopTokenRefresh();
+
           const { error } = await supabase.auth.signOut();
-          
+
           // Tell Backend to logout (optional, but good for cleanup)
           // authApi.logout().catch(console.error);
 

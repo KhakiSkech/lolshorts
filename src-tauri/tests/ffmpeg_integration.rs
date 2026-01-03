@@ -25,9 +25,10 @@ mod tests {
         // 2. Generate Test Video
         // Find ffmpeg binary relative to project root or use PATH
         let possible_paths = vec![
-            "src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe", // Run from project root
-            "binaries/ffmpeg-x86_64-pc-windows-msvc.exe",           // Run from src-tauri
-            "ffmpeg"                                                // PATH
+            "src-tauri/binaries/ffmpeg.exe",    // Run from project root
+            "binaries/ffmpeg.exe",               // Run from src-tauri
+            "ffmpeg.exe",                        // Current dir
+            "ffmpeg"                             // PATH
         ];
 
         let _ffmpeg_path = "ffmpeg";
