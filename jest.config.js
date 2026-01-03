@@ -15,6 +15,18 @@ export default {
     '\\.spec\\.ts$', // Ignore all .spec.ts files (Playwright convention)
   ],
 
+  // Global definitions for import.meta
+  globals: {
+    'import.meta': {
+      env: {
+        DEV: true,
+        PROD: false,
+        VITE_SUPABASE_URL: 'http://localhost:54321',
+        VITE_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE',
+      },
+    },
+  },
+
   // TypeScript and module transformation
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {

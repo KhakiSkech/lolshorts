@@ -128,6 +128,22 @@ Object.defineProperty(window, 'sessionStorage', {
   writable: true,
 });
 
+// Mock client.ts to avoid import.meta.env issues
+jest.mock('./src/api/client', () => ({
+  cmd: jest.fn().mockResolvedValue(null),
+  AppError: class AppError extends Error {
+    constructor(response) {
+      super(response.message);
+      this.code = response.code;
+      this.name = 'AppError';
+    }
+  },
+  validateString: jest.fn((v) => v),
+  validatePath: jest.fn((v) => v),
+  validateNumber: jest.fn((v) => v),
+  validateEmail: jest.fn((v) => v),
+}));
+
 // Mock supabase to avoid import.meta.env issues
 jest.mock('./src/lib/supabase', () => ({
   supabase: {

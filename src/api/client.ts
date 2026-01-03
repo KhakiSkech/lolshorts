@@ -1,5 +1,16 @@
 import { invoke } from '@tauri-apps/api/core';
 
+// Environment detection helper - works in both Vite and Jest
+const isDev = (): boolean => {
+  try {
+    // Vite environment
+    return import.meta.env?.DEV ?? false;
+  } catch {
+    // Jest/Node environment
+    return process.env.NODE_ENV !== 'production';
+  }
+};
+
 export interface AppErrorResponse {
   code: string;
   message: string;
@@ -87,7 +98,7 @@ export async function cmd<T>(command: string, args?: Record<string, unknown>): P
     return await invoke<T>(command, args);
   } catch (error: unknown) {
     // Only log detailed errors in development
-    if (import.meta.env.DEV) {
+    if (isDev()) {
       console.error(`Command '${command}' failed:`, error);
     }
 

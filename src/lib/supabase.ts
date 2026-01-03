@@ -1,11 +1,38 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Environment helpers - works in both Vite and Jest
+const getEnvVar = (key: string): string | undefined => {
+  try {
+    // Vite environment
+    return (import.meta.env as Record<string, string>)?.[key];
+  } catch {
+    // Jest/Node environment
+    return process.env[key];
+  }
+};
+
+const isProd = (): boolean => {
+  try {
+    return import.meta.env?.PROD ?? false;
+  } catch {
+    return process.env.NODE_ENV === 'production';
+  }
+};
+
+const isDev = (): boolean => {
+  try {
+    return import.meta.env?.DEV ?? false;
+  } catch {
+    return process.env.NODE_ENV !== 'production';
+  }
+};
+
 // Supabase configuration - requires environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
+const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
 // Validate configuration in production
-if (import.meta.env.PROD) {
+if (isProd()) {
   if (!supabaseUrl) {
     throw new Error('[Security] VITE_SUPABASE_URL is required in production');
   }
@@ -19,7 +46,7 @@ const devSupabaseUrl = supabaseUrl || 'http://localhost:54321';
 const devSupabaseAnonKey = supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
 
 // Log warning in development if using fallbacks
-if (import.meta.env.DEV && (!supabaseUrl || !supabaseAnonKey)) {
+if (isDev() && (!supabaseUrl || !supabaseAnonKey)) {
   console.info('[Dev] Using local Supabase development server. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY for remote server.');
 }
 
