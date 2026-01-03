@@ -276,15 +276,21 @@ impl AutoClipManager {
             let mut queue = self.event_queue.lock().await;
 
             // Enforce queue size limit to prevent memory growth
-            if queue.len() >= MAX_QUEUE_SIZE {
+            // Use while loop to ensure we stay under limit even after push
+            let overflow_count = queue.len().saturating_sub(MAX_QUEUE_SIZE - 1);
+            if overflow_count > 0 {
                 warn!(
-                    "Event queue overflow ({} events), dropping oldest event",
-                    queue.len()
+                    "Event queue overflow ({} events), dropping {} oldest events",
+                    queue.len(),
+                    overflow_count
                 );
-                queue.pop_front();
+                for _ in 0..overflow_count {
+                    queue.pop_front();
+                }
             }
 
             queue.push_back(queued);
+            debug_assert!(queue.len() <= MAX_QUEUE_SIZE, "Queue size invariant violated");
         }
 
         // Check if we should merge events or save immediately

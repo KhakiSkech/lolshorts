@@ -9,10 +9,21 @@ import { test, expect } from '@playwright/test';
 
 test.describe('LoLShorts Basic Functionality', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock Tauri API before each test
+    // Mock Tauri API before each test using pure JavaScript (no Jest)
     await page.addInitScript(() => {
-      window.__TAURI__ = {
-        invoke: jest.fn().mockImplementation(async (cmd: string, args?: any) => {
+      // Create a simple mock function that tracks calls
+      const createMockFn = () => {
+        const calls: unknown[][] = [];
+        const fn = (...args: unknown[]) => {
+          calls.push(args);
+          return Promise.resolve();
+        };
+        fn.calls = calls;
+        return fn;
+      };
+
+      (window as unknown as { __TAURI__: unknown }).__TAURI__ = {
+        invoke: async (cmd: string, _args?: unknown) => {
           switch (cmd) {
             case 'get_auth_status':
               return { authenticated: false, tier: 'FREE' };
@@ -25,7 +36,7 @@ test.describe('LoLShorts Basic Functionality', () => {
               return 'idle';
             case 'get_detailed_recording_status':
               return {
-                status: 'Idle',
+                status: 'idle',
                 is_monitoring: false,
                 buffer_duration_secs: 120
               };
@@ -65,10 +76,10 @@ test.describe('LoLShorts Basic Functionality', () => {
               console.warn(`Unmocked Tauri command: ${cmd}`);
               return null;
           }
-        }),
+        },
         event: {
-          listen: jest.fn(),
-          emit: jest.fn(),
+          listen: createMockFn(),
+          emit: createMockFn(),
         },
       };
     });

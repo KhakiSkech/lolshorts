@@ -212,6 +212,15 @@ jobs:
           asset_name: checksums.txt
           asset_content_type: text/plain
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ github.sha }}
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+          retention-days: 7
+
   # Update Tauri auto-updater manifest
   update-manifest:
     name: Update Auto-Updater Manifest

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { recordingApi, RecordingStatus as ApiRecordingStatus } from '../api/recording';
+import { recordingApi, RecordingStatus as ApiRecordingStatus, isRecording as apiIsRecording } from '../api/recording';
 import { RecordingSettings } from '@/types';
 
 export interface RecordingStatus {
@@ -8,7 +8,7 @@ export interface RecordingStatus {
   duration: number;
   gameProcessDetected: boolean;
   lcuConnected: boolean;
-  state: ApiRecordingStatus['state'];
+  state: ApiRecordingStatus['status'];
 }
 
 export interface RecordingStore {
@@ -170,10 +170,10 @@ export const useRecordingStore = create<RecordingStore>((set, get) => ({
       set((state) => ({
         status: {
           ...state.status,
-          isRecording: backendStatus.is_recording,
-          state: backendStatus.state,
-          startTime: backendStatus.start_time ? backendStatus.start_time * 1000 : null,
-          duration: backendStatus.duration_secs,
+          isRecording: apiIsRecording(backendStatus),
+          state: backendStatus.status,
+          // Note: start_time not available from backend, keep existing value
+          duration: backendStatus.buffer_duration_secs,
         }
       }));
     } catch (_e) {

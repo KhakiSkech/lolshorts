@@ -75,6 +75,8 @@ export function Dashboard() {
   }, [updateGameStatus]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const initializeDashboard = async () => {
       try {
         setIsLoading(true);
@@ -82,28 +84,41 @@ export function Dashboard() {
 
         // Check authentication status on mount
         await checkAuth();
+        if (!isMounted) return;
 
         // Auto-connect to LCU on mount
         await handleConnectLcu();
+        if (!isMounted) return;
 
         // Fetch storage stats
         const statsResult = await utilsApi.getDashboardStats();
+        if (!isMounted) return;
         setStats(statsResult);
 
       } catch (error) {
+        if (!isMounted) return;
         console.error("Failed to initialize dashboard:", error);
         setError(error instanceof Error ? error.message : t('dashboard.errors.initialization'));
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     initializeDashboard();
 
     // Poll unified game status every 2 seconds (faster for better UX)
-    const interval = setInterval(updateGameStatus, 2000);
+    const interval = setInterval(() => {
+      if (isMounted) {
+        updateGameStatus();
+      }
+    }, 2000);
 
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

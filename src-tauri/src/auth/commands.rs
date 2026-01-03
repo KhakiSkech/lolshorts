@@ -2,7 +2,7 @@ use super::{SubscriptionTier, User};
 use crate::error::{AppError, AppResult};
 use crate::AppState;
 use tauri::State;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 #[tauri::command]
 pub async fn login(state: State<'_, AppState>, email: String, password: String) -> AppResult<User> {
@@ -269,6 +269,7 @@ pub async fn get_user_license(state: State<'_, AppState>) -> AppResult<LicenseIn
 }
 
 /// Sync session from Frontend (Supabase JS SDK) to Backend
+/// Validates the token by fetching user data from Supabase before storing
 #[tauri::command]
 pub async fn set_session(
     state: State<'_, AppState>,
@@ -279,25 +280,42 @@ pub async fn set_session(
 ) -> AppResult<()> {
     info!("Syncing session for user: {}", email);
 
-    // We create a User struct with the provided tokens
-    // We assume the frontend has already validated the tier or we default to Free
-    // Ideally we should fetch the tier from DB here to be sure, but for speed we'll fetch it
+    // Validate input
+    if access_token.is_empty() || refresh_token.is_empty() {
+        return Err(AppError::Validation("Token cannot be empty".to_string()));
+    }
+    if user_id.is_empty() || email.is_empty() {
+        return Err(AppError::Validation("User ID and email are required".to_string()));
+    }
 
     let supabase_client = state
         .auth
         .get_supabase_client()
         .map_err(|e| AppError::Internal(format!("Failed to get Supabase client: {}", e)))?;
 
-    // Fetch tier from DB using the token
+    // Validate token by fetching user license from DB
+    // This ensures the token is valid and belongs to the claimed user
     let tier = match supabase_client
         .get_user_license(&user_id, &access_token)
         .await
     {
-        Ok(Some(license)) => match license.tier.as_str() {
-            "PRO" => SubscriptionTier::Pro,
-            _ => SubscriptionTier::Free,
-        },
-        _ => SubscriptionTier::Free,
+        Ok(Some(license)) => {
+            // Token is valid - we got a response
+            match license.tier.as_str() {
+                "PRO" => SubscriptionTier::Pro,
+                _ => SubscriptionTier::Free,
+            }
+        }
+        Ok(None) => {
+            // User exists but no license record - default to Free
+            warn!("No license record found for user {}, defaulting to Free tier", user_id);
+            SubscriptionTier::Free
+        }
+        Err(e) => {
+            // Token validation failed - reject the session
+            warn!("Token validation failed for user {}: {}", user_id, e);
+            return Err(AppError::Auth(format!("Invalid token: {}", e)));
+        }
     };
 
     let user = User {

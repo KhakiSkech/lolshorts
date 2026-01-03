@@ -66,13 +66,13 @@ jobs:
       run: npm ci
 
     - name: Run TypeScript checks
-      run: npm run type-check
+      run: npm run typecheck
 
     - name: Run ESLint
       run: npm run lint
 
     - name: Run Prettier check
-      run: npm run format:check
+      run: npx prettier --check "src/**/*.{ts,tsx,css}"
 
     - name: Build frontend
       run: npm run build

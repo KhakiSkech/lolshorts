@@ -357,24 +357,19 @@ pub fn list_audio_devices() -> Result<Vec<AudioDevice>> {
 }
 
 /// Get audio devices as slice (memory efficient - no copying)
+/// Get a clone of audio devices - safe alternative to transmute
+/// Returns owned Vec instead of static slice to avoid undefined behavior
 #[allow(dead_code)]
-pub fn get_audio_devices_slice() -> Result<&'static [AudioDevice]> {
+pub fn get_audio_devices_clone() -> Result<Vec<AudioDevice>> {
     let manager = get_audio_device_manager();
 
-    // Return reference to cached data - zero copy!
     let manager_guard = manager
         .try_lock()
         .map_err(|_| anyhow::anyhow!("Audio device manager is locked"))?;
 
-    // SAFETY: We're returning a reference to data that lives in static storage
-    // This is safe because the data lives for the entire program duration
-    unsafe {
-        Ok(
-            std::mem::transmute::<&[AudioDevice], &'static [AudioDevice]>(
-                &manager_guard.devices[..],
-            ),
-        )
-    }
+    // Clone the devices to avoid unsafe transmute
+    // The performance cost is minimal for the small number of audio devices
+    Ok(manager_guard.devices.clone())
 }
 
 /// List audio devices from Windows Registry

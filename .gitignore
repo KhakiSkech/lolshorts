@@ -14,6 +14,7 @@ dist/
 # Tauri
 src-tauri/target/
 src-tauri/WixTools/
+.tauri/
 
 # IDE
 .vscode/
@@ -72,6 +73,7 @@ src-tauri/binaries/ffmpeg.zip
 src-tauri/binaries/ffmpeg.exe
 src-tauri/binaries/ffmpeg
 src-tauri/binaries/*.exe
+src-tauri/binaries/ffmpeg-*
 src-tauri/test_ffmpeg.exe
 
 # OS

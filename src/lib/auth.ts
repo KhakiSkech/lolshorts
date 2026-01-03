@@ -40,6 +40,9 @@ export interface LicenseInfo {
   features: string[];
 }
 
+// Token refresh interval reference (module-level for cleanup)
+let tokenRefreshInterval: ReturnType<typeof setInterval> | null = null;
+
 // Auth store with persistence
 interface AuthState {
   user: User | null;
@@ -56,6 +59,8 @@ interface AuthState {
   checkAuth: () => Promise<void>;
   getLicenseInfo: () => Promise<LicenseInfo | null>;
   clearError: () => void;
+  startTokenRefresh: () => void;
+  stopTokenRefresh: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -346,6 +351,29 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearError: () => set({ error: null }),
+
+      startTokenRefresh: () => {
+        // Clear any existing interval first
+        if (tokenRefreshInterval) {
+          clearInterval(tokenRefreshInterval);
+        }
+        // Auto-refresh token every 30 minutes
+        tokenRefreshInterval = setInterval(() => {
+          const { user, refreshToken } = get();
+          if (user) {
+            refreshToken().catch((err) => {
+              console.error("Token refresh failed:", err);
+            });
+          }
+        }, 30 * 60 * 1000);
+      },
+
+      stopTokenRefresh: () => {
+        if (tokenRefreshInterval) {
+          clearInterval(tokenRefreshInterval);
+          tokenRefreshInterval = null;
+        }
+      },
     }),
     {
       name: "lolshorts-auth",
@@ -357,10 +385,8 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// Auto-refresh token every 30 minutes
-setInterval(() => {
-  const { user, refreshToken } = useAuthStore.getState();
-  if (user) {
-    refreshToken();
-  }
-}, 30 * 60 * 1000);
+// Start token refresh on module load (will be stopped on logout)
+// This is called once when the module is first imported
+if (typeof window !== 'undefined') {
+  useAuthStore.getState().startTokenRefresh();
+}

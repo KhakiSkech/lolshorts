@@ -520,24 +520,46 @@ impl WindowsCaptureRecorder {
     }
 
     /// 녹화 중지
+    /// Note: Processing 상태는 start_recording을 차단하여 race condition 방지
     pub async fn stop_recording(&mut self) -> Result<PathBuf> {
-        let mut status = self.status.write().await;
-
-        if *status == RecordingStatus::Idle {
-            anyhow::bail!("진행 중인 녹화가 없습니다");
-        }
-
-        *status = RecordingStatus::Processing;
-        drop(status);
-
-        // 세그먼트 레코더 중지
+        // 1. 상태 확인 및 Processing으로 전환 (atomic operation)
         {
-            let mut recorder = self.segment_recorder.write().await;
-            recorder.stop().await?;
+            let mut status = self.status.write().await;
+            match *status {
+                RecordingStatus::Idle => {
+                    anyhow::bail!("진행 중인 녹화가 없습니다");
+                }
+                RecordingStatus::Processing => {
+                    anyhow::bail!("이미 녹화 중지가 진행 중입니다");
+                }
+                RecordingStatus::Recording | RecordingStatus::Buffering => {
+                    *status = RecordingStatus::Processing;
+                }
+                RecordingStatus::Error => {
+                    // 에러 상태에서도 정리 허용
+                    *status = RecordingStatus::Processing;
+                }
+            }
         }
+        // Lock released - Processing 상태가 다른 작업 차단
 
-        *self.start_time.write().await = None;
-        *self.status.write().await = RecordingStatus::Idle;
+        // 2. 세그먼트 레코더 중지 (에러 시 상태 복구)
+        let stop_result = {
+            let mut recorder = self.segment_recorder.write().await;
+            recorder.stop().await
+        };
+
+        // 3. 에러 발생 시 상태를 Error로, 성공 시 정리
+        match stop_result {
+            Ok(()) => {
+                *self.start_time.write().await = None;
+                *self.status.write().await = RecordingStatus::Idle;
+            }
+            Err(e) => {
+                *self.status.write().await = RecordingStatus::Error;
+                return Err(e);
+            }
+        }
 
         // 세그먼트 디렉토리 반환
         let output_path = self.config.output_dir.join("segments");

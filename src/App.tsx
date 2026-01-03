@@ -174,14 +174,23 @@ export default function App() {
   const [isReplayModalOpen, setIsReplayModalOpen] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Check for existing session on mount
-    checkAuth();
-    
+    const initAuth = async () => {
+      if (isMounted) {
+        await checkAuth();
+      }
+    };
+    initAuth();
+
     // Start polling recording status (sync frontend with backend)
     startStatusPolling();
 
     // Listen for auth state changes (OAuth callbacks, logout, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
       if (event === 'SIGNED_IN' && session?.user) {
         // User signed in via OAuth or email/password
         // Fetch or create user profile
@@ -207,25 +216,26 @@ export default function App() {
         }
 
         // Refresh auth state
-        await checkAuth();
+        if (isMounted) {
+          await checkAuth();
+        }
       } else if (event === 'SIGNED_OUT') {
         // User signed out
-        await checkAuth();
+        if (isMounted) {
+          await checkAuth();
+        }
       }
     });
 
     // Replay Detection Polling
     const pollingInterval = setInterval(async () => {
+      if (!isMounted) return;
       try {
         const isConnected = await lcuApi.checkStatus();
         if (isConnected) {
           // Check if game started
           // This logic needs refinement to differentiate Replay vs Live
           // For MVP, we rely on manual trigger or assume if launch_replay was called recently
-          // Or, we can assume InGame + !AutoCaptureRunning = Potential Replay?
-          // For now, let's just keep the hook ready but not force open to annoy user
-          // unless we are sure.
-          // Ideally: const flow = await lcuApi.getGameFlow(); if (flow === 'Replay') ...
         }
       } catch {
         // Ignore polling errors
@@ -233,11 +243,14 @@ export default function App() {
     }, 5000);
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
       clearInterval(pollingInterval);
       stopStatusPolling();
     };
-  }, [checkAuth, startStatusPolling, stopStatusPolling]);
+    // Note: These functions are stable from Zustand store, but we include them for eslint
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <ErrorBoundary

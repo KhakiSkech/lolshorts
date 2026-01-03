@@ -1,10 +1,15 @@
 import { cmd } from './client';
 
+// Matches Rust RecordingStatusInfo struct
 export interface RecordingStatus {
-  state: 'idle' | 'buffering' | 'recording' | 'processing' | 'error';
-  is_recording: boolean;
-  start_time: number | null;
-  duration_secs: number;
+  status: 'idle' | 'buffering' | 'recording' | 'processing' | 'error';
+  is_monitoring: boolean;
+  buffer_duration_secs: number;
+}
+
+// Helper computed properties (for backward compatibility)
+export function isRecording(status: RecordingStatus): boolean {
+  return status.status === 'recording' || status.status === 'buffering';
 }
 
 export interface RecordingMetrics {
