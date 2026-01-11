@@ -30,7 +30,7 @@ impl YouTubeManager {
             client_secret,
             redirect_uri,
         )?);
-        let upload_client = Arc::new(YouTubeUploadClient::new(Arc::clone(&oauth_client)));
+        let upload_client = Arc::new(YouTubeUploadClient::new(Arc::clone(&oauth_client))?);
 
         Ok(Self {
             oauth_client,

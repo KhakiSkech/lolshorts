@@ -1,12 +1,9 @@
 import { cmd } from './client';
 
 import { CanvasTemplate, CanvasTemplateInfo, AutoEditConfig, AutoEditProgress, AutoEditResult } from '@/types/autoEdit';
+import { ClipMetadata } from '@/types/storage';
 
-export interface ClipMetadata {
-  clip_id: string;
-  video_path: string;
-  // Add other fields as needed based on Rust struct
-}
+export type { ClipMetadata };
 
 export const videoApi = {
   getClips: (gameId: string) =>

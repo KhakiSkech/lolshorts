@@ -1,9 +1,10 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { useEditorStore } from '@/stores/editorStore';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Play, Pause, Volume2, VolumeX, Maximize } from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { formatDuration } from '@/lib/utils';
 
 export function VideoPreview() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -51,48 +52,44 @@ export function VideoPreview() {
     }
   }, [volume, isMuted]);
 
-  const handleTimeUpdate = () => {
+  const handleTimeUpdate = useCallback(() => {
     if (videoRef.current) {
       setCurrentVideoTime(videoRef.current.currentTime);
       setCurrentTime(videoRef.current.currentTime);
     }
-  };
+  }, [setCurrentTime]);
 
-  const handleLoadedMetadata = () => {
+  const handleLoadedMetadata = useCallback(() => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
     }
-  };
+  }, []);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     if (isPlaying) {
       pause();
     } else {
       play();
     }
-  };
+  }, [isPlaying, pause, play]);
 
-  const handleSeek = (value: number[]) => {
+  const handleSeek = useCallback((value: number[]) => {
     if (videoRef.current) {
       videoRef.current.currentTime = value[0];
       setCurrentVideoTime(value[0]);
     }
-  };
+  }, []);
 
-  const handleVolumeChange = (value: number[]) => {
+  const handleVolumeChange = useCallback((value: number[]) => {
     setVolume(value[0]);
-    if (value[0] === 0) {
-      setIsMuted(true);
-    } else {
-      setIsMuted(false);
-    }
-  };
+    setIsMuted(value[0] === 0);
+  }, []);
 
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
+  const toggleMute = useCallback(() => {
+    setIsMuted(prev => !prev);
+  }, []);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (videoRef.current) {
       if (document.fullscreenElement) {
         document.exitFullscreen();
@@ -100,13 +97,7 @@ export function VideoPreview() {
         videoRef.current.requestFullscreen();
       }
     }
-  };
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-black">
@@ -138,7 +129,7 @@ export function VideoPreview() {
           {/* Seek Bar */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground w-12 text-right">
-              {formatTime(currentVideoTime)}
+              {formatDuration(currentVideoTime)}
             </span>
             <Slider
               value={[currentVideoTime]}
@@ -148,7 +139,7 @@ export function VideoPreview() {
               className="flex-1"
             />
             <span className="text-xs text-muted-foreground w-12">
-              {formatTime(duration)}
+              {formatDuration(duration)}
             </span>
           </div>
 

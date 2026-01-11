@@ -9,7 +9,7 @@ import { useRecordingStore } from "@/stores/recordingStore";
 import { lcuApi, UnifiedGameStatus } from "@/api/lcu";
 import { utilsApi } from "@/api/utils";
 import { AuthModal } from "@/components/auth";
-import { formatStorage } from "@/lib/utils";
+import { formatStorage, pageStyles } from "@/lib/utils";
 
 interface StorageStats {
   total_games: number;
@@ -153,9 +153,9 @@ export function Dashboard() {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold">{t('dashboard.title')}</h2>
+    <div className={pageStyles.container}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h2 className={pageStyles.title}>{t('dashboard.title')}</h2>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           {isLoading && <Spinner size="sm" label={t('common.loading')} />}
           <span>{t('dashboard.lastUpdate', { time: lastUpdate.toLocaleTimeString() })}</span>

@@ -144,6 +144,40 @@ jest.mock('./src/api/client', () => ({
   validateEmail: jest.fn((v) => v),
 }));
 
+// Mock auth module to avoid import.meta.env issues
+jest.mock('./src/lib/auth', () => ({
+  useAuthStore: jest.fn(() => ({
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    error: null,
+    login: jest.fn(),
+    loginWithGoogle: jest.fn(),
+    signup: jest.fn(),
+    logout: jest.fn(),
+    refreshToken: jest.fn(),
+    checkAuth: jest.fn(),
+    getLicenseInfo: jest.fn(),
+    clearError: jest.fn(),
+    startTokenRefresh: jest.fn(),
+    stopTokenRefresh: jest.fn(),
+  })),
+  // Re-export types for test compatibility
+  UserProfile: {},
+  User: {},
+  LoginCredentials: {},
+  SignupCredentials: {},
+  LicenseInfo: {},
+}));
+
+// Mock errorMapper to avoid import issues
+jest.mock('./src/lib/errorMapper', () => ({
+  getErrorKey: jest.fn((error) => 'errors.generic'),
+  getErrorKeyFromCode: jest.fn(() => 'errors.generic'),
+  isNetworkError: jest.fn(() => false),
+  isAuthError: jest.fn(() => false),
+}));
+
 // Mock supabase to avoid import.meta.env issues
 jest.mock('./src/lib/supabase', () => ({
   supabase: {

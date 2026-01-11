@@ -11,6 +11,7 @@ import { Skeleton, SkeletonStats } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useStorage } from "@/hooks/useStorage";
 import { useFeatureAccess } from "@/components/auth/ProtectedFeature";
+import { formatDuration, formatStorage, pageStyles } from "@/lib/utils";
 import { GameMetadata, Game } from "@/types/storage";
 import { Trash2, Play, Calendar, Clock, Trophy, Sparkles, Lock, Gamepad2 } from "lucide-react";
 
@@ -88,17 +89,6 @@ export function Games() {
     navigate({ to: '/auto-edit', search: { gameId } });
   };
 
-  const formatBytes = (bytes: number): string => {
-    const gb = bytes / (1024 * 1024 * 1024);
-    return gb.toFixed(2) + " GB";
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
   const getResultVariant = (result: string) => {
     if (result.toLowerCase() === "win") return "default";
     if (result.toLowerCase() === "loss") return "destructive";
@@ -147,9 +137,9 @@ export function Games() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold">{t('games.recordedGames')}</h2>
+    <div className={pageStyles.container}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h2 className={pageStyles.title}>{t('games.recordedGames')}</h2>
         <Button onClick={loadGames} variant="outline" size="sm">
           {t('games.refresh')}
         </Button>
@@ -172,7 +162,7 @@ export function Games() {
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>{t('games.stats.storageUsed')}</CardDescription>
-            <CardTitle className="text-3xl">{formatBytes(stats.total_size_bytes)}</CardTitle>
+            <CardTitle className="text-3xl">{formatStorage(stats.total_size_bytes)}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -201,25 +191,7 @@ export function Games() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {games.map((game) => { // Map over Game objects directly
-            // We can get metadata directly from game object now
-            // The `games` state now holds Game objects, and `gamesData` map is still GameMetadata
-            // There's a slight confusion between `Game` and `GameMetadata`.
-            // `listGames` returns `Game[]`
-            // `getAllGames` returns `GameMetadata[]`
-            // `games` state should probably be `GameMetadata[]`
-            // My previous `loadGames` logic was:
-            // const loadedGames = await listGames(); // returns Game[]
-            // setGames(loadedGames); // games is Game[]
-            // Then loop loadedGames to get metadata: getGameMetadata(game.game_id)
-            // But if `games` is `Game[]`, then it doesn't have `champion` etc.
-            // My state setup:
-            // const [games, setGames] = useState<Game[]>([]); // This is wrong if I want to display GameMetadata
-            // const [gamesData, setGamesData] = useState<Map<string, GameMetadata>>(new Map());
-            // This means I'm storing `Game[]` in `games`, then fetching `GameMetadata` for each and storing in `gamesData`.
-            // The display logic uses `game.champion`, `game.game_mode` etc., which come from `GameMetadata`.
-            // So I should populate `gamesData` map.
-
+          {games.map((game) => {
             const gameMetadata = gamesData.get(game.game_id);
 
             if (!gameMetadata) {

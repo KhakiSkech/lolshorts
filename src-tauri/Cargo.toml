@@ -76,6 +76,7 @@ tokio-util = "0.7.17"
 
 # Cross-platform video dependencies (optional for basic compilation)
 ffmpeg-next = { version = "7.0", features = ["static"], optional = true }
+base64 = "0.22.1"
 
 # Windows-specific
 [target.'cfg(windows)'.dependencies]

@@ -1,6 +1,6 @@
 import { cmd } from './client';
 import { Game, GameMetadata, EventData, Clip, ClipMetadata, StorageStats } from '@/types/storage';
-import { AutoEditResultMetadata } from '@/types/autoEdit';
+import { AutoEditResultMetadata, YouTubeUploadStatus } from '@/types/autoEdit';
 
 export const storageApi = {
   listGames: () => cmd<Game[]>('list_games'),
@@ -43,6 +43,6 @@ export const storageApi = {
   deleteAutoEditResult: (resultId: string, deleteFile: boolean) =>
     cmd<void>('delete_auto_edit_result', { resultId, deleteFile }),
 
-  updateAutoEditYoutubeStatus: (resultId: string, status: string) =>
+  updateAutoEditYoutubeStatus: (resultId: string, status: YouTubeUploadStatus) =>
     cmd<void>('update_auto_edit_youtube_status', { resultId, status }),
 };

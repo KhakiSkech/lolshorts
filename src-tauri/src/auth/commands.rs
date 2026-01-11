@@ -355,29 +355,88 @@ pub struct SubscriptionDetails {
     pub payment_message: Option<String>,
 }
 
-/// Confirm payment - Currently redirects to license-based upgrade
-/// Full payment integration planned for v2.0
+/// Confirm payment - TossPayments 결제 승인 및 라이센스 업그레이드
 #[tauri::command]
 pub async fn confirm_payment(
     state: State<'_, AppState>,
-    _payment_key: String,
-    _order_id: String,
-    _amount: i64,
+    payment_key: String,
+    order_id: String,
+    amount: i64,
 ) -> Result<(), String> {
+    use crate::payments::{TossPaymentsClient, PaymentConfirmRequest};
+
     // Check if user is authenticated
     let user = state
         .auth
         .get_current_user()
         .map_err(|e| format!("Authentication required: {}", e))?;
 
-    if user.is_none() {
-        return Err("You must be logged in to upgrade your subscription.".to_string());
+    let user = user.ok_or("You must be logged in to upgrade your subscription.")?;
+
+    info!("결제 승인 요청: user={}, order_id={}, amount={}", user.email, order_id, amount);
+
+    // TossPayments 클라이언트 생성
+    let tosspayments_client = TossPaymentsClient::from_env()
+        .map_err(|e| {
+            error!("TossPayments 클라이언트 초기화 실패: {}", e);
+            format!("결제 시스템을 초기화할 수 없습니다: {}", e)
+        })?;
+
+    // TossPayments API로 결제 승인 요청
+    let confirm_request = PaymentConfirmRequest {
+        payment_key: payment_key.clone(),
+        order_id: order_id.clone(),
+        amount,
+    };
+
+    let confirm_response = tosspayments_client
+        .confirm_payment(confirm_request)
+        .await
+        .map_err(|e| {
+            error!("TossPayments 결제 승인 실패: {}", e);
+            format!("결제 승인에 실패했습니다: {}", e)
+        })?;
+
+    // 결제 성공 - 라이센스 업그레이드
+    if confirm_response.status == "DONE" {
+        info!("결제 성공, 라이센스 업그레이드 진행: payment_key={}", payment_key);
+
+        // Supabase에서 라이센스 업그레이드
+        let supabase_client = state
+            .auth
+            .get_supabase_client()
+            .map_err(|e| format!("Database connection error: {}", e))?;
+
+        // 라이센스를 PRO로 업그레이드
+        supabase_client
+            .upgrade_user_license(&user.id, &user.access_token, &order_id, &payment_key, amount)
+            .await
+            .map_err(|e| {
+                error!("라이센스 업그레이드 실패: {}", e);
+                format!("결제는 완료되었으나 라이센스 활성화에 실패했습니다. 고객센터에 문의해주세요. (주문번호: {})", order_id)
+            })?;
+
+        // 로컬 사용자 상태 업데이트
+        let updated_user = User {
+            id: user.id,
+            email: user.email,
+            tier: SubscriptionTier::Pro,
+            access_token: user.access_token,
+            refresh_token: user.refresh_token,
+            expires_at: user.expires_at,
+        };
+
+        state
+            .auth
+            .login(updated_user)
+            .map_err(|e| format!("Failed to update local user state: {}", e))?;
+
+        info!("PRO 라이센스 활성화 완료: order_id={}", order_id);
+        Ok(())
+    } else {
+        warn!("결제 상태가 DONE이 아님: status={}", confirm_response.status);
+        Err(format!("결제가 완료되지 않았습니다. 상태: {}", confirm_response.status))
     }
-
-    // Payment system not yet available
-    tracing::info!("Payment confirmation requested - redirecting to manual upgrade process");
-
-    Err("Payment processing is not yet available. Please contact support@lolshorts.app for PRO upgrade inquiries. Include your account email and we'll process your upgrade manually.".to_string())
 }
 
 /// Get subscription details - Returns actual license status from database

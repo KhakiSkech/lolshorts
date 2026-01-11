@@ -1,9 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    /* Typography */
+    --font-sans: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+    /* Colors */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -35,6 +42,11 @@
     --warning-foreground: 0 0% 0%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
+
+    /* PRO tier colors */
+    --accent-pro: 45 93% 47%;
+    --accent-pro-hover: 45 93% 42%;
+    --accent-pro-foreground: 0 0% 0%;
 
     /* Status colors */
     --status-recording: 0 84% 60%;
@@ -74,6 +86,11 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
+    /* PRO tier colors (dark mode - slightly brighter) */
+    --accent-pro: 45 93% 55%;
+    --accent-pro-hover: 45 93% 50%;
+    --accent-pro-foreground: 0 0% 0%;
+
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
@@ -84,7 +101,18 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 기본 텍스트 오버플로우 처리 (UI 깨짐 방지) */
+  h1, h2, h3, h4, h5, h6 {
+    overflow-wrap: break-word;
   }
 }

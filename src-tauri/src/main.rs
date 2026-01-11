@@ -200,24 +200,52 @@ async fn main() {
     tracing::info!("Auto Composer 초기화됨");
 
     // YouTube 관리자 초기화
-    let youtube_client_id = std::env::var("YOUTUBE_CLIENT_ID")
-        .unwrap_or_else(|_| "your-client-id.apps.googleusercontent.com".to_string());
-    let youtube_client_secret =
-        std::env::var("YOUTUBE_CLIENT_SECRET").unwrap_or_else(|_| "your-client-secret".to_string());
+    // 환경변수 검증: 플레이스홀더 값이면 설정되지 않은 것으로 처리
+    let youtube_client_id = std::env::var("YOUTUBE_CLIENT_ID").ok().filter(|v| {
+        !v.is_empty() && !v.contains("your-client-id") && v.ends_with(".apps.googleusercontent.com")
+    });
+    let youtube_client_secret = std::env::var("YOUTUBE_CLIENT_SECRET")
+        .ok()
+        .filter(|v| !v.is_empty() && !v.contains("your-client-secret"));
     let youtube_redirect_uri = std::env::var("YOUTUBE_REDIRECT_URI")
         .unwrap_or_else(|_| "http://localhost:8080/oauth2/callback".to_string());
 
-    let youtube_manager = match youtube::YouTubeManager::new(
-        youtube_client_id,
-        youtube_client_secret,
-        youtube_redirect_uri,
-        Arc::clone(&storage),
-    ) {
-        Ok(manager) => Arc::new(manager),
-        Err(e) => {
-            tracing::error!("Failed to initialize YouTube manager: {}", e);
-            eprintln!("Error: YouTube integration initialization failed: {}. YouTube uploads will be unavailable.", e);
-            std::process::exit(1);
+    let youtube_manager = match (youtube_client_id, youtube_client_secret) {
+        (Some(client_id), Some(client_secret)) => {
+            match youtube::YouTubeManager::new(
+                client_id,
+                client_secret,
+                youtube_redirect_uri,
+                Arc::clone(&storage),
+            ) {
+                Ok(manager) => Arc::new(manager),
+                Err(e) => {
+                    tracing::error!("Failed to initialize YouTube manager: {}", e);
+                    eprintln!("Error: YouTube integration initialization failed: {}. YouTube uploads will be unavailable.", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        _ => {
+            tracing::warn!(
+                "⚠️ YouTube API 자격증명이 설정되지 않았습니다. \
+                YOUTUBE_CLIENT_ID와 YOUTUBE_CLIENT_SECRET 환경변수를 설정하세요. \
+                YouTube 업로드 기능이 비활성화됩니다."
+            );
+            // 자격증명 없이도 앱은 동작해야 함 - 빈 자격증명으로 초기화
+            // 실제 업로드 시도 시 적절한 에러 메시지 표시
+            match youtube::YouTubeManager::new(
+                String::new(),
+                String::new(),
+                youtube_redirect_uri,
+                Arc::clone(&storage),
+            ) {
+                Ok(manager) => Arc::new(manager),
+                Err(e) => {
+                    tracing::error!("Failed to initialize YouTube manager: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
     };
 

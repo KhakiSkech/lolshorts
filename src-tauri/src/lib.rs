@@ -3,6 +3,7 @@ pub mod error;
 pub mod feature_gate;
 pub mod hotkey;
 pub mod lcu;
+pub mod payments;
 pub mod recording;
 pub mod settings;
 pub mod storage;

@@ -190,7 +190,17 @@
     "timeline": {
       "title": "Timeline",
       "addClip": "Add Clip",
-      "removeClip": "Remove Clip"
+      "removeClip": "Remove Clip",
+      "addClipsPrompt": "Add clips from the library to build your timeline",
+      "dragToReorder": "Drag clips to reorder them",
+      "clips": "clips",
+      "clear": "Clear"
+    },
+    "mobileTabs": {
+      "clips": "Clips",
+      "preview": "Preview",
+      "settings": "Settings",
+      "timeline": "Timeline"
     },
     "tools": {
       "trim": "Trim",
@@ -204,7 +214,70 @@
       "title": "Export",
       "quality": "Quality",
       "format": "Format",
-      "exportVideo": "Export Video"
+      "exportVideo": "Export Video",
+      "saveTitle": "Save Exported Video",
+      "videoFiles": "Video Files",
+      "selectLocationFailed": "Failed to select save location",
+      "exporting": "Exporting video...",
+      "complete": "Export complete!",
+      "failed": "Export failed",
+      "ready": "Ready to export",
+      "exportFormat": "Export Format",
+      "shorts": "Shorts (9:16)",
+      "montage": "Montage (16:9)",
+      "mobileOptimized": "Mobile optimized",
+      "fullScreenHD": "Full screen HD",
+      "totalClips": "Total Clips",
+      "duration": "Duration",
+      "transitions": "Transitions",
+      "none": "None",
+      "saveLocation": "Save Location",
+      "changeLocation": "Change Location",
+      "selectLocation": "Select Location",
+      "successMessage": "Video exported successfully!",
+      "savedTo": "Saved to:",
+      "openFolder": "Open Containing Folder",
+      "cancel": "Cancel",
+      "starting": "Starting...",
+      "exportButton": "Export",
+      "cancelExport": "Cancel Export",
+      "close": "Close",
+      "processingClips": "Processing clips...",
+      "mergingClips": "Merging clips..."
+    },
+    "composition": {
+      "title": "Composition Settings",
+      "aspectRatio": "Aspect Ratio",
+      "aspectRatios": {
+        "vertical": "Vertical (TikTok, Reels)",
+        "horizontal": "Horizontal (YouTube)",
+        "square": "Square (Instagram)"
+      },
+      "transitions": "Transitions",
+      "type": "Type",
+      "transitionTypes": {
+        "none": "None",
+        "fade": "Fade",
+        "slide": "Slide"
+      },
+      "duration": "Duration",
+      "summary": "Composition Summary",
+      "totalClips": "Total Clips",
+      "totalDuration": "Total Duration",
+      "exportVideo": "Export Video",
+      "addClipsToExport": "Add clips to timeline to export"
+    },
+    "clip": {
+      "priority": "Priority {{id}}",
+      "clipNumber": "Clip #{{id}}",
+      "preview": "Preview",
+      "add": "Add"
+    },
+    "clipLibrary": {
+      "title": "Clip Library",
+      "noClipsAvailable": "No Clips Available",
+      "noClipsDescription": "Select a game from the Games page to load clips for editing.",
+      "clipsCount": "{{count}} clips available"
     }
   },
   "autoEdit": {
@@ -879,7 +952,22 @@
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
     "clear": "Clear",
-    "continue": "Continue"
+    "continue": "Continue",
+    "redirectToPayment": "You'll be redirected to Toss Payments to complete your purchase securely"
+  },
+  "toast": {
+    "settingsSaved": "Settings saved",
+    "settingsSavedDesc": "Your changes have been applied",
+    "exportComplete": "Export complete",
+    "exportCompleteDesc": "Video has been saved successfully",
+    "uploadComplete": "Upload complete",
+    "uploadCompleteDesc": "Successfully uploaded to YouTube",
+    "clipAdded": "Clip added",
+    "clipAddedDesc": "Clip has been added to the timeline",
+    "clipRemoved": "Clip removed",
+    "clipRemovedDesc": "Clip has been removed from the timeline",
+    "error": "Error occurred",
+    "errorDesc": "Unable to complete the operation"
   },
   "confirmations": {
     "clearTimelineTitle": "Clear Timeline",
@@ -900,7 +988,27 @@
     "processingFailed": "Processing failed",
     "lcuNotConnected": "League client not connected",
     "recordingFailed": "Recording failed",
-    "quotaExceeded": "YouTube quota exceeded"
+    "quotaExceeded": "YouTube quota exceeded",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "sessionExpired": "Session expired. Please login again.",
+    "loginFailed": "Login failed. Please check your email and password.",
+    "signupFailed": "Signup failed. Please try again.",
+    "googleLoginFailed": "Google login failed. Please try again.",
+    "invalidCredentials": "Invalid email or password",
+    "emailAlreadyInUse": "This email is already registered",
+    "weakPassword": "Password must be at least 8 characters",
+    "invalidEmail": "Please enter a valid email address",
+    "accountDisabled": "This account has been disabled",
+    "tooManyRequests": "Too many attempts. Please try again later.",
+    "paymentFailed": "Payment failed. Please try again.",
+    "paymentCancelled": "Payment was cancelled",
+    "ffmpegNotFound": "Video processing tool not found. Please reinstall the app.",
+    "clipNotFound": "Clip not found or may have been deleted",
+    "exportFailed": "Export failed. Please check your disk space.",
+    "noClipsSelected": "Please select at least one clip",
+    "youtubeAuthFailed": "YouTube authentication failed. Please try again.",
+    "youtubeUploadFailed": "Failed to upload to YouTube. Please try again.",
+    "youtubeQuotaExceeded": "YouTube daily upload limit reached. Try again tomorrow."
   },
   "clips": {
     "title": "Clip Library",
@@ -953,5 +1061,142 @@
     "uploadComplete": "Upload complete: {{title}}",
     "uploadFailed": "Upload failed: {{error}}",
     "updateAvailable": "Update available: v{{version}}"
+  },
+  "recordingControls": {
+    "autoCapture": {
+      "title": "Auto-Capture Controls",
+      "description": "Start/stop automatic event monitoring and clip creation",
+      "start": "Start Auto-Capture",
+      "stop": "Stop Auto-Capture",
+      "active": "Recording buffer active - Press F8 to toggle",
+      "inactive": "Press F8 or click Start to begin monitoring"
+    },
+    "manualReplay": {
+      "title": "Manual Replay Save",
+      "description": "Save the last N seconds of gameplay",
+      "replayDuration": "Replay Duration",
+      "saveReplay": "Save Replay",
+      "hotkeyHint": "Or use: F9 (60s) / F10 (30s) hotkeys"
+    },
+    "settings": {
+      "title": "Recording Settings",
+      "description": "Configure video quality and audio capture",
+      "videoQuality": "Video Quality",
+      "qualities": {
+        "low": "Low (720p 30fps)",
+        "medium": "Medium (1080p 30fps)",
+        "high": "High (1080p 60fps)",
+        "ultra": "Ultra (1440p 60fps)"
+      },
+      "hardwareEncoding": "Hardware Encoding",
+      "audioCapture": "Audio Capture",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "saveSettings": "Save Settings"
+    },
+    "toast": {
+      "autoCaptureStarted": "Auto-Capture Started",
+      "autoCaptureStartedDesc": "Now monitoring game events for automatic clip creation",
+      "autoCaptureStopped": "Auto-Capture Stopped",
+      "autoCaptureStoppedDesc": "Replay buffer cleared",
+      "replaySaved": "Replay Saved",
+      "replaySavedDesc": "Saved {{duration}}s replay",
+      "settingsSaved": "Settings Saved",
+      "settingsSavedDesc": "Recording settings updated successfully",
+      "failedToStart": "Failed to Start",
+      "failedToStop": "Failed to Stop",
+      "failedToSave": "Failed to Save Replay",
+      "failedToSaveSettings": "Failed to Save Settings"
+    }
+  },
+  "replays": {
+    "title": "Replays",
+    "refresh": "Refresh",
+    "noMatches": "No matches found or LCU not connected.",
+    "victory": "Victory",
+    "defeat": "Defeat",
+    "mode": "Mode",
+    "kda": "KDA",
+    "duration": "Duration",
+    "download": "Download",
+    "watch": "Watch",
+    "toast": {
+      "lcuDisconnected": "LCU Disconnected",
+      "lcuDisconnectedDesc": "Please start League of Legends client to view match history.",
+      "downloadStarted": "Download Started",
+      "downloadStartedDesc": "Replay download has started via League Client.",
+      "downloadFailed": "Download Failed",
+      "downloadFailedDesc": "Could not start replay download.",
+      "launchFailed": "Launch Failed",
+      "launchFailedDesc": "Could not launch replay. Make sure it is downloaded.",
+      "launchingReplay": "Launching Replay",
+      "launchingReplayDesc": "Select a player to record their highlights!",
+      "loadError": "Error",
+      "loadErrorDesc": "Failed to load match history."
+    }
+  },
+  "protectedFeature": {
+    "proFeature": "PRO Feature",
+    "upgradeDescription": "Upgrade to PRO to access {{feature}}",
+    "upgradeToPro": "Upgrade to PRO",
+    "features": {
+      "unlimitedClips": "Unlimited clip recording",
+      "advancedEditor": "Advanced video editor",
+      "youtubeUpload": "Direct YouTube upload",
+      "prioritySupport": "Priority support"
+    }
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "prev": "Previous",
+    "next": "Next",
+    "getStarted": "Get Started",
+    "welcome": {
+      "title": "Welcome to LoLShorts!",
+      "description": "Create stunning League of Legends highlight videos automatically. Let's get you started in just a few steps."
+    },
+    "connect": {
+      "title": "Connect to League",
+      "description": "LoLShorts automatically connects to your League of Legends client to detect games and capture highlights.",
+      "tip1": "Make sure League of Legends is running",
+      "tip2": "Connection happens automatically - no setup needed"
+    },
+    "record": {
+      "title": "Automatic Recording",
+      "description": "When you enter a game, recording starts automatically. Kills, objectives, and epic moments are detected in real-time.",
+      "tip1": "Highlights are saved based on in-game events",
+      "tip2": "Customize what events to capture in Settings"
+    },
+    "edit": {
+      "title": "Edit Your Highlights",
+      "description": "Use our powerful editor to create YouTube Shorts or montages. Auto-edit feature creates videos for you with AI.",
+      "tip1": "Drag and drop clips to build your video",
+      "tip2": "PRO users get access to advanced features"
+    },
+    "upload": {
+      "title": "Share to YouTube",
+      "description": "Upload directly to YouTube with one click. Add titles, descriptions, and thumbnails easily.",
+      "tip1": "Connect your YouTube account in the YouTube tab"
+    }
+  },
+  "payment": {
+    "upgradeToPro": "Upgrade to LoLShorts PRO",
+    "chooseSubscription": "Choose your subscription plan and get access to all premium features",
+    "monthlyPlan": "Monthly Plan",
+    "monthlyPrice": "{{price}}/month",
+    "yearlyPlan": "Yearly Plan",
+    "yearlyPrice": "{{price}}/year",
+    "savePercent": "Save {{percent}}%",
+    "bestValue": "Best Value",
+    "features": {
+      "title": "PRO Features Include:",
+      "unlimitedClips": "Unlimited clip recording",
+      "advancedEditor": "Advanced video editor",
+      "youtubeUpload": "Direct YouTube upload",
+      "noWatermarks": "No watermarks",
+      "prioritySupport": "Priority support"
+    },
+    "processing": "Processing...",
+    "selectPlan": "Select Plan"
   }
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { useEditorStore } from '@/stores/editorStore';
@@ -6,6 +7,7 @@ import { TimelineControls } from './TimelineControls'; // Re-add this import
 import { Film } from 'lucide-react';
 
 export function Timeline() {
+  const { t } = useTranslation();
   const { timelineClips, reorderTimeline, zoom } = useEditorStore();
 
   const sensors = useSensors(
@@ -41,10 +43,10 @@ export function Timeline() {
           <div className="h-full flex flex-col items-center justify-center">
             <Film className="w-12 h-12 text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">
-              Add clips from the library to build your timeline
+              {t('editor.timeline.addClipsPrompt')}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Drag clips to reorder them
+              {t('editor.timeline.dragToReorder')}
             </p>
           </div>
         ) : (

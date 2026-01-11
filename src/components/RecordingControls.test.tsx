@@ -26,15 +26,16 @@ describe('RecordingControls', () => {
   test('renders recording controls correctly', () => {
     render(<RecordingControls />);
 
-    expect(screen.getByText('Auto-Capture Controls')).toBeInTheDocument();
-    expect(screen.getByText('Manual Replay Save')).toBeInTheDocument();
-    expect(screen.getByText('Recording Settings')).toBeInTheDocument();
+    // i18n mock returns keys, so we look for the i18n keys
+    expect(screen.getByText('recordingControls.autoCapture.title')).toBeInTheDocument();
+    expect(screen.getByText('recordingControls.manualReplay.title')).toBeInTheDocument();
+    expect(screen.getByText('recordingControls.settings.title')).toBeInTheDocument();
   });
 
   test('start auto capture button is present and clickable', () => {
     render(<RecordingControls />);
 
-    const startButton = screen.getByText('Start Auto-Capture');
+    const startButton = screen.getByText('recordingControls.autoCapture.start');
 
     // Verify button exists and is enabled
     expect(startButton).toBeInTheDocument();
@@ -45,29 +46,29 @@ describe('RecordingControls', () => {
     render(<RecordingControls />);
 
     // Only start button should be visible initially
-    expect(screen.getByText('Start Auto-Capture')).toBeInTheDocument();
+    expect(screen.getByText('recordingControls.autoCapture.start')).toBeInTheDocument();
     // Stop button should not be in DOM initially
-    expect(screen.queryByText('Stop Auto-Capture')).not.toBeInTheDocument();
+    expect(screen.queryByText('recordingControls.autoCapture.stop')).not.toBeInTheDocument();
   });
 
   test('save replay button is present', () => {
     render(<RecordingControls />);
 
-    const saveButton = screen.getByText('Save Replay');
+    const saveButton = screen.getByText('recordingControls.manualReplay.saveReplay');
     expect(saveButton).toBeInTheDocument();
   });
 
   test('save settings button is present', () => {
     render(<RecordingControls />);
 
-    const saveSettingsButton = screen.getByText('Save Settings');
+    const saveSettingsButton = screen.getByText('recordingControls.settings.saveSettings');
     expect(saveSettingsButton).toBeInTheDocument();
   });
 
   test('replay duration slider works', () => {
     render(<RecordingControls />);
 
-    // Check for specific duration values in the component
+    // Check for specific duration values in the component (hardcoded, not i18n)
     // Use getAllByText since '60s' might appear multiple times
     expect(screen.getAllByText('60s')).toHaveLength(2); // Once for display, once for slider label
     expect(screen.getByText('10s')).toBeInTheDocument();

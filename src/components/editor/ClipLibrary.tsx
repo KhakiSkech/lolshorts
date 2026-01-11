@@ -1,17 +1,19 @@
+import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/stores/editorStore';
 import { ClipCard } from './ClipCard';
 import { Film } from 'lucide-react';
 
 export function ClipLibrary() {
+  const { t } = useTranslation();
   const { availableClips } = useEditorStore();
 
   if (availableClips.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 text-center">
         <Film className="w-16 h-16 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No Clips Available</h3>
+        <h3 className="text-lg font-semibold mb-2">{t('editor.clipLibrary.noClipsAvailable')}</h3>
         <p className="text-sm text-muted-foreground">
-          Select a game from the Games page to load clips for editing.
+          {t('editor.clipLibrary.noClipsDescription')}
         </p>
       </div>
     );
@@ -21,9 +23,9 @@ export function ClipLibrary() {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b">
-        <h3 className="font-semibold">Clip Library</h3>
+        <h3 className="font-semibold">{t('editor.clipLibrary.title')}</h3>
         <p className="text-sm text-muted-foreground">
-          {availableClips.length} clips available
+          {t('editor.clipLibrary.clipsCount', { count: availableClips.length })}
         </p>
       </div>
 

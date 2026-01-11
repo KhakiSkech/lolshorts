@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { useAutoEditResults } from '@/hooks/useAutoEditResults';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { formatDuration, formatStorage } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,17 +71,6 @@ export function ResultsViewer() {
   const handlePlay = (outputPath: string) => {
     const videoUrl = convertFileSrc(outputPath);
     window.open(videoUrl, '_blank');
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(1)} MB`;
   };
 
   const formatDate = (dateString: string): string => {
@@ -194,7 +184,7 @@ export function ResultsViewer() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">{t('results.fileSize')}:</span>
-                    <span className="font-medium">{formatFileSize(result.file_size_bytes)}</span>
+                    <span className="font-medium">{formatStorage(result.file_size_bytes)}</span>
                   </div>
                   {result.canvas_template_name && (
                     <div className="flex items-center justify-between text-sm">

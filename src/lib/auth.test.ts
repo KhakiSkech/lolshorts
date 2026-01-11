@@ -5,8 +5,19 @@
  * Comprehensive coverage of auth functionality including login, logout, and error handling
  */
 
+// Unmock auth and errorMapper modules to test the real implementation
+jest.unmock('./auth');
+jest.unmock('./errorMapper');
+
 import { renderHook, act } from '@testing-library/react';
 import { useAuthStore } from './auth';
+
+// Mock authApi to avoid backend calls
+jest.mock('@/api/auth', () => ({
+  authApi: {
+    setSession: jest.fn().mockResolvedValue(undefined),
+  },
+}));
 
 // Mock Supabase
 jest.mock('./supabase', () => ({
@@ -109,7 +120,7 @@ describe('Auth Store', () => {
       const { supabase } = require('./supabase');
       supabase.auth.signInWithPassword.mockResolvedValue({
         data: { user: null },
-        error: { message: 'Invalid credentials' },
+        error: { message: 'Invalid credentials', code: 'invalid_credentials' },
       });
 
       const { result } = renderHook(() => useAuthStore());
@@ -118,13 +129,13 @@ describe('Auth Store', () => {
         await expect(result.current.login({
           email: 'test@example.com',
           password: 'wrong-password',
-        })).rejects.toThrow('Login failed');
+        })).rejects.toThrow('errors.invalidCredentials');
       });
 
       expect(result.current.user).toBeNull();
       expect(result.current.isAuthenticated).toBe(false);
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe('Login failed');
+      expect(result.current.error).toBe('errors.invalidCredentials');
     });
 
     it('should handle network error during login', async () => {
@@ -137,10 +148,10 @@ describe('Auth Store', () => {
         await expect(result.current.login({
           email: 'test@example.com',
           password: 'password123',
-        })).rejects.toThrow('Network error');
+        })).rejects.toThrow('errors.networkError');
       });
 
-      expect(result.current.error).toBe('Network error');
+      expect(result.current.error).toBe('errors.networkError');
       expect(result.current.isLoading).toBe(false);
     });
   });
@@ -175,10 +186,10 @@ describe('Auth Store', () => {
       const { result } = renderHook(() => useAuthStore());
 
       await act(async () => {
-        await expect(result.current.loginWithGoogle()).rejects.toThrow('OAuth failed');
+        await expect(result.current.loginWithGoogle()).rejects.toThrow('errors.generic');
       });
 
-      expect(result.current.error).toBe('OAuth failed');
+      expect(result.current.error).toBe('errors.generic');
     });
   });
 
@@ -247,10 +258,10 @@ describe('Auth Store', () => {
           email: 'test@example.com',
           password: 'password123',
           confirm_password: 'differentpassword',
-        })).rejects.toThrow('Passwords do not match');
+        })).rejects.toThrow('errors.passwordsDoNotMatch');
       });
 
-      expect(result.current.error).toBe('Passwords do not match');
+      expect(result.current.error).toBe('errors.passwordsDoNotMatch');
     });
   });
 
@@ -298,10 +309,10 @@ describe('Auth Store', () => {
       const { result } = renderHook(() => useAuthStore());
 
       await act(async () => {
-        await expect(result.current.logout()).rejects.toThrow('Logout failed');
+        await expect(result.current.logout()).rejects.toThrow('errors.generic');
       });
 
-      expect(result.current.error).toBe('Logout failed');
+      expect(result.current.error).toBe('errors.generic');
     });
   });
 
@@ -559,7 +570,7 @@ describe('Auth Store', () => {
 
       expect(result.current.user).toBeNull();
       expect(result.current.isAuthenticated).toBe(false);
-      expect(result.current.error).toBe('Session expired. Please login again.');
+      expect(result.current.error).toBe('errors.sessionExpired');
     });
   });
 });

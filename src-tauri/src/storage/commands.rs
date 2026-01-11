@@ -80,14 +80,48 @@ pub async fn save_clip_metadata(
         .map_err(|e| e.to_string())
 }
 
-/// Delete a game and all its data
+/// Delete a game and all its data (including video files)
 #[tauri::command]
 pub async fn delete_game(state: State<'_, AppState>, game_id: String) -> Result<(), String> {
-    // FREE tier feature - no authentication required
+    // 1. Load all clip metadata for this game to find physical files
+    let clips = state
+        .storage
+        .load_clip_metadata(&game_id)
+        .map_err(|e| e.to_string())?;
+
+    // 2. Delete physical video files
+    for clip in &clips {
+        if let Err(e) = std::fs::remove_file(&clip.file_path) {
+            // Log warning but continue (file might already be moved/deleted manually)
+            tracing::warn!(
+                "Failed to delete physical clip file {:?}: {}",
+                clip.file_path,
+                e
+            );
+        }
+    }
+
+    // 3. Delete thumbnail files if they exist
+    for clip in &clips {
+        if let Some(ref thumb_path) = clip.thumbnail_path {
+            if let Err(e) = std::fs::remove_file(thumb_path) {
+                tracing::warn!(
+                    "Failed to delete thumbnail file {:?}: {}",
+                    thumb_path,
+                    e
+                );
+            }
+        }
+    }
+
+    // 4. Delete metadata (Game and associated Clips)
     state
         .storage
         .delete_game(&game_id)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    tracing::info!("Successfully deleted game {} and associated files", game_id);
+    Ok(())
 }
 
 /// Get storage statistics

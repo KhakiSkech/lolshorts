@@ -190,7 +190,17 @@
     "timeline": {
       "title": "타임라인",
       "addClip": "클립 추가",
-      "removeClip": "클립 제거"
+      "removeClip": "클립 제거",
+      "addClipsPrompt": "라이브러리에서 클립을 추가하여 타임라인을 구성하세요",
+      "dragToReorder": "드래그하여 클립 순서 변경",
+      "clips": "개 클립",
+      "clear": "지우기"
+    },
+    "mobileTabs": {
+      "clips": "클립",
+      "preview": "미리보기",
+      "settings": "설정",
+      "timeline": "타임라인"
     },
     "tools": {
       "trim": "자르기",
@@ -204,7 +214,70 @@
       "title": "내보내기",
       "quality": "화질",
       "format": "형식",
-      "exportVideo": "비디오 내보내기"
+      "exportVideo": "비디오 내보내기",
+      "saveTitle": "내보낸 비디오 저장",
+      "videoFiles": "비디오 파일",
+      "selectLocationFailed": "저장 위치 선택에 실패했습니다",
+      "exporting": "비디오 내보내기 중...",
+      "complete": "내보내기 완료!",
+      "failed": "내보내기 실패",
+      "ready": "내보내기 준비 완료",
+      "exportFormat": "내보내기 형식",
+      "shorts": "쇼츠 (9:16)",
+      "montage": "몽타주 (16:9)",
+      "mobileOptimized": "모바일 최적화",
+      "fullScreenHD": "전체 화면 HD",
+      "totalClips": "총 클립",
+      "duration": "길이",
+      "transitions": "전환 효과",
+      "none": "없음",
+      "saveLocation": "저장 위치",
+      "changeLocation": "위치 변경",
+      "selectLocation": "위치 선택",
+      "successMessage": "비디오가 성공적으로 내보내졌습니다!",
+      "savedTo": "저장 위치:",
+      "openFolder": "폴더 열기",
+      "cancel": "취소",
+      "starting": "시작 중...",
+      "exportButton": "내보내기",
+      "cancelExport": "내보내기 취소",
+      "close": "닫기",
+      "processingClips": "클립 처리 중...",
+      "mergingClips": "클립 병합 중..."
+    },
+    "composition": {
+      "title": "컴포지션 설정",
+      "aspectRatio": "화면 비율",
+      "aspectRatios": {
+        "vertical": "세로 (TikTok, Reels)",
+        "horizontal": "가로 (YouTube)",
+        "square": "정사각형 (Instagram)"
+      },
+      "transitions": "전환 효과",
+      "type": "종류",
+      "transitionTypes": {
+        "none": "없음",
+        "fade": "페이드",
+        "slide": "슬라이드"
+      },
+      "duration": "길이",
+      "summary": "컴포지션 요약",
+      "totalClips": "총 클립",
+      "totalDuration": "총 길이",
+      "exportVideo": "비디오 내보내기",
+      "addClipsToExport": "내보내려면 타임라인에 클립을 추가하세요"
+    },
+    "clip": {
+      "priority": "우선순위 {{id}}",
+      "clipNumber": "클립 #{{id}}",
+      "preview": "미리보기",
+      "add": "추가"
+    },
+    "clipLibrary": {
+      "title": "클립 라이브러리",
+      "noClipsAvailable": "클립 없음",
+      "noClipsDescription": "게임 페이지에서 게임을 선택하여 편집할 클립을 불러오세요.",
+      "clipsCount": "{{count}}개 클립 사용 가능"
     }
   },
   "autoEdit": {
@@ -834,7 +907,22 @@
     "selectAll": "모두 선택",
     "deselectAll": "모두 선택 해제",
     "clear": "지우기",
-    "continue": "계속"
+    "continue": "계속",
+    "redirectToPayment": "토스 페이먼츠로 이동하여 안전하게 결제를 완료합니다"
+  },
+  "toast": {
+    "settingsSaved": "설정이 저장되었습니다",
+    "settingsSavedDesc": "변경 사항이 적용되었습니다",
+    "exportComplete": "내보내기 완료",
+    "exportCompleteDesc": "비디오가 성공적으로 저장되었습니다",
+    "uploadComplete": "업로드 완료",
+    "uploadCompleteDesc": "YouTube에 성공적으로 업로드되었습니다",
+    "clipAdded": "클립 추가됨",
+    "clipAddedDesc": "타임라인에 클립이 추가되었습니다",
+    "clipRemoved": "클립 제거됨",
+    "clipRemovedDesc": "타임라인에서 클립이 제거되었습니다",
+    "error": "오류 발생",
+    "errorDesc": "작업을 완료할 수 없습니다"
   },
   "confirmations": {
     "clearTimelineTitle": "타임라인 지우기",
@@ -860,7 +948,27 @@
     "quotaExceeded": "유튜브 할당량 초과",
     "fileSelectionFailed": "파일 선택에 실패했습니다. 다시 시도해 주세요.",
     "selectAtLeastOneGame": "게임을 하나 이상 선택해 주세요",
-    "todoFeature": "TODO: {{action}}"
+    "todoFeature": "TODO: {{action}}",
+    "passwordsDoNotMatch": "비밀번호가 일치하지 않습니다",
+    "sessionExpired": "세션이 만료되었습니다. 다시 로그인해주세요.",
+    "loginFailed": "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.",
+    "signupFailed": "회원가입에 실패했습니다. 다시 시도해주세요.",
+    "googleLoginFailed": "Google 로그인에 실패했습니다. 다시 시도해주세요.",
+    "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다",
+    "emailAlreadyInUse": "이미 등록된 이메일입니다",
+    "weakPassword": "비밀번호는 최소 8자 이상이어야 합니다",
+    "invalidEmail": "올바른 이메일 주소를 입력해주세요",
+    "accountDisabled": "이 계정은 비활성화되었습니다",
+    "tooManyRequests": "시도 횟수가 너무 많습니다. 잠시 후 다시 시도해주세요.",
+    "paymentFailed": "결제에 실패했습니다. 다시 시도해주세요.",
+    "paymentCancelled": "결제가 취소되었습니다",
+    "ffmpegNotFound": "비디오 처리 도구를 찾을 수 없습니다. 앱을 다시 설치해주세요.",
+    "clipNotFound": "클립을 찾을 수 없거나 삭제되었습니다",
+    "exportFailed": "내보내기에 실패했습니다. 디스크 공간을 확인해주세요.",
+    "noClipsSelected": "최소 하나 이상의 클립을 선택해주세요",
+    "youtubeAuthFailed": "YouTube 인증에 실패했습니다. 다시 시도해주세요.",
+    "youtubeUploadFailed": "YouTube 업로드에 실패했습니다. 다시 시도해주세요.",
+    "youtubeQuotaExceeded": "YouTube 일일 업로드 한도에 도달했습니다. 내일 다시 시도해주세요."
   },
   "clips": {
     "title": "클립 라이브러리",
@@ -917,5 +1025,142 @@
     "uploadComplete": "업로드 완료: {{title}}",
     "uploadFailed": "업로드 실패: {{error}}",
     "updateAvailable": "업데이트 사용 가능: v{{version}}"
+  },
+  "recordingControls": {
+    "autoCapture": {
+      "title": "자동 캡처 제어",
+      "description": "자동 이벤트 모니터링 및 클립 생성 시작/중지",
+      "start": "자동 캡처 시작",
+      "stop": "자동 캡처 중지",
+      "active": "녹화 버퍼 활성화됨 - F8로 전환",
+      "inactive": "F8을 누르거나 시작을 클릭하여 모니터링 시작"
+    },
+    "manualReplay": {
+      "title": "수동 리플레이 저장",
+      "description": "최근 N초의 게임플레이 저장",
+      "replayDuration": "리플레이 길이",
+      "saveReplay": "리플레이 저장",
+      "hotkeyHint": "또는 단축키 사용: F9 (60초) / F10 (30초)"
+    },
+    "settings": {
+      "title": "녹화 설정",
+      "description": "비디오 품질 및 오디오 캡처 설정",
+      "videoQuality": "비디오 품질",
+      "qualities": {
+        "low": "낮음 (720p 30fps)",
+        "medium": "중간 (1080p 30fps)",
+        "high": "높음 (1080p 60fps)",
+        "ultra": "최고 (1440p 60fps)"
+      },
+      "hardwareEncoding": "하드웨어 인코딩",
+      "audioCapture": "오디오 캡처",
+      "enabled": "활성화",
+      "disabled": "비활성화",
+      "saveSettings": "설정 저장"
+    },
+    "toast": {
+      "autoCaptureStarted": "자동 캡처 시작됨",
+      "autoCaptureStartedDesc": "자동 클립 생성을 위한 게임 이벤트 모니터링 중",
+      "autoCaptureStopped": "자동 캡처 중지됨",
+      "autoCaptureStoppedDesc": "리플레이 버퍼 삭제됨",
+      "replaySaved": "리플레이 저장됨",
+      "replaySavedDesc": "{{duration}}초 리플레이 저장됨",
+      "settingsSaved": "설정 저장됨",
+      "settingsSavedDesc": "녹화 설정이 업데이트되었습니다",
+      "failedToStart": "시작 실패",
+      "failedToStop": "중지 실패",
+      "failedToSave": "리플레이 저장 실패",
+      "failedToSaveSettings": "설정 저장 실패"
+    }
+  },
+  "replays": {
+    "title": "리플레이",
+    "refresh": "새로고침",
+    "noMatches": "매치를 찾을 수 없거나 LCU가 연결되지 않았습니다.",
+    "victory": "승리",
+    "defeat": "패배",
+    "mode": "모드",
+    "kda": "KDA",
+    "duration": "시간",
+    "download": "다운로드",
+    "watch": "보기",
+    "toast": {
+      "lcuDisconnected": "LCU 연결 끊김",
+      "lcuDisconnectedDesc": "매치 기록을 보려면 리그 오브 레전드 클라이언트를 시작하세요.",
+      "downloadStarted": "다운로드 시작됨",
+      "downloadStartedDesc": "리그 클라이언트를 통해 리플레이 다운로드가 시작되었습니다.",
+      "downloadFailed": "다운로드 실패",
+      "downloadFailedDesc": "리플레이 다운로드를 시작할 수 없습니다.",
+      "launchFailed": "실행 실패",
+      "launchFailedDesc": "리플레이를 실행할 수 없습니다. 다운로드되었는지 확인하세요.",
+      "launchingReplay": "리플레이 실행 중",
+      "launchingReplayDesc": "하이라이트를 녹화할 플레이어를 선택하세요!",
+      "loadError": "오류",
+      "loadErrorDesc": "매치 기록 로드에 실패했습니다."
+    }
+  },
+  "protectedFeature": {
+    "proFeature": "PRO 기능",
+    "upgradeDescription": "{{feature}}에 접근하려면 PRO로 업그레이드하세요",
+    "upgradeToPro": "PRO로 업그레이드",
+    "features": {
+      "unlimitedClips": "무제한 클립 녹화",
+      "advancedEditor": "고급 비디오 편집기",
+      "youtubeUpload": "유튜브 직접 업로드",
+      "prioritySupport": "우선 지원"
+    }
+  },
+  "onboarding": {
+    "skip": "건너뛰기",
+    "prev": "이전",
+    "next": "다음",
+    "getStarted": "시작하기",
+    "welcome": {
+      "title": "LoLShorts에 오신 것을 환영합니다!",
+      "description": "리그 오브 레전드 하이라이트 영상을 자동으로 만들어보세요. 몇 가지 단계만으로 시작할 수 있습니다."
+    },
+    "connect": {
+      "title": "리그에 연결하기",
+      "description": "LoLShorts는 리그 오브 레전드 클라이언트에 자동으로 연결되어 게임을 감지하고 하이라이트를 캡처합니다.",
+      "tip1": "리그 오브 레전드가 실행 중인지 확인하세요",
+      "tip2": "연결은 자동으로 이루어집니다 - 별도 설정 불필요"
+    },
+    "record": {
+      "title": "자동 녹화",
+      "description": "게임에 입장하면 녹화가 자동으로 시작됩니다. 킬, 오브젝트, 에픽 모먼트가 실시간으로 감지됩니다.",
+      "tip1": "하이라이트는 인게임 이벤트 기반으로 저장됩니다",
+      "tip2": "설정에서 캡처할 이벤트를 맞춤 설정하세요"
+    },
+    "edit": {
+      "title": "하이라이트 편집하기",
+      "description": "강력한 편집기로 유튜브 쇼츠나 몽타주를 만들어보세요. 자동 편집 기능이 AI로 영상을 만들어 드립니다.",
+      "tip1": "클립을 드래그 앤 드롭하여 영상을 구성하세요",
+      "tip2": "PRO 사용자는 고급 기능에 접근할 수 있습니다"
+    },
+    "upload": {
+      "title": "YouTube에 공유하기",
+      "description": "한 번의 클릭으로 YouTube에 직접 업로드하세요. 제목, 설명, 썸네일을 쉽게 추가할 수 있습니다.",
+      "tip1": "YouTube 탭에서 계정을 연결하세요"
+    }
+  },
+  "payment": {
+    "upgradeToPro": "LoLShorts PRO로 업그레이드",
+    "chooseSubscription": "구독 플랜을 선택하고 모든 프리미엄 기능에 접근하세요",
+    "monthlyPlan": "월간 플랜",
+    "monthlyPrice": "{{price}}/월",
+    "yearlyPlan": "연간 플랜",
+    "yearlyPrice": "{{price}}/년",
+    "savePercent": "{{percent}}% 절약",
+    "bestValue": "최고의 가치",
+    "features": {
+      "title": "PRO 기능 포함:",
+      "unlimitedClips": "무제한 클립 녹화",
+      "advancedEditor": "고급 비디오 편집기",
+      "youtubeUpload": "유튜브 직접 업로드",
+      "noWatermarks": "워터마크 없음",
+      "prioritySupport": "우선 지원"
+    },
+    "processing": "처리 중...",
+    "selectPlan": "플랜 선택"
   }
 }

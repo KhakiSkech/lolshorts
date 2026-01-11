@@ -44,9 +44,29 @@ impl Default for RecordingConfig {
             buffer_duration_secs: 60, // 1분 버퍼
             segment_duration_secs: 10, // 10초 세그먼트
             audio_config: Some(crate::recording::audio::AudioConfig::default()),
-            capture_target: Some("League of Legends".to_string()),
+            // 다국어 창 제목 지원: 한국어 > 영어(TM) > 영어 순서로 시도
+            // 실제 gdigrab은 첫 번째 매칭만 시도하므로 가장 유력한 후보 사용
+            // TODO: 이후 windows-rs 등을 사용하여 실행 중인 창 제목 열거 후 자동 감지 필요
+            capture_target: Some(get_league_capture_title()),
         }
     }
+}
+
+/// 다국어 지원을 위한 LoL 클라이언트 창 제목 후보 목록
+fn get_league_capture_title() -> String {
+    const TITLES: &[&str] = &[
+        "리그 오브 레전드", // 한국어 (우선순위)
+        "League of Legends (TM) Client", // 영어 (TM 포함, 최신 버전)
+        "League of Legends",        // 영어 (일반)
+        "英雄联盟",                    // 중국어 (간체)
+        "聯盟爭霸",                  // 중국어 (번체)
+        "리그오브레전드",             // 한국어 (공백 없음)
+        "LeagueClientUx",             // LCU 내부 창 이름 (Fallback)
+    ];
+
+    // 현재 구현에서는 첫 번째 후보(한국어)를 기본값으로 사용
+    // 향후 창 열거 기능 구현 시 실제 존재하는 제목으로 동적 교체 가능
+    TITLES[0].to_string()
 }
 
 /// 크로스 플랫폼 지원 비디오 인코더 옵션
@@ -659,10 +679,9 @@ impl WindowsCaptureRecorder {
         RecordingStats {
             total_frames,
             uptime_seconds: uptime.unwrap_or(0.0),
-            current_fps: if uptime.is_some() && uptime.unwrap() > 0.0 {
-                total_frames as f64 / uptime.unwrap()
-            } else {
-                self.config.fps as f64
+            current_fps: match uptime {
+                Some(u) if u > 0.0 => total_frames as f64 / u,
+                _ => self.config.fps as f64,
             },
         }
     }

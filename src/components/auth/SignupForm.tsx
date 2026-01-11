@@ -55,7 +55,7 @@ export function SignupForm({ onSwitchToLogin, onSuccess }: SignupFormProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-md text-sm">
-              {error}
+              {error.startsWith('errors.') ? t(error) : error}
             </div>
           )}
 

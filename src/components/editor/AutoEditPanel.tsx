@@ -6,6 +6,7 @@ import { useAutoEdit } from '@/hooks/useAutoEdit';
 import { useStorage } from '@/hooks/useStorage';
 import { useAutoEditQuota } from '@/hooks/useAutoEditQuota';
 import { useAuthStore } from '@/lib/auth';
+import { formatStorage } from '@/lib/utils';
 import { CanvasEditor } from './CanvasEditor';
 import { AudioMixer } from './AudioMixer';
 import { AutoEditQuotaBadge } from './AutoEditQuotaBadge';
@@ -500,7 +501,7 @@ export function AutoEditPanel() {
                   <div className="space-y-1">
                     <div className="text-sm text-muted-foreground">{t('autoEdit.fileSize')}</div>
                     <div className="text-2xl font-bold">
-                      {formatFileSize(result.file_size_bytes)}
+                      {formatStorage(result.file_size_bytes)}
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -670,10 +671,3 @@ function getStageProgress(stage: string): number {
   return stages[stage] || 0;
 }
 
-// Helper function to format file size
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}

@@ -42,22 +42,16 @@ interface AudioSettingsProps {
 export function AudioSettings({ settings, onChange }: AudioSettingsProps) {
   const { t } = useTranslation();
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
-  const [_isLoading, setIsLoading] = useState(false);
 
   // Fetch audio devices on component mount
   useEffect(() => {
     const fetchAudioDevices = async () => {
-      setIsLoading(true);
       try {
         const devices = await invoke<AudioDevice[]>("list_audio_devices");
         setAudioDevices(devices);
-        console.log("Audio devices found:", devices);
       } catch (error) {
-        console.error("Failed to fetch audio devices:", error);
-        // Fallback to empty list if failed
+        console.error("[AudioSettings] Failed to fetch audio devices:", error);
         setAudioDevices([]);
-      } finally {
-        setIsLoading(false);
       }
     };
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/stores/editorStore';
 import { useEditor } from '@/hooks/useEditor';
+import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -15,7 +16,7 @@ import { CheckCircle2, XCircle, Loader2, FolderOpen, Film, Settings, Clock, Layo
 import { open } from '@tauri-apps/plugin-dialog';
 import { open as openPath } from '@tauri-apps/plugin-shell';
 import { join, dirname } from '@tauri-apps/api/path';
-import { getErrorMessage } from '@/lib/utils';
+import { getErrorMessage, formatDuration } from '@/lib/utils';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -42,6 +43,7 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
 
   const { composeShorts, createMontage, isLoading } = useEditor();
   const { confirm, ConfirmDialog } = useConfirmDialog();
+  const { toast } = useToast();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('shorts');
 
@@ -61,9 +63,9 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
     try {
       const defaultName = exportFormat === 'shorts' ? 'lolshorts_export.mp4' : 'lol_montage.mp4';
       const selected = await open({
-        title: 'Save Exported Video',
+        title: t('editor.export.saveTitle'),
         filters: [{
-          name: 'Video Files',
+          name: t('editor.export.videoFiles'),
           extensions: ['mp4'],
         }],
         defaultPath: await join(await dirname(''), defaultName),
@@ -74,7 +76,7 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
       }
     } catch (error) {
       console.error('Failed to select path:', error);
-      setExportError('Failed to select save location');
+      setExportError(t('editor.export.selectLocationFailed'));
     }
   };
 
@@ -98,10 +100,19 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
         );
       }
       setExportOutputPath(outputPath);
+      toast({
+        title: t('toast.exportComplete'),
+        description: t('toast.exportCompleteDesc'),
+      });
     } catch (error) {
       console.error('Export failed:', error);
       setExportError(getErrorMessage(error));
       setExportStatus('error');
+      toast({
+        title: t('toast.error'),
+        description: getErrorMessage(error),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -133,12 +144,6 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
     onClose();
   };
 
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const getStatusIcon = () => {
     switch (exportStatus) {
       case 'exporting':
@@ -155,13 +160,13 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
   const getStatusText = () => {
     switch (exportStatus) {
       case 'exporting':
-        return 'Exporting video...';
+        return t('editor.export.exporting');
       case 'complete':
-        return 'Export complete!';
+        return t('editor.export.complete');
       case 'error':
-        return 'Export failed';
+        return t('editor.export.failed');
       default:
-        return 'Ready to export';
+        return t('editor.export.ready');
     }
   };
 
@@ -171,7 +176,7 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {getStatusIcon()}
-            Export Video
+            {t('editor.export.exportVideo')}
           </DialogTitle>
           <DialogDescription>
             {getStatusText()}
@@ -184,9 +189,9 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
             <>
               {/* Format Selection */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Export Format</Label>
-                <RadioGroup 
-                  defaultValue="shorts" 
+                <Label className="text-sm font-medium">{t('editor.export.exportFormat')}</Label>
+                <RadioGroup
+                  defaultValue="shorts"
                   value={exportFormat}
                   onValueChange={(val) => setExportFormat(val as ExportFormat)}
                   className="grid grid-cols-2 gap-4"
@@ -198,8 +203,8 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
                       className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                     >
                       <LayoutTemplate className="mb-2 h-6 w-6" />
-                      <span className="font-semibold">Shorts (9:16)</span>
-                      <span className="text-xs text-muted-foreground mt-1">Mobile optimized</span>
+                      <span className="font-semibold">{t('editor.export.shorts')}</span>
+                      <span className="text-xs text-muted-foreground mt-1">{t('editor.export.mobileOptimized')}</span>
                     </Label>
                   </div>
                   <div>
@@ -209,8 +214,8 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
                       className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                     >
                       <Film className="mb-2 h-6 w-6" />
-                      <span className="font-semibold">Montage (16:9)</span>
-                      <span className="text-xs text-muted-foreground mt-1">Full screen HD</span>
+                      <span className="font-semibold">{t('editor.export.montage')}</span>
+                      <span className="text-xs text-muted-foreground mt-1">{t('editor.export.fullScreenHD')}</span>
                     </Label>
                   </div>
                 </RadioGroup>
@@ -222,14 +227,14 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <Film className="w-4 h-4" />
-                    Total Clips
+                    {t('editor.export.totalClips')}
                   </span>
                   <Badge variant="secondary">{timelineClips.length}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <Clock className="w-4 h-4" />
-                    Duration
+                    {t('editor.export.duration')}
                   </span>
                   <Badge variant="outline">{formatDuration(totalDuration)}</Badge>
                 </div>
@@ -237,11 +242,11 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground flex items-center gap-2">
                       <Settings className="w-4 h-4" />
-                      Transitions
+                      {t('editor.export.transitions')}
                     </span>
                     <Badge variant="outline">
                       {compositionSettings.transitionType === 'none'
-                        ? 'None'
+                        ? t('editor.export.none')
                         : `${compositionSettings.transitionType} (${compositionSettings.transitionDuration}s)`
                       }
                     </Badge>
@@ -253,7 +258,7 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
 
               {/* File Path Selection */}
               <div className="space-y-2">
-                <span className="text-sm font-medium" id="save-location-label">Save Location</span>
+                <span className="text-sm font-medium" id="save-location-label">{t('editor.export.saveLocation')}</span>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -263,7 +268,7 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
                     aria-labelledby="save-location-label"
                   >
                     <FolderOpen className="w-4 h-4 mr-2" />
-                    {selectedPath ? 'Change Location' : 'Select Location'}
+                    {selectedPath ? t('editor.export.changeLocation') : t('editor.export.selectLocation')}
                   </Button>
                 </div>
                 {selectedPath && (
@@ -285,9 +290,9 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
               <Alert>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <AlertDescription>
-                  {exportFormat === 'shorts' 
-                    ? 'Processing clips, cropping to 9:16, and applying effects...' 
-                    : 'Merging clips into a full-length montage...'}
+                  {exportFormat === 'shorts'
+                    ? t('editor.export.processingClips')
+                    : t('editor.export.mergingClips')}
                 </AlertDescription>
               </Alert>
             </div>
@@ -299,11 +304,11 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
               <Alert className="border-green-500/50 bg-green-500/10">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
                 <AlertDescription className="text-green-500">
-                  Video exported successfully!
+                  {t('editor.export.successMessage')}
                 </AlertDescription>
               </Alert>
               <div className="text-sm space-y-2">
-                <p className="text-muted-foreground">Saved to:</p>
+                <p className="text-muted-foreground">{t('editor.export.savedTo')}</p>
                 <p className="font-mono text-xs bg-muted p-2 rounded break-all">
                   {exportOutputPath}
                 </p>
@@ -315,7 +320,7 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
                 className="w-full"
               >
                 <FolderOpen className="w-4 h-4 mr-2" />
-                Open Containing Folder
+                {t('editor.export.openFolder')}
               </Button>
             </div>
           )}
@@ -335,7 +340,7 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
           {exportStatus === 'idle' && (
             <>
               <Button variant="outline" onClick={handleClose}>
-                Cancel
+                {t('editor.export.cancel')}
               </Button>
               <Button
                 onClick={handleExport}
@@ -344,12 +349,12 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Starting...
+                    {t('editor.export.starting')}
                   </>
                 ) : (
                   <>
                     <Film className="w-4 h-4 mr-2" />
-                    Export
+                    {t('editor.export.exportButton')}
                   </>
                 )}
               </Button>
@@ -358,13 +363,13 @@ export function ExportModal({ isOpen, onClose }: ExportModalProps) {
 
           {exportStatus === 'exporting' && (
             <Button variant="outline" onClick={handleClose}>
-              Cancel Export
+              {t('editor.export.cancelExport')}
             </Button>
           )}
 
           {(exportStatus === 'complete' || exportStatus === 'error') && (
             <Button onClick={handleClose}>
-              Close
+              {t('editor.export.close')}
             </Button>
           )}
         </DialogFooter>

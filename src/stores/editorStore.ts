@@ -49,6 +49,9 @@ interface EditorStore {
   removeFromTimeline: (clipId: string) => void;
   reorderTimeline: (fromIndex: number, toIndex: number) => void;
   clearTimeline: () => void;
+  setClipTrimStart: (clipId: string, trimStart: number) => void;
+  setClipTrimEnd: (clipId: string, trimEnd: number) => void;
+  getClipEffectiveDuration: (clip: TimelineClip) => number;
 
   // Actions - Playback
   setCurrentTime: (time: number) => void;
@@ -170,6 +173,56 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     isPlaying: false,
     selectedClipId: null,
   }),
+
+  setClipTrimStart: (clipId, trimStart) => {
+    const { timelineClips } = get();
+    const newTimeline = timelineClips.map(clip => {
+      if (clip.clip_id === clipId) {
+        const maxTrimStart = (clip.trimEnd ?? clip.duration) - 0.5; // Min 0.5s duration
+        return {
+          ...clip,
+          trimStart: Math.max(0, Math.min(trimStart, maxTrimStart)),
+        };
+      }
+      return clip;
+    });
+
+    const totalDuration = newTimeline.reduce((sum, c) => {
+      const effectiveStart = c.trimStart ?? 0;
+      const effectiveEnd = c.trimEnd ?? c.duration;
+      return sum + (effectiveEnd - effectiveStart);
+    }, 0);
+
+    set({ timelineClips: newTimeline, totalDuration });
+  },
+
+  setClipTrimEnd: (clipId, trimEnd) => {
+    const { timelineClips } = get();
+    const newTimeline = timelineClips.map(clip => {
+      if (clip.clip_id === clipId) {
+        const minTrimEnd = (clip.trimStart ?? 0) + 0.5; // Min 0.5s duration
+        return {
+          ...clip,
+          trimEnd: Math.max(minTrimEnd, Math.min(trimEnd, clip.duration)),
+        };
+      }
+      return clip;
+    });
+
+    const totalDuration = newTimeline.reduce((sum, c) => {
+      const effectiveStart = c.trimStart ?? 0;
+      const effectiveEnd = c.trimEnd ?? c.duration;
+      return sum + (effectiveEnd - effectiveStart);
+    }, 0);
+
+    set({ timelineClips: newTimeline, totalDuration });
+  },
+
+  getClipEffectiveDuration: (clip) => {
+    const effectiveStart = clip.trimStart ?? 0;
+    const effectiveEnd = clip.trimEnd ?? clip.duration;
+    return effectiveEnd - effectiveStart;
+  },
 
   // Playback
   setCurrentTime: (time) => set({ currentTime: Math.max(0, Math.min(time, get().totalDuration)) }),

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEditorStore } from '@/stores/editorStore';
 import type { AspectRatio, TransitionType } from '@/stores/editorStore';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { formatDuration } from '@/lib/utils';
 import { Download, Settings2, Film } from 'lucide-react';
 
 interface CompositionSettingsProps {
@@ -15,6 +17,7 @@ interface CompositionSettingsProps {
 }
 
 export function CompositionSettings({ onExport }: CompositionSettingsProps) {
+  const { t } = useTranslation();
   const {
     compositionSettings,
     setAspectRatio,
@@ -25,15 +28,15 @@ export function CompositionSettings({ onExport }: CompositionSettingsProps) {
   } = useEditorStore();
 
   const aspectRatioOptions: Array<{ value: AspectRatio; label: string; description: string }> = [
-    { value: '9:16', label: '9:16', description: 'Vertical (TikTok, Reels)' },
-    { value: '16:9', label: '16:9', description: 'Horizontal (YouTube)' },
-    { value: '1:1', label: '1:1', description: 'Square (Instagram)' },
+    { value: '9:16', label: '9:16', description: t('editor.composition.aspectRatios.vertical') },
+    { value: '16:9', label: '16:9', description: t('editor.composition.aspectRatios.horizontal') },
+    { value: '1:1', label: '1:1', description: t('editor.composition.aspectRatios.square') },
   ];
 
   const transitionOptions: Array<{ value: TransitionType; label: string }> = [
-    { value: 'none', label: 'None' },
-    { value: 'fade', label: 'Fade' },
-    { value: 'slide', label: 'Slide' },
+    { value: 'none', label: t('editor.composition.transitionTypes.none') },
+    { value: 'fade', label: t('editor.composition.transitionTypes.fade') },
+    { value: 'slide', label: t('editor.composition.transitionTypes.slide') },
   ];
 
   const handleExport = () => {
@@ -41,12 +44,6 @@ export function CompositionSettings({ onExport }: CompositionSettingsProps) {
       return;
     }
     onExport();
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const getAspectRatioIcon = (ratio: AspectRatio) => {
@@ -66,7 +63,7 @@ export function CompositionSettings({ onExport }: CompositionSettingsProps) {
       <div className="p-4 border-b">
         <div className="flex items-center gap-2">
           <Settings2 className="w-5 h-5" />
-          <h3 className="font-semibold">Composition Settings</h3>
+          <h3 className="font-semibold">{t('editor.composition.title')}</h3>
         </div>
       </div>
 
@@ -75,7 +72,7 @@ export function CompositionSettings({ onExport }: CompositionSettingsProps) {
         {/* Aspect Ratio Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Aspect Ratio</CardTitle>
+            <CardTitle className="text-sm">{t('editor.composition.aspectRatio')}</CardTitle>
           </CardHeader>
           <CardContent>
             <RadioGroup
@@ -103,12 +100,12 @@ export function CompositionSettings({ onExport }: CompositionSettingsProps) {
         {/* Transition Section */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Transitions</CardTitle>
+            <CardTitle className="text-sm">{t('editor.composition.transitions')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Transition Type */}
             <div className="space-y-2">
-              <Label htmlFor="transition-type">Type</Label>
+              <Label htmlFor="transition-type">{t('editor.composition.type')}</Label>
               <Select
                 value={compositionSettings.transitionType}
                 onValueChange={(value) => setTransitionType(value as TransitionType)}
@@ -130,7 +127,7 @@ export function CompositionSettings({ onExport }: CompositionSettingsProps) {
             {compositionSettings.transitionType !== 'none' && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="transition-duration">Duration</Label>
+                  <Label htmlFor="transition-duration">{t('editor.composition.duration')}</Label>
                   <span className="text-sm text-muted-foreground">
                     {compositionSettings.transitionDuration.toFixed(1)}s
                   </span>
@@ -154,27 +151,27 @@ export function CompositionSettings({ onExport }: CompositionSettingsProps) {
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
               <Film className="w-4 h-4" />
-              Composition Summary
+              {t('editor.composition.summary')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Total Clips</span>
+              <span className="text-muted-foreground">{t('editor.composition.totalClips')}</span>
               <Badge variant="secondary">{timelineClips.length}</Badge>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Total Duration</span>
+              <span className="text-muted-foreground">{t('editor.composition.totalDuration')}</span>
               <Badge variant="outline">{formatDuration(totalDuration)}</Badge>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Aspect Ratio</span>
+              <span className="text-muted-foreground">{t('editor.composition.aspectRatio')}</span>
               <Badge variant="outline">{compositionSettings.aspectRatio}</Badge>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Transitions</span>
+              <span className="text-muted-foreground">{t('editor.composition.transitions')}</span>
               <Badge variant="outline">
                 {compositionSettings.transitionType === 'none'
-                  ? 'None'
+                  ? t('editor.composition.transitionTypes.none')
                   : `${compositionSettings.transitionType} (${compositionSettings.transitionDuration}s)`
                 }
               </Badge>
@@ -194,11 +191,11 @@ export function CompositionSettings({ onExport }: CompositionSettingsProps) {
           disabled={timelineClips.length === 0}
         >
           <Download className="w-4 h-4 mr-2" />
-          Export Video
+          {t('editor.composition.exportVideo')}
         </Button>
         {timelineClips.length === 0 && (
           <p className="text-xs text-muted-foreground text-center mt-2">
-            Add clips to timeline to export
+            {t('editor.composition.addClipsToExport')}
           </p>
         )}
       </div>

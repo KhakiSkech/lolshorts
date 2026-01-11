@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Dialog,
@@ -26,6 +27,7 @@ interface SubscriptionResponse {
 }
 
 export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +63,10 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Crown className="w-6 h-6 text-yellow-500" />
-            Upgrade to LoLShorts PRO
+            {t('payment.upgradeToPro')}
           </DialogTitle>
           <DialogDescription>
-            Choose your subscription plan and unlock unlimited features
+            {t('payment.chooseSubscription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -88,14 +90,14 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
                     setPeriod("MONTHLY");
                   }
                 }}
-                aria-label="Select monthly plan for ₩9,900 per month"
+                aria-label={t('payment.monthlyPrice', { price: '₩9,900' })}
               >
                 <RadioGroupItem value="MONTHLY" id="monthly" className="mt-1" />
                 <Label htmlFor="monthly" className="flex-1 ml-3 cursor-pointer">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-semibold">Monthly Plan</p>
-                      <p className="text-sm text-muted-foreground">₩9,900/month</p>
+                      <p className="font-semibold">{t('payment.monthlyPlan')}</p>
+                      <p className="text-sm text-muted-foreground">{t('payment.monthlyPrice', { price: '₩9,900' })}</p>
                     </div>
                     {period === "MONTHLY" && (
                       <Check className="w-5 h-5 text-primary" />
@@ -120,20 +122,20 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
                     setPeriod("YEARLY");
                   }
                 }}
-                aria-label="Select yearly plan for ₩99,000 per year, save 17%"
+                aria-label={`${t('payment.yearlyPrice', { price: '₩99,000' })}, ${t('payment.savePercent', { percent: 17 })}`}
               >
                 <RadioGroupItem value="YEARLY" id="yearly" className="mt-1" />
                 <Label htmlFor="yearly" className="flex-1 ml-3 cursor-pointer">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-semibold flex items-center gap-2">
-                        Yearly Plan
+                        {t('payment.yearlyPlan')}
                         <span className="px-2 py-0.5 text-xs font-medium bg-green-500/10 text-green-600 dark:text-green-400 rounded">
-                          Save 17%
+                          {t('payment.savePercent', { percent: 17 })}
                         </span>
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        ₩99,000/year
+                        {t('payment.yearlyPrice', { price: '₩99,000' })}
                         <span className="ml-2 text-xs line-through opacity-60">₩118,800</span>
                       </p>
                     </div>
@@ -148,27 +150,27 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
 
           {/* Features List */}
           <div className="p-4 bg-muted/50 rounded-lg">
-            <p className="font-semibold mb-3">PRO Features:</p>
+            <p className="font-semibold mb-3">{t('payment.features.title')}</p>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                <span>Unlimited clips per game</span>
+                <span>{t('payment.features.unlimitedClips')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                <span>Advanced video editor with premium effects</span>
+                <span>{t('payment.features.advancedEditor')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                <span>No watermarks on exported videos</span>
+                <span>{t('payment.features.noWatermarks')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                <span>Priority support and updates</span>
+                <span>{t('payment.features.prioritySupport')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
-                <span>Cloud storage for your highlights</span>
+                <span>{t('payment.features.youtubeUpload')}</span>
               </div>
             </div>
           </div>
@@ -189,19 +191,19 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
               disabled={isProcessing}
               className="flex-1"
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleSubscribe}
               disabled={isProcessing}
               className="flex-1"
             >
-              {isProcessing ? "Processing..." : "Continue to Payment"}
+              {isProcessing ? t('payment.processing') : t('payment.selectPlan')}
             </Button>
           </div>
 
           <p className="text-xs text-center text-muted-foreground">
-            You&apos;ll be redirected to Toss Payments to complete your purchase securely
+            {t('common.redirectToPayment')}
           </p>
         </div>
       </DialogContent>

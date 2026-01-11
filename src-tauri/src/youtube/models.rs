@@ -36,20 +36,30 @@ impl QuotaInfo {
     /// Create new quota info
     pub fn new(used: u64) -> Self {
         let now = chrono::Utc::now();
-        let pacific_midnight = now
+
+        // Calculate Pacific midnight (23:59:59) for quota reset
+        // These values are always valid, so we use expect() with clear reasoning
+        let naive_midnight = now
             .with_timezone(&chrono_tz::US::Pacific)
             .date_naive()
             .and_hms_opt(23, 59, 59)
-            .unwrap()
+            .expect("23:59:59 is always a valid time");
+
+        // Handle timezone conversion safely - use latest() for DST edge cases
+        let reset_timestamp = naive_midnight
             .and_local_timezone(chrono_tz::US::Pacific)
-            .unwrap()
-            .with_timezone(&chrono::Utc);
+            .latest()
+            .map(|dt| dt.with_timezone(&chrono::Utc).timestamp())
+            .unwrap_or_else(|| {
+                // Fallback: use current time + 24 hours if timezone conversion fails
+                (now + chrono::Duration::hours(24)).timestamp()
+            });
 
         Self {
             daily_limit: Self::DAILY_LIMIT,
             used,
             remaining: Self::DAILY_LIMIT.saturating_sub(used),
-            reset_at: pacific_midnight.timestamp(),
+            reset_at: reset_timestamp,
         }
     }
 }

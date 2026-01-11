@@ -55,9 +55,7 @@ export function useAutoEditResults() {
       setLoading(true);
       setError(null);
       try {
-        // Since status is an object/enum, we might need to cast or serialize it if backend expects string
-        // Assuming backend handles the JSON object correctly via cmd wrapper
-        await storageApi.updateAutoEditYoutubeStatus(resultId, status as any); 
+        await storageApi.updateAutoEditYoutubeStatus(resultId, status);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         setError(errorMsg);

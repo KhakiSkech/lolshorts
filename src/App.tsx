@@ -30,6 +30,7 @@ import { useAuthStore } from "@/lib/auth";
 import "./i18n"; // Initialize i18n with auto language detection
 import { useState } from "react";
 import { ReplayTargetModal } from "@/components/overlay/ReplayTargetModal";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { lcuApi } from "@/api/lcu";
 
 // Define root route
@@ -167,6 +168,7 @@ declare module "@tanstack/react-router" {
 }
 
 import { useRecordingStore } from "@/stores/recordingStore"; // Add import
+import { Toaster } from "@/components/ui/toaster";
 
 export default function App() {
   const { checkAuth } = useAuthStore();
@@ -262,10 +264,12 @@ export default function App() {
       }}
     >
       <RouterProvider router={router} />
-      <ReplayTargetModal 
-        isOpen={isReplayModalOpen} 
-        onClose={() => setIsReplayModalOpen(false)} 
+      <ReplayTargetModal
+        isOpen={isReplayModalOpen}
+        onClose={() => setIsReplayModalOpen(false)}
       />
+      <OnboardingModal />
+      <Toaster />
     </ErrorBoundary>
   );
 }

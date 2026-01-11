@@ -182,6 +182,12 @@ pub fn get_ffmpeg_info() -> Result<FFmpegInfo, FFmpegError> {
             FFmpegError::NotFound
         })?;
 
+    if !version_output.status.success() {
+        let stderr = String::from_utf8_lossy(&version_output.stderr);
+        error!("FFmpeg version command failed: {}", stderr);
+        return Err(FFmpegError::NotFound);
+    }
+
     let encoders_output = Command::new(&ffmpeg_path)
         .arg("-encoders")
         .output()
@@ -189,6 +195,12 @@ pub fn get_ffmpeg_info() -> Result<FFmpegInfo, FFmpegError> {
             error!("Failed to execute FFmpeg encoders command: {}", e);
             FFmpegError::NotFound
         })?;
+
+    if !encoders_output.status.success() {
+        let stderr = String::from_utf8_lossy(&encoders_output.stderr);
+        error!("FFmpeg encoders command failed: {}", stderr);
+        return Err(FFmpegError::NotFound);
+    }
 
     let formats_output = Command::new(&ffmpeg_path)
         .arg("-formats")
@@ -198,8 +210,9 @@ pub fn get_ffmpeg_info() -> Result<FFmpegInfo, FFmpegError> {
             FFmpegError::NotFound
         })?;
 
-    if !version_output.status.success() || !encoders_output.status.success() || !formats_output.status.success() {
-        error!("FFmpeg commands failed");
+    if !formats_output.status.success() {
+        let stderr = String::from_utf8_lossy(&formats_output.stderr);
+        error!("FFmpeg formats command failed: {}", stderr);
         return Err(FFmpegError::NotFound);
     }
 

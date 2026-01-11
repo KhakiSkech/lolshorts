@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -31,10 +32,11 @@ interface SimpleSettings {
 }
 
 export function RecordingControls() {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [replayDuration, setReplayDuration] = useState(60);
-  
+
   // Store full settings to preserve other fields
   const [fullSettings, setFullSettings] = useState<RecordingSettings | null>(null);
   
@@ -74,12 +76,12 @@ export function RecordingControls() {
       await recordingApi.startAutoCapture();
       setIsRecording(true);
       toast({
-        title: 'Auto-Capture Started',
-        description: 'Now monitoring game events for automatic clip creation',
+        title: t('recordingControls.toast.autoCaptureStarted'),
+        description: t('recordingControls.toast.autoCaptureStartedDesc'),
       });
     } catch (error) {
       toast({
-        title: 'Failed to Start',
+        title: t('recordingControls.toast.failedToStart'),
         description: String(error),
         variant: 'destructive',
       });
@@ -94,12 +96,12 @@ export function RecordingControls() {
       await recordingApi.stopAutoCapture();
       setIsRecording(false);
       toast({
-        title: 'Auto-Capture Stopped',
-        description: 'Replay buffer cleared',
+        title: t('recordingControls.toast.autoCaptureStopped'),
+        description: t('recordingControls.toast.autoCaptureStoppedDesc'),
       });
     } catch (error) {
       toast({
-        title: 'Failed to Stop',
+        title: t('recordingControls.toast.failedToStop'),
         description: String(error),
         variant: 'destructive',
       });
@@ -113,12 +115,12 @@ export function RecordingControls() {
     try {
       await recordingApi.saveReplay(replayDuration);
       toast({
-        title: 'Replay Saved',
-        description: `Saved ${replayDuration}s replay`,
+        title: t('recordingControls.toast.replaySaved'),
+        description: t('recordingControls.toast.replaySavedDesc', { duration: replayDuration }),
       });
     } catch (error) {
       toast({
-        title: 'Failed to Save Replay',
+        title: t('recordingControls.toast.failedToSave'),
         description: String(error),
         variant: 'destructive',
       });
@@ -150,14 +152,14 @@ export function RecordingControls() {
 
       await settingsApi.saveRecordingSettings(newSettings);
       setFullSettings(newSettings);
-      
+
       toast({
-        title: 'Settings Saved',
-        description: 'Recording settings updated successfully',
+        title: t('recordingControls.toast.settingsSaved'),
+        description: t('recordingControls.toast.settingsSavedDesc'),
       });
     } catch (error) {
       toast({
-        title: 'Failed to Save Settings',
+        title: t('recordingControls.toast.failedToSaveSettings'),
         description: String(error),
         variant: 'destructive',
       });
@@ -171,9 +173,9 @@ export function RecordingControls() {
       {/* Auto-Capture Controls */}
       <Card>
         <CardHeader>
-          <CardTitle>Auto-Capture Controls</CardTitle>
+          <CardTitle>{t('recordingControls.autoCapture.title')}</CardTitle>
           <CardDescription>
-            Start/stop automatic event monitoring and clip creation
+            {t('recordingControls.autoCapture.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -185,7 +187,7 @@ export function RecordingControls() {
                 className="flex-1"
               >
                 <Play className="mr-2 h-4 w-4" />
-                Start Auto-Capture
+                {t('recordingControls.autoCapture.start')}
               </Button>
             ) : (
               <Button
@@ -195,15 +197,15 @@ export function RecordingControls() {
                 className="flex-1"
               >
                 <Square className="mr-2 h-4 w-4" />
-                Stop Auto-Capture
+                {t('recordingControls.autoCapture.stop')}
               </Button>
             )}
           </div>
 
           <div className="text-sm text-muted-foreground">
             {isRecording
-              ? '✓ Recording buffer active - Press F8 to toggle'
-              : 'Press F8 or click Start to begin monitoring'}
+              ? `✓ ${t('recordingControls.autoCapture.active')}`
+              : t('recordingControls.autoCapture.inactive')}
           </div>
         </CardContent>
       </Card>
@@ -211,15 +213,15 @@ export function RecordingControls() {
       {/* Manual Replay Save */}
       <Card>
         <CardHeader>
-          <CardTitle>Manual Replay Save</CardTitle>
+          <CardTitle>{t('recordingControls.manualReplay.title')}</CardTitle>
           <CardDescription>
-            Save the last N seconds of gameplay
+            {t('recordingControls.manualReplay.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between">
-              <Label>Replay Duration</Label>
+              <Label>{t('recordingControls.manualReplay.replayDuration')}</Label>
               <span className="text-sm text-muted-foreground">{replayDuration}s</span>
             </div>
             <Slider
@@ -243,11 +245,11 @@ export function RecordingControls() {
             className="w-full"
           >
             <Save className="mr-2 h-4 w-4" />
-            Save Replay
+            {t('recordingControls.manualReplay.saveReplay')}
           </Button>
 
           <div className="text-sm text-muted-foreground">
-            Or use: F9 (60s) / F10 (30s) hotkeys
+            {t('recordingControls.manualReplay.hotkeyHint')}
           </div>
         </CardContent>
       </Card>
@@ -257,16 +259,16 @@ export function RecordingControls() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Recording Settings
+            {t('recordingControls.settings.title')}
           </CardTitle>
           <CardDescription>
-            Configure video quality and audio capture
+            {t('recordingControls.settings.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Video Quality */}
           <div className="space-y-2">
-            <Label>Video Quality</Label>
+            <Label>{t('recordingControls.settings.videoQuality')}</Label>
             <Select
               value={simpleSettings.video_quality}
               onValueChange={(value: VideoQuality) =>
@@ -277,20 +279,21 @@ export function RecordingControls() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="low">Low (720p 30fps)</SelectItem>
-                <SelectItem value="medium">Medium (1080p 30fps)</SelectItem>
-                <SelectItem value="high">High (1080p 60fps)</SelectItem>
-                <SelectItem value="ultra">Ultra (1440p 60fps)</SelectItem>
+                <SelectItem value="low">{t('recordingControls.settings.qualities.low')}</SelectItem>
+                <SelectItem value="medium">{t('recordingControls.settings.qualities.medium')}</SelectItem>
+                <SelectItem value="high">{t('recordingControls.settings.qualities.high')}</SelectItem>
+                <SelectItem value="ultra">{t('recordingControls.settings.qualities.ultra')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Hardware Encoding */}
           <div className="flex items-center justify-between">
-            <Label>Hardware Encoding</Label>
+            <Label>{t('recordingControls.settings.hardwareEncoding')}</Label>
             <Button
               variant={simpleSettings.hardware_encoding ? 'default' : 'outline'}
               size="sm"
+              aria-pressed={simpleSettings.hardware_encoding}
               onClick={() =>
                 setSimpleSettings({
                   ...simpleSettings,
@@ -298,16 +301,17 @@ export function RecordingControls() {
                 })
               }
             >
-              {simpleSettings.hardware_encoding ? 'Enabled' : 'Disabled'}
+              {simpleSettings.hardware_encoding ? t('recordingControls.settings.enabled') : t('recordingControls.settings.disabled')}
             </Button>
           </div>
 
           {/* Audio */}
           <div className="flex items-center justify-between">
-            <Label>Audio Capture</Label>
+            <Label>{t('recordingControls.settings.audioCapture')}</Label>
             <Button
               variant={simpleSettings.audio_enabled ? 'default' : 'outline'}
               size="sm"
+              aria-pressed={simpleSettings.audio_enabled}
               onClick={() =>
                 setSimpleSettings({
                   ...simpleSettings,
@@ -315,12 +319,12 @@ export function RecordingControls() {
                 })
               }
             >
-              {simpleSettings.audio_enabled ? 'Enabled' : 'Disabled'}
+              {simpleSettings.audio_enabled ? t('recordingControls.settings.enabled') : t('recordingControls.settings.disabled')}
             </Button>
           </div>
 
           <Button onClick={handleSaveSettings} disabled={isLoading || !fullSettings} className="w-full">
-            Save Settings
+            {t('recordingControls.settings.saveSettings')}
           </Button>
         </CardContent>
       </Card>

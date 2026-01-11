@@ -40,13 +40,17 @@ export function useStorage() {
     setLoading(true);
     setError(null);
     try {
-      const games = await storageApi.listGames(); // Returns Game[]
-      const detailedGames = await Promise.all(
-        games.map(async (game) => {
-          // Fetch GameMetadata for each Game
-          return await storageApi.getGameMetadata(game.game_id);
-        })
+      const games = await storageApi.listGames();
+      // Use Promise.allSettled to handle partial failures gracefully
+      const results = await Promise.allSettled(
+        games.map((game) => storageApi.getGameMetadata(game.game_id))
       );
+      // Filter only successful results
+      const detailedGames = results
+        .filter((result): result is PromiseFulfilledResult<GameMetadata> =>
+          result.status === 'fulfilled'
+        )
+        .map((result) => result.value);
       return detailedGames;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);

@@ -38,3 +38,33 @@ export function formatStorage(bytes: number): string {
 
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`;
 }
+
+/**
+ * Format seconds to MM:SS or HH:MM:SS format
+ * @param seconds - Duration in seconds
+ * @returns Formatted duration string
+ */
+export function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Standardized page styles for consistent UI across all pages
+ */
+export const pageStyles = {
+  /** Page title: responsive sizing with consistent weight */
+  title: "text-2xl md:text-3xl font-bold mb-4 md:mb-6",
+  /** Page subtitle/description */
+  subtitle: "text-sm text-muted-foreground",
+  /** Section title within a page */
+  sectionTitle: "text-lg font-semibold",
+  /** Page container with consistent padding */
+  container: "space-y-6",
+} as const;

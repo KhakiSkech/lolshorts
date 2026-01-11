@@ -59,6 +59,11 @@ export default {
           disconnected: "hsl(var(--status-disconnected))",
           idle: "hsl(var(--status-idle))",
         },
+        "accent-pro": {
+          DEFAULT: "hsl(var(--accent-pro))",
+          hover: "hsl(var(--accent-pro-hover))",
+          foreground: "hsl(var(--accent-pro-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

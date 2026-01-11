@@ -2,7 +2,26 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "./supabase";
 import { authApi } from "@/api/auth";
+import { getErrorKey } from "./errorMapper";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+
+// Safe development mode check for Jest compatibility
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getIsDev = (): boolean => {
+  try {
+    // Check for test environment first (Jest)
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
+      return true;
+    }
+    // Check for Vite's import.meta.env (runtime check)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const meta = (globalThis as any).__vite_import_meta_env__ || {};
+    return meta.DEV === true;
+  } catch {
+    return false;
+  }
+};
+const isDev = getIsDev();
 
 // Types matching Supabase
 export interface UserProfile {
@@ -112,12 +131,12 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : "Login failed";
+          const errorKey = getErrorKey(error);
           set({
-            error: message,
+            error: errorKey,
             isLoading: false,
           });
-          throw new Error(message);
+          throw new Error(errorKey);
         }
       },
 
@@ -136,20 +155,20 @@ export const useAuthStore = create<AuthState>()(
           // OAuth flow continues in background
           set({ isLoading: false });
         } catch (error: unknown) {
-          const message = (error instanceof Error ? error.message : 'Unknown error') || "Google login failed";
+          const errorKey = getErrorKey(error);
           set({
-            error: message,
+            error: errorKey,
             isLoading: false,
           });
-          throw new Error(message);
+          throw new Error(errorKey);
         }
       },
 
       signup: async (credentials) => {
         if (credentials.password !== credentials.confirm_password) {
-          const error = "Passwords do not match";
-          set({ error });
-          throw new Error(error);
+          const errorKey = "errors.passwordsDoNotMatch";
+          set({ error: errorKey });
+          throw new Error(errorKey);
         }
 
         set({ isLoading: true, error: null });
@@ -203,12 +222,12 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (error: unknown) {
-          const message = (error instanceof Error ? error.message : 'Unknown error') || "Signup failed";
+          const errorKey = getErrorKey(error);
           set({
-            error: message,
+            error: errorKey,
             isLoading: false,
           });
-          throw new Error(message);
+          throw new Error(errorKey);
         }
       },
 
@@ -220,8 +239,6 @@ export const useAuthStore = create<AuthState>()(
 
           const { error } = await supabase.auth.signOut();
 
-          // Tell Backend to logout (optional, but good for cleanup)
-          // authApi.logout().catch(console.error);
 
           if (error) throw error;
 
@@ -232,12 +249,12 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (error: unknown) {
-          const message = (error instanceof Error ? error.message : 'Unknown error') || "Logout failed";
+          const errorKey = getErrorKey(error);
           set({
-            error: message,
+            error: errorKey,
             isLoading: false,
           });
-          throw new Error(message);
+          throw new Error(errorKey);
         }
       },
 
@@ -272,11 +289,14 @@ export const useAuthStore = create<AuthState>()(
             set({ user });
           }
         } catch (error) {
-          console.error("Token refresh failed:", error);
+          // Log error with context for debugging
+          if (isDev) {
+            console.error("[AuthStore] Token refresh failed:", error);
+          }
           set({
             user: null,
             isAuthenticated: false,
-            error: "Session expired. Please login again.",
+            error: "errors.sessionExpired",
           });
         }
       },
@@ -325,7 +345,7 @@ export const useAuthStore = create<AuthState>()(
           }
         } catch (error: unknown) {
           set({
-            error: (error instanceof Error ? error.message : 'Unknown error') || "Auth check failed",
+            error: getErrorKey(error),
             isLoading: false,
             user: null,
             isAuthenticated: false,
@@ -348,7 +368,10 @@ export const useAuthStore = create<AuthState>()(
 
           return license;
         } catch (error) {
-          console.error("Failed to get license info:", error);
+          // Log error with context for debugging
+          if (isDev) {
+            console.error("[AuthStore] Failed to get license info:", error);
+          }
           return null;
         }
       },
@@ -360,15 +383,61 @@ export const useAuthStore = create<AuthState>()(
         if (tokenRefreshInterval) {
           clearInterval(tokenRefreshInterval);
         }
-        // Auto-refresh token every 30 minutes
+
+        // Get session info to calculate dynamic refresh interval
+        const calculateRefreshInterval = (): number => {
+          const user = get().user;
+          if (!user || !user.supabaseUser) {
+            return 30 * 60 * 1000; // Default 30 minutes
+          }
+
+          // Extract session expiration from Supabase user
+          interface SessionExpiration {
+            expires_at?: number;
+            expires_in?: number;
+          }
+          const session = user.supabaseUser as unknown as SessionExpiration;
+          const expiresAt = session?.expires_at;
+          const expiresInSeconds = session?.expires_in;
+
+          if (expiresAt) {
+            const now = Math.floor(Date.now() / 1000);
+            const timeUntilExpiry = expiresAt - now;
+            // Refresh 5 minutes before expiry
+            const refreshInterval = Math.max(timeUntilExpiry - 300, 60) * 1000;
+            // Log in development only
+            if (isDev) {
+              console.log(`[AuthStore] Session expires in ${timeUntilExpiry}s, refreshing in ${refreshInterval / 1000}s`);
+            }
+            return refreshInterval;
+          } else if (expiresInSeconds) {
+            // Fallback to expires_in if expires_at is not available
+            const refreshInterval = Math.max(expiresInSeconds - 300, 60) * 1000;
+            // Log in development only
+            if (isDev) {
+              console.log(`[AuthStore] Session expires in ${expiresInSeconds}s, refreshing in ${refreshInterval / 1000}s`);
+            }
+            return refreshInterval;
+          }
+
+          // Default to 30 minutes if no session info available
+          return 30 * 60 * 1000;
+        };
+
+        const refreshInterval = calculateRefreshInterval();
+
+        // Auto-refresh token at calculated interval
         tokenRefreshInterval = setInterval(() => {
           const { user, refreshToken } = get();
           if (user) {
             refreshToken().catch((err) => {
-              console.error("Token refresh failed:", err);
+              // Log error with context for debugging
+              if (isDev) {
+                console.error("[AuthStore] Token refresh failed:", err);
+              }
             });
           }
-        }, 30 * 60 * 1000);
+        }, refreshInterval);
       },
 
       stopTokenRefresh: () => {

@@ -7,19 +7,6 @@ import { videoApi } from '@/api/video';
 import { AppError } from '@/api/client';
 import { getErrorMessage } from '@/lib/utils';
 
-export interface ClipInput {
-  file_path: string;
-  start_time: number;
-  end_time: number;
-  order: number;
-}
-
-export interface ComposeRequest {
-  clips: ClipInput[];
-  settings: CompositionSettings;
-  output_path: string;
-}
-
 export interface ExportProgressEvent {
   progress: number;
   current_clip: number;
@@ -78,9 +65,8 @@ export function useEditor() {
 
     try {
       const clips = await videoApi.getClips(gameId);
-      // Note: The API returns specific metadata type, casting to useStorage type if needed
-      setAvailableClips(clips as any);
-      return clips as any;
+      setAvailableClips(clips);
+      return clips;
     } catch (err) {
       const errorMsg = err instanceof AppError ? err.message : 'Failed to load clips';
       setError(errorMsg);
@@ -116,7 +102,7 @@ export function useEditor() {
    */
   const composeShorts = useCallback(async (
     timelineClips: TimelineClip[],
-    settings: CompositionSettings,
+    _settings: CompositionSettings, // Settings applied on backend side
     outputPath: string
   ): Promise<string> => {
     setLoading(true);
@@ -126,21 +112,19 @@ export function useEditor() {
     setExportError(null);
 
     try {
-      // Convert TimelineClip[] to ClipInput[]
-      const clipInputs: ClipInput[] = timelineClips.map(clip => ({
-        file_path: clip.file_path,
-        start_time: clip.trimStart || clip.start_time || 0, // Fallback to 0 if undefined
-        end_time: clip.trimEnd || clip.end_time || clip.duration, // Fallback to duration
-        order: clip.order,
-      }));
+      // Extract file paths from timeline clips
+      const clipPaths = timelineClips
+        .filter(clip => clip.file_path && clip.file_path.length > 0)
+        .map(clip => clip.file_path);
 
-      const request: ComposeRequest = {
-        clips: clipInputs,
-        settings: settings,
-        output_path: outputPath,
-      };
+      if (clipPaths.length === 0) {
+        throw new Error("No valid clips to export");
+      }
 
-      const result = await invoke<string>('compose_shorts', request as any);
+      const result = await invoke<string>('compose_shorts', {
+        clipPaths,
+        outputPath
+      });
 
       setExportStatus('complete');
       setExportOutputPath(result);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { lcuApi, MatchInfo } from '@/api/lcu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,8 +7,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Play, Download, RefreshCw } from 'lucide-react';
 import { ReplayTargetModal } from '@/components/overlay/ReplayTargetModal';
 import { cmd } from '@/api/client';
+import { pageStyles } from '@/lib/utils';
 
 export function Replays() {
+  const { t } = useTranslation();
   const [matches, setMatches] = useState<MatchInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
@@ -20,8 +23,8 @@ export function Replays() {
       const isConnected = await lcuApi.checkStatus();
       if (!isConnected) {
         toast({
-          title: "LCU Disconnected",
-          description: "Please start League of Legends client to view match history.",
+          title: t('replays.toast.lcuDisconnected'),
+          description: t('replays.toast.lcuDisconnectedDesc'),
           variant: "destructive",
         });
         setMatches([]);
@@ -33,8 +36,8 @@ export function Replays() {
     } catch (error) {
       console.error("Failed to load match history:", error);
       toast({
-        title: "Error",
-        description: "Failed to load match history.",
+        title: t('replays.toast.loadError'),
+        description: t('replays.toast.loadErrorDesc'),
         variant: "destructive",
       });
     } finally {
@@ -51,15 +54,13 @@ export function Replays() {
     try {
       await lcuApi.downloadReplay(gameId);
       toast({
-        title: "Download Started",
-        description: "Replay download has started via League Client.",
+        title: t('replays.toast.downloadStarted'),
+        description: t('replays.toast.downloadStartedDesc'),
       });
-      // Poll for status or just wait a bit? 
-      // Ideally we should poll status, but for MVP we assume it works.
     } catch (error) {
       toast({
-        title: "Download Failed",
-        description: "Could not start replay download.",
+        title: t('replays.toast.downloadFailed'),
+        description: t('replays.toast.downloadFailedDesc'),
         variant: "destructive",
       });
     } finally {
@@ -76,8 +77,8 @@ export function Replays() {
       await cmd<void>('notify_replay_launched', {});
 
       toast({
-        title: "Launching Replay",
-        description: "Select a player to record their highlights!",
+        title: t('replays.toast.launchingReplay'),
+        description: t('replays.toast.launchingReplayDesc'),
       });
 
       // Show the target selection modal after a short delay (to let the game load)
@@ -86,26 +87,26 @@ export function Replays() {
       }, 3000); // 3 second delay for game to load
     } catch (error) {
       toast({
-        title: "Launch Failed",
-        description: "Could not launch replay. Make sure it is downloaded.",
+        title: t('replays.toast.launchFailed'),
+        description: t('replays.toast.launchFailedDesc'),
         variant: "destructive",
       });
     }
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Replays</h1>
+    <div className={pageStyles.container}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h1 className={pageStyles.title}>{t('replays.title')}</h1>
         <Button variant="outline" onClick={loadMatches} disabled={loading}>
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('replays.refresh')}
         </Button>
       </div>
 
       {matches.length === 0 && !loading && (
         <div className="text-center text-muted-foreground py-10">
-          No matches found or LCU not connected.
+          {t('replays.noMatches')}
         </div>
       )}
 
@@ -114,7 +115,7 @@ export function Replays() {
           <Card key={match.game_id}>
             <CardHeader className="pb-2">
               <CardTitle className="flex justify-between items-center text-lg">
-                <span>{match.win ? "Victory" : "Defeat"}</span>
+                <span>{match.win ? t('replays.victory') : t('replays.defeat')}</span>
                 <span className="text-sm text-muted-foreground">
                   {new Date(match.game_creation).toLocaleDateString()}
                 </span>
@@ -123,25 +124,25 @@ export function Replays() {
             <CardContent>
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span>Mode:</span>
+                  <span>{t('replays.mode')}:</span>
                   <span className="font-medium">{match.game_mode}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>KDA:</span>
+                  <span>{t('replays.kda')}:</span>
                   <span className="font-medium text-yellow-500">
                     {match.kills} / {match.deaths} / {match.assists}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Duration:</span>
+                  <span>{t('replays.duration')}:</span>
                   <span>{Math.floor(match.game_duration / 60)}m {match.game_duration % 60}s</span>
                 </div>
               </div>
 
               <div className="flex gap-2">
-                <Button 
-                  className="flex-1" 
-                  variant="secondary" 
+                <Button
+                  className="flex-1"
+                  variant="secondary"
                   onClick={() => handleDownload(match.game_id)}
                   disabled={downloadingId === match.game_id}
                 >
@@ -150,14 +151,14 @@ export function Replays() {
                   ) : (
                     <Download className="mr-2 h-4 w-4" />
                   )}
-                  Download
+                  {t('replays.download')}
                 </Button>
-                <Button 
-                  className="flex-1" 
+                <Button
+                  className="flex-1"
                   onClick={() => handleLaunch(match.game_id)}
                 >
                   <Play className="mr-2 h-4 w-4" />
-                  Watch
+                  {t('replays.watch')}
                 </Button>
               </div>
             </CardContent>

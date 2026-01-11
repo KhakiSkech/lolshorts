@@ -6,6 +6,7 @@ import { ProtectedFeature } from '@/components/auth/ProtectedFeature';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Youtube } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { pageStyles } from '@/lib/utils';
 
 export function YouTube() {
   const { t } = useTranslation();
@@ -16,7 +17,7 @@ export function YouTube() {
         <div className="flex items-center gap-3 mb-6">
           <Youtube className="h-8 w-8 text-red-500" />
           <div>
-            <h1 className="text-3xl font-bold">{t('youtube.title')}</h1>
+            <h1 className={pageStyles.title}>{t('youtube.title')}</h1>
             <p className="text-muted-foreground">
               {t('youtube.subtitle')}
             </p>

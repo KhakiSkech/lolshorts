@@ -1,17 +1,30 @@
 use anyhow::{Context, Result};
-use reqwest::{multipart, Client};
+use reqwest::{multipart, Body, Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::fs::File;
-use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio::sync::RwLock;
+use tokio_util::io::ReaderStream;
 use tracing::{debug, error, info, warn};
 
 use super::oauth::YouTubeOAuthClient;
 
 /// YouTube Data API v3 base URL
 const YOUTUBE_API_BASE: &str = "https://www.googleapis.com/youtube/v3";
+
+/// YouTube Resumable Upload URL
+const YOUTUBE_UPLOAD_BASE: &str = "https://www.googleapis.com/upload/youtube/v3/videos";
+
+/// Chunk size for resumable upload (256KB minimum, 8MB recommended)
+const CHUNK_SIZE: u64 = 8 * 1024 * 1024; // 8MB
+
+/// Maximum retry attempts for resumable upload
+const MAX_RETRIES: u32 = 5;
+
+/// Retry delay base (exponential backoff)
+const RETRY_DELAY_MS: u64 = 1000;
 
 /// Video metadata for YouTube upload
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,17 +89,17 @@ pub struct YouTubeUploadClient {
 
 impl YouTubeUploadClient {
     /// Create new YouTube upload client
-    pub fn new(oauth_client: Arc<YouTubeOAuthClient>) -> Self {
+    pub fn new(oauth_client: Arc<YouTubeOAuthClient>) -> Result<Self> {
         let http_client = Client::builder()
             .timeout(std::time::Duration::from_secs(600)) // 10 minutes for upload
             .build()
-            .expect("Failed to create HTTP client");
+            .context("Failed to create HTTP client")?;
 
-        Self {
+        Ok(Self {
             oauth_client,
             http_client,
             progress: Arc::new(RwLock::new(None)),
-        }
+        })
     }
 
     /// Upload video to YouTube
@@ -121,8 +134,8 @@ impl YouTubeUploadClient {
             .await
             .context("Failed to get valid access token")?;
 
-        // Read video file
-        let mut file = File::open(video_path)
+        // Open video file and get size without loading into memory
+        let file = File::open(video_path)
             .await
             .context("Failed to open video file")?;
         let file_size = file
@@ -130,11 +143,6 @@ impl YouTubeUploadClient {
             .await
             .context("Failed to get file metadata")?
             .len();
-
-        let mut video_data = Vec::with_capacity(file_size as usize);
-        file.read_to_end(&mut video_data)
-            .await
-            .context("Failed to read video file")?;
 
         debug!("Video file size: {} bytes", file_size);
 
@@ -164,12 +172,15 @@ impl YouTubeUploadClient {
             }
         });
 
-        // Create multipart form
+        // Create multipart form with streaming video data
         let part_metadata = multipart::Part::text(video_resource.to_string())
             .mime_str("application/json")
             .context("Failed to create metadata part")?;
 
-        let part_video = multipart::Part::bytes(video_data)
+        // Stream video file using ReaderStream to avoid loading entire file into memory
+        let stream = ReaderStream::new(file);
+        let body = Body::wrap_stream(stream);
+        let part_video = multipart::Part::stream(body)
             .mime_str("video/*")
             .context("Failed to create video part")?;
 
@@ -371,6 +382,368 @@ impl YouTubeUploadClient {
     pub async fn clear_progress(&self) {
         let mut p = self.progress.write().await;
         *p = None;
+    }
+
+    /// Upload video using Resumable Upload protocol
+    ///
+    /// This is the recommended method for large files as it:
+    /// - Supports resume on network failures
+    /// - Provides accurate progress tracking
+    /// - Handles large files efficiently
+    ///
+    /// # Arguments
+    /// * `video_path` - Path to video file
+    /// * `metadata` - Video metadata (title, description, tags, etc.)
+    /// * `thumbnail_path` - Optional path to custom thumbnail
+    pub async fn upload_video_resumable(
+        &self,
+        video_path: &Path,
+        metadata: VideoMetadata,
+        thumbnail_path: Option<&Path>,
+    ) -> Result<YouTubeVideo> {
+        info!("Starting resumable YouTube upload: {}", video_path.display());
+
+        // Get file size
+        let file_metadata = tokio::fs::metadata(video_path)
+            .await
+            .context("Failed to get file metadata")?;
+        let file_size = file_metadata.len();
+
+        info!("Video file size: {} bytes ({:.2} MB)", file_size, file_size as f64 / 1024.0 / 1024.0);
+
+        // Initialize progress
+        self.update_progress(UploadProgress {
+            bytes_uploaded: 0,
+            total_bytes: file_size,
+            percentage: 0.0,
+            status: UploadStatus::Initializing,
+            video_id: None,
+            error: None,
+        })
+        .await;
+
+        // Step 1: Initialize resumable upload session
+        let upload_url = self.init_resumable_upload(&metadata, file_size).await?;
+        info!("Resumable upload session initialized");
+
+        // Step 2: Upload file in chunks with progress tracking
+        let video_id = self.upload_chunks(video_path, &upload_url, file_size).await?;
+
+        // Step 3: Update progress to processing
+        self.update_progress(UploadProgress {
+            bytes_uploaded: file_size,
+            total_bytes: file_size,
+            percentage: 100.0,
+            status: UploadStatus::Processing,
+            video_id: Some(video_id.clone()),
+            error: None,
+        })
+        .await;
+
+        // Step 4: Upload custom thumbnail if provided
+        if let Some(thumb_path) = thumbnail_path {
+            if let Err(e) = self.upload_thumbnail(&video_id, thumb_path).await {
+                warn!("Failed to upload thumbnail: {}", e);
+            }
+        }
+
+        // Step 5: Get video details
+        let video = self.get_video_details(&video_id).await?;
+
+        // Mark as complete
+        self.update_progress(UploadProgress {
+            bytes_uploaded: file_size,
+            total_bytes: file_size,
+            percentage: 100.0,
+            status: UploadStatus::Complete,
+            video_id: Some(video_id.clone()),
+            error: None,
+        })
+        .await;
+
+        info!("Resumable upload completed successfully: {}", video_id);
+        Ok(video)
+    }
+
+    /// Initialize a resumable upload session
+    async fn init_resumable_upload(&self, metadata: &VideoMetadata, file_size: u64) -> Result<String> {
+        let access_token = self
+            .oauth_client
+            .get_valid_token()
+            .await
+            .context("Failed to get valid access token")?;
+
+        // Create video resource JSON
+        let video_resource = serde_json::json!({
+            "snippet": {
+                "title": metadata.title,
+                "description": metadata.description,
+                "tags": metadata.tags,
+                "categoryId": metadata.category_id,
+            },
+            "status": {
+                "privacyStatus": format!("{:?}", metadata.privacy_status).to_lowercase(),
+                "madeForKids": metadata.made_for_kids,
+                "selfDeclaredMadeForKids": metadata.made_for_kids,
+            }
+        });
+
+        let init_url = format!("{}?uploadType=resumable&part=snippet,status", YOUTUBE_UPLOAD_BASE);
+
+        let response = self
+            .http_client
+            .post(&init_url)
+            .bearer_auth(&access_token)
+            .header("Content-Type", "application/json; charset=UTF-8")
+            .header("X-Upload-Content-Length", file_size.to_string())
+            .header("X-Upload-Content-Type", "video/*")
+            .json(&video_resource)
+            .send()
+            .await
+            .context("Failed to initialize resumable upload")?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            error!("Failed to initialize resumable upload: {}", error_text);
+            return Err(anyhow::anyhow!("Failed to initialize resumable upload: {}", error_text));
+        }
+
+        // Get the upload URL from the Location header
+        let upload_url = response
+            .headers()
+            .get("location")
+            .context("No upload URL in response")?
+            .to_str()
+            .context("Invalid upload URL")?
+            .to_string();
+
+        debug!("Resumable upload URL: {}", upload_url);
+        Ok(upload_url)
+    }
+
+    /// Upload file chunks with progress tracking and retry logic
+    async fn upload_chunks(&self, video_path: &Path, upload_url: &str, file_size: u64) -> Result<String> {
+        let mut file = File::open(video_path)
+            .await
+            .context("Failed to open video file")?;
+
+        let mut bytes_uploaded: u64 = 0;
+        let mut retry_count = 0;
+
+        // Update status to uploading
+        self.update_progress(UploadProgress {
+            bytes_uploaded: 0,
+            total_bytes: file_size,
+            percentage: 0.0,
+            status: UploadStatus::Uploading,
+            video_id: None,
+            error: None,
+        })
+        .await;
+
+        loop {
+            // Calculate chunk range
+            let chunk_start = bytes_uploaded;
+            let chunk_end = std::cmp::min(chunk_start + CHUNK_SIZE, file_size);
+            let chunk_size = chunk_end - chunk_start;
+
+            if chunk_size == 0 {
+                break;
+            }
+
+            // Seek to the correct position
+            file.seek(std::io::SeekFrom::Start(chunk_start))
+                .await
+                .context("Failed to seek in file")?;
+
+            // Read chunk
+            let mut chunk_data = vec![0u8; chunk_size as usize];
+            file.read_exact(&mut chunk_data)
+                .await
+                .context("Failed to read chunk")?;
+
+            // Get fresh access token (may need refresh for long uploads)
+            let access_token = self
+                .oauth_client
+                .get_valid_token()
+                .await
+                .context("Failed to get valid access token")?;
+
+            // Upload chunk
+            let content_range = format!("bytes {}-{}/{}", chunk_start, chunk_end - 1, file_size);
+            debug!("Uploading chunk: {}", content_range);
+
+            let response = self
+                .http_client
+                .put(upload_url)
+                .bearer_auth(&access_token)
+                .header("Content-Length", chunk_size.to_string())
+                .header("Content-Range", &content_range)
+                .header("Content-Type", "video/*")
+                .body(chunk_data)
+                .send()
+                .await;
+
+            match response {
+                Ok(resp) => {
+                    let status = resp.status();
+
+                    match status {
+                        // Upload complete (200 or 201)
+                        StatusCode::OK | StatusCode::CREATED => {
+                            let upload_response: serde_json::Value = resp
+                                .json()
+                                .await
+                                .context("Failed to parse upload response")?;
+
+                            let video_id = upload_response["id"]
+                                .as_str()
+                                .context("No video ID in response")?
+                                .to_string();
+
+                            return Ok(video_id);
+                        }
+                        // Chunk accepted, continue (308 Resume Incomplete)
+                        StatusCode::PERMANENT_REDIRECT => {
+                            // Extract bytes uploaded from Range header
+                            if let Some(range) = resp.headers().get("range") {
+                                let range_str = range.to_str().unwrap_or("");
+                                if let Some(end) = range_str.strip_prefix("bytes=0-") {
+                                    if let Ok(end_byte) = end.parse::<u64>() {
+                                        bytes_uploaded = end_byte + 1;
+                                    }
+                                }
+                            } else {
+                                bytes_uploaded = chunk_end;
+                            }
+
+                            // Update progress
+                            let percentage = (bytes_uploaded as f64 / file_size as f64) * 100.0;
+                            self.update_progress(UploadProgress {
+                                bytes_uploaded,
+                                total_bytes: file_size,
+                                percentage,
+                                status: UploadStatus::Uploading,
+                                video_id: None,
+                                error: None,
+                            })
+                            .await;
+
+                            debug!("Chunk uploaded: {} / {} ({:.1}%)", bytes_uploaded, file_size, percentage);
+                            retry_count = 0; // Reset retry count on success
+                        }
+                        // Client error - don't retry
+                        StatusCode::BAD_REQUEST | StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                            let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                            error!("Upload failed with client error: {}", error_text);
+
+                            self.update_progress(UploadProgress {
+                                bytes_uploaded,
+                                total_bytes: file_size,
+                                percentage: (bytes_uploaded as f64 / file_size as f64) * 100.0,
+                                status: UploadStatus::Failed,
+                                video_id: None,
+                                error: Some(error_text.clone()),
+                            })
+                            .await;
+
+                            return Err(anyhow::anyhow!("Upload failed: {}", error_text));
+                        }
+                        // Server error or rate limit - retry
+                        _ => {
+                            warn!("Upload chunk failed with status {}, retrying...", status);
+                            retry_count += 1;
+
+                            if retry_count >= MAX_RETRIES {
+                                let error_msg = format!("Upload failed after {} retries", MAX_RETRIES);
+                                self.update_progress(UploadProgress {
+                                    bytes_uploaded,
+                                    total_bytes: file_size,
+                                    percentage: (bytes_uploaded as f64 / file_size as f64) * 100.0,
+                                    status: UploadStatus::Failed,
+                                    video_id: None,
+                                    error: Some(error_msg.clone()),
+                                })
+                                .await;
+                                return Err(anyhow::anyhow!("{}", error_msg));
+                            }
+
+                            // Exponential backoff
+                            let delay = RETRY_DELAY_MS * 2u64.pow(retry_count - 1);
+                            warn!("Retrying in {}ms (attempt {}/{})", delay, retry_count, MAX_RETRIES);
+                            tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+
+                            // Query upload status to find where to resume
+                            if let Some(resume_byte) = self.query_upload_status(upload_url).await {
+                                bytes_uploaded = resume_byte;
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Network error during upload: {}", e);
+                    retry_count += 1;
+
+                    if retry_count >= MAX_RETRIES {
+                        let error_msg = format!("Upload failed after {} retries: {}", MAX_RETRIES, e);
+                        self.update_progress(UploadProgress {
+                            bytes_uploaded,
+                            total_bytes: file_size,
+                            percentage: (bytes_uploaded as f64 / file_size as f64) * 100.0,
+                            status: UploadStatus::Failed,
+                            video_id: None,
+                            error: Some(error_msg.clone()),
+                        })
+                        .await;
+                        return Err(anyhow::anyhow!("{}", error_msg));
+                    }
+
+                    // Exponential backoff
+                    let delay = RETRY_DELAY_MS * 2u64.pow(retry_count - 1);
+                    warn!("Retrying in {}ms (attempt {}/{})", delay, retry_count, MAX_RETRIES);
+                    tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+
+                    // Query upload status to find where to resume
+                    if let Some(resume_byte) = self.query_upload_status(upload_url).await {
+                        bytes_uploaded = resume_byte;
+                    }
+                }
+            }
+        }
+
+        Err(anyhow::anyhow!("Upload completed without video ID"))
+    }
+
+    /// Query the upload status to determine how many bytes were uploaded
+    async fn query_upload_status(&self, upload_url: &str) -> Option<u64> {
+        let access_token = match self.oauth_client.get_valid_token().await {
+            Ok(token) => token,
+            Err(_) => return None,
+        };
+
+        let response = self
+            .http_client
+            .put(upload_url)
+            .bearer_auth(&access_token)
+            .header("Content-Length", "0")
+            .header("Content-Range", "bytes */*")
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) => {
+                if let Some(range) = resp.headers().get("range") {
+                    let range_str = range.to_str().unwrap_or("");
+                    if let Some(end) = range_str.strip_prefix("bytes=0-") {
+                        if let Ok(end_byte) = end.parse::<u64>() {
+                            return Some(end_byte + 1);
+                        }
+                    }
+                }
+                None
+            }
+            Err(_) => None,
+        }
     }
 }
 

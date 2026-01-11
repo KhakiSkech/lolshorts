@@ -30,6 +30,7 @@ import {
   XCircle,
   Save
 } from "lucide-react";
+import { pageStyles } from "@/lib/utils";
 
 interface LicenseInfo {
   tier: "FREE" | "PRO";
@@ -152,8 +153,8 @@ export function Settings() {
   };
 
   return (
-    <div>
-      <h2 className="text-3xl font-bold mb-6">{t('settings.title')}</h2>
+    <div className={pageStyles.container}>
+      <h2 className={pageStyles.title}>{t('settings.title')}</h2>
 
       <div className="space-y-6">
         {/* Language Selector */}
@@ -189,17 +190,15 @@ export function Settings() {
               </div>
             ) : recordingSettings ? (
               <Tabs defaultValue="general" className="w-full">
-                <div className="overflow-x-auto -mx-1 px-1">
-                  <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-1">
-                    <TabsTrigger value="general" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.general')}</TabsTrigger>
-                    <TabsTrigger value="events" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.events')}</TabsTrigger>
-                    <TabsTrigger value="modes" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.modes')}</TabsTrigger>
-                    <TabsTrigger value="video" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.video')}</TabsTrigger>
-                    <TabsTrigger value="audio" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.audio')}</TabsTrigger>
-                    <TabsTrigger value="timing" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.timing')}</TabsTrigger>
-                    <TabsTrigger value="hotkeys" className="whitespace-nowrap">{t('settings.recordingConfig.tabs.hotkeys')}</TabsTrigger>
-                  </TabsList>
-                </div>
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 h-auto gap-1">
+                  <TabsTrigger value="general" className="text-xs sm:text-sm">{t('settings.recordingConfig.tabs.general')}</TabsTrigger>
+                  <TabsTrigger value="events" className="text-xs sm:text-sm">{t('settings.recordingConfig.tabs.events')}</TabsTrigger>
+                  <TabsTrigger value="modes" className="text-xs sm:text-sm">{t('settings.recordingConfig.tabs.modes')}</TabsTrigger>
+                  <TabsTrigger value="video" className="text-xs sm:text-sm">{t('settings.recordingConfig.tabs.video')}</TabsTrigger>
+                  <TabsTrigger value="audio" className="text-xs sm:text-sm">{t('settings.recordingConfig.tabs.audio')}</TabsTrigger>
+                  <TabsTrigger value="timing" className="text-xs sm:text-sm">{t('settings.recordingConfig.tabs.timing')}</TabsTrigger>
+                  <TabsTrigger value="hotkeys" className="text-xs sm:text-sm">{t('settings.recordingConfig.tabs.hotkeys')}</TabsTrigger>
+                </TabsList>
 
                 <div className="mt-6">
                   <TabsContent value="general" className="space-y-4">

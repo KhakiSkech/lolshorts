@@ -20,8 +20,9 @@ describe('PaymentModal', () => {
   it('renders payment modal when open', () => {
     render(<PaymentModal isOpen={true} onClose={() => {}} />);
 
-    expect(screen.getByText('Upgrade to LoLShorts PRO')).toBeInTheDocument();
-    expect(screen.getByText('PRO Features:')).toBeInTheDocument();
+    // i18n mock returns keys, so we look for the i18n keys
+    expect(screen.getByText('payment.upgradeToPro')).toBeInTheDocument();
+    expect(screen.getByText('payment.features.title')).toBeInTheDocument();
   });
 
   it('does not render when closed', () => {
@@ -37,8 +38,8 @@ describe('PaymentModal', () => {
     const handleClose = jest.fn();
     render(<PaymentModal isOpen={true} onClose={handleClose} />);
 
-    // Find and click close button (Cancel button)
-    const closeButton = screen.getByText('Cancel');
+    // Find and click close button (Cancel button - i18n key)
+    const closeButton = screen.getByText('common.cancel');
     fireEvent.click(closeButton);
 
     expect(handleClose).toHaveBeenCalled();
@@ -47,26 +48,25 @@ describe('PaymentModal', () => {
   it('displays monthly and yearly pricing options', () => {
     render(<PaymentModal isOpen={true} onClose={() => {}} />);
 
-    expect(screen.getByText('Monthly Plan')).toBeInTheDocument();
-    expect(screen.getByText('Yearly Plan')).toBeInTheDocument();
+    expect(screen.getByText('payment.monthlyPlan')).toBeInTheDocument();
+    expect(screen.getByText('payment.yearlyPlan')).toBeInTheDocument();
   });
 
   it('displays correct pricing amounts with Korean Won', () => {
     render(<PaymentModal isOpen={true} onClose={() => {}} />);
 
-    // Check for monthly price (₩9,900/month)
-    expect(screen.getByText('₩9,900/month')).toBeInTheDocument();
+    // i18n mock returns the key only, so we check for the i18n keys
+    // aria-label uses interpolation which the mock doesn't handle the same way
+    expect(screen.getAllByText('payment.monthlyPrice').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('payment.yearlyPrice').length).toBeGreaterThanOrEqual(1);
 
-    // Check for yearly price (₩99,000/year)
-    expect(screen.getByText('₩99,000/year')).toBeInTheDocument();
-
-    // Check for strikethrough original price
+    // Check for strikethrough original price (hardcoded, not i18n)
     expect(screen.getByText('₩118,800')).toBeInTheDocument();
   });
 
-  it('shows continue to payment button', () => {
+  it('shows select plan button', () => {
     render(<PaymentModal isOpen={true} onClose={() => {}} />);
 
-    expect(screen.getByText('Continue to Payment')).toBeInTheDocument();
+    expect(screen.getByText('payment.selectPlan')).toBeInTheDocument();
   });
 });

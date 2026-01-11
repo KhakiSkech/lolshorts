@@ -59,7 +59,13 @@ impl AuthManager {
     }
 
     pub fn new_with_config(config: SupabaseConfig) -> Self {
-        let supabase_client = Some(SupabaseClient::new(config));
+        let supabase_client = SupabaseClient::new(config).ok();
+
+        if supabase_client.is_none() {
+            tracing::warn!(
+                "Supabase client not initialized - authentication features will be limited"
+            );
+        }
 
         Self {
             current_user: RwLock::new(None),

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { ClipMetadata } from '@/types/storage';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -5,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Play, Plus } from 'lucide-react';
 import { useEditorStore } from '@/stores/editorStore';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { formatDuration } from '@/lib/utils';
 
 interface ClipCardProps {
   clip: ClipMetadata;
 }
 
 export function ClipCard({ clip }: ClipCardProps) {
+  const { t } = useTranslation();
   const { addToTimeline, setSelectedClipId } = useEditorStore();
 
   const handleAddToTimeline = () => {
@@ -19,12 +22,6 @@ export function ClipCard({ clip }: ClipCardProps) {
 
   const handlePreview = () => {
     setSelectedClipId(clip.clip_id);
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Get priority variant color
@@ -61,7 +58,7 @@ export function ClipCard({ clip }: ClipCardProps) {
         {/* Priority badge */}
         <div className="absolute top-2 right-2">
           <Badge variant={getPriorityVariant(clip.event_id)}>
-            Priority {clip.event_id}
+            {t('editor.clip.priority', { id: clip.event_id })}
           </Badge>
         </div>
       </div>
@@ -70,7 +67,7 @@ export function ClipCard({ clip }: ClipCardProps) {
       <div className="p-3 space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium truncate">
-            Clip #{clip.clip_id}
+            {t('editor.clip.clipNumber', { id: clip.clip_id })}
           </span>
         </div>
 
@@ -83,7 +80,7 @@ export function ClipCard({ clip }: ClipCardProps) {
             onClick={handlePreview}
           >
             <Play className="w-3 h-3 mr-1" />
-            Preview
+            {t('editor.clip.preview')}
           </Button>
           <Button
             size="sm"
@@ -92,7 +89,7 @@ export function ClipCard({ clip }: ClipCardProps) {
             onClick={handleAddToTimeline}
           >
             <Plus className="w-3 h-3 mr-1" />
-            Add
+            {t('editor.clip.add')}
           </Button>
         </div>
       </div>

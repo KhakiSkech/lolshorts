@@ -3,6 +3,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
+import { formatDuration } from '@/lib/utils';
 import { ZoomIn, ZoomOut, RotateCcw, Trash2 } from 'lucide-react';
 
 export function TimelineControls() {
@@ -17,12 +18,6 @@ export function TimelineControls() {
     clearTimeline,
   } = useEditorStore();
   const { confirm, ConfirmDialog } = useConfirmDialog();
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
   const handleClearTimeline = async () => {
     const confirmed = await confirm({
@@ -42,9 +37,9 @@ export function TimelineControls() {
     <div className="flex items-center justify-between">
       {/* Left: Timeline Info */}
       <div className="flex items-center gap-3">
-        <h3 className="font-semibold">Timeline</h3>
+        <h3 className="font-semibold">{t('editor.timeline.title')}</h3>
         <Badge variant="secondary">
-          {timelineClips.length} clips
+          {timelineClips.length} {t('editor.timeline.clips')}
         </Badge>
         <Badge variant="outline">
           {formatDuration(totalDuration)}
@@ -98,7 +93,7 @@ export function TimelineControls() {
           disabled={timelineClips.length === 0}
         >
           <Trash2 className="w-4 h-4 mr-1" />
-          Clear
+          {t('editor.timeline.clear')}
         </Button>
       </div>
 

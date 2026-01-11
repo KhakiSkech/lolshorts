@@ -41,18 +41,18 @@ pub struct SupabaseClient {
 }
 
 impl SupabaseClient {
-    pub fn new(config: SupabaseConfig) -> Self {
+    pub fn new(config: SupabaseConfig) -> Result<Self> {
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .expect("Failed to create HTTP client");
+            .map_err(|e| SupabaseError::ConfigError(format!("Failed to create HTTP client: {}", e)))?;
 
-        Self { client, config }
+        Ok(Self { client, config })
     }
 
     pub fn from_env() -> Result<Self> {
         let config = SupabaseConfig::from_env()?;
-        Ok(Self::new(config))
+        Self::new(config)
     }
 
     /// Sign up a new user with email and password
@@ -273,7 +273,7 @@ impl SupabaseClient {
     pub fn is_token_expired(&self, session: &Session) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
+            .unwrap_or_default()
             .as_secs() as i64;
 
         session.expires_at <= now
@@ -438,6 +438,146 @@ impl SupabaseClient {
         }
     }
 
+    /// 사용자 라이센스를 PRO로 업그레이드
+    ///
+    /// TossPayments 결제 성공 후 라이센스를 PRO 티어로 업그레이드합니다.
+    ///
+    /// # Arguments
+    /// * `user_id` - 사용자 ID
+    /// * `access_token` - 액세스 토큰
+    /// * `order_id` - TossPayments 주문 ID
+    /// * `payment_key` - TossPayments 결제 키
+    /// * `amount` - 결제 금액
+    pub async fn upgrade_user_license(
+        &self,
+        user_id: &str,
+        access_token: &str,
+        order_id: &str,
+        payment_key: &str,
+        amount: i64,
+    ) -> Result<()> {
+        info!("라이센스 업그레이드 시작: user_id={}", user_id);
+
+        // 1년 후 만료일 계산
+        let expires_at = chrono::Utc::now()
+            .checked_add_signed(chrono::Duration::days(365))
+            .map(|dt| dt.format("%Y-%m-%dT%H:%M:%SZ").to_string());
+
+        let update_data = serde_json::json!({
+            "tier": "PRO",
+            "status": "ACTIVE",
+            "expires_at": expires_at,
+            "metadata": {
+                "order_id": order_id,
+                "payment_key": payment_key,
+                "amount": amount,
+                "upgraded_at": chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
+            }
+        });
+
+        let url = format!("{}/rest/v1/licenses", self.config.project_url);
+
+        let response = self
+            .client
+            .patch(&url)
+            .header("apikey", &self.config.anon_key)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=representation")
+            .query(&[("user_id", format!("eq.{}", user_id))])
+            .json(&update_data)
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            let result: serde_json::Value = response.json().await.map_err(|e| {
+                error!("라이센스 업그레이드 응답 파싱 실패: {}", e);
+                SupabaseError::InvalidResponse(e.to_string())
+            })?;
+
+            // 업데이트된 레코드가 있는지 확인
+            if let Some(arr) = result.as_array() {
+                if arr.is_empty() {
+                    // 레코드가 없으면 새로 생성
+                    info!("기존 라이센스가 없음, 새 라이센스 생성");
+                    return self.create_pro_license(user_id, access_token, order_id, payment_key, amount).await;
+                }
+            }
+
+            info!("라이센스 업그레이드 완료: user_id={}", user_id);
+            Ok(())
+        } else {
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+
+            error!("라이센스 업그레이드 실패: {} - {}", status, error_text);
+            Err(SupabaseError::ApiError(format!(
+                "라이센스 업그레이드 실패: {}",
+                error_text
+            )))
+        }
+    }
+
+    /// 새 PRO 라이센스 생성
+    async fn create_pro_license(
+        &self,
+        user_id: &str,
+        access_token: &str,
+        order_id: &str,
+        payment_key: &str,
+        amount: i64,
+    ) -> Result<()> {
+        let expires_at = chrono::Utc::now()
+            .checked_add_signed(chrono::Duration::days(365))
+            .map(|dt| dt.format("%Y-%m-%dT%H:%M:%SZ").to_string());
+
+        let insert_data = serde_json::json!({
+            "user_id": user_id,
+            "tier": "PRO",
+            "status": "ACTIVE",
+            "expires_at": expires_at,
+            "metadata": {
+                "order_id": order_id,
+                "payment_key": payment_key,
+                "amount": amount,
+                "created_at": chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
+            }
+        });
+
+        let url = format!("{}/rest/v1/licenses", self.config.project_url);
+
+        let response = self
+            .client
+            .post(&url)
+            .header("apikey", &self.config.anon_key)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .header("Content-Type", "application/json")
+            .header("Prefer", "return=representation")
+            .json(&insert_data)
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            info!("새 PRO 라이센스 생성 완료: user_id={}", user_id);
+            Ok(())
+        } else {
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+
+            error!("PRO 라이센스 생성 실패: {} - {}", status, error_text);
+            Err(SupabaseError::ApiError(format!(
+                "라이센스 생성 실패: {}",
+                error_text
+            )))
+        }
+    }
+
     /// Generic database update method
     ///
     /// # Arguments
@@ -528,7 +668,7 @@ mod tests {
             "https://example.supabase.co".to_string(),
             "test-key".to_string(),
         );
-        let client = SupabaseClient::new(config);
+        let client = SupabaseClient::new(config).expect("Test client should be created");
 
         let user = SupabaseUser {
             id: "test-id".to_string(),

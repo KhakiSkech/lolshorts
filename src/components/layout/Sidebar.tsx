@@ -59,7 +59,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
               </div>
               <Badge
                 variant={user.tier === 'PRO' ? 'default' : 'secondary'}
-                className={user.tier === 'PRO' ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 border-yellow-600' : ''}
+                className={user.tier === 'PRO' ? 'bg-accent-pro text-accent-pro-foreground border-accent-pro' : ''}
               >
                 {user.tier || 'FREE'}
               </Badge>
@@ -68,10 +68,10 @@ export function Sidebar({ className = '' }: SidebarProps) {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full text-xs border-yellow-600 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700"
+                className="w-full text-xs border-accent-pro text-accent-pro hover:bg-accent-pro/10 hover:text-accent-pro-hover"
                 onClick={() => setAuthModalOpen(true)}
               >
-                ⭐ {t('auth.upgradeToPro')}
+                {t('auth.upgradeToPro')}
               </Button>
             )}
           </div>
