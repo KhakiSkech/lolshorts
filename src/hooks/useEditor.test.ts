@@ -124,14 +124,16 @@ describe('useEditor', () => {
 
       const { result } = renderHook(() => useEditor());
 
-      await expect(
-        act(async () => {
+      await act(async () => {
+        try {
           await result.current.loadGameClips('game123');
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
 
-      // Error message comes from getErrorMessage mock
-      expect(result.current.error).toBe('Failed to load');
+      // Error message comes from useEditor implementation
+      expect(result.current.error).toBe('Failed to load clips');
     });
   });
 

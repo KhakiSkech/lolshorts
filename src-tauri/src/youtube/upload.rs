@@ -37,6 +37,61 @@ pub struct VideoMetadata {
     pub made_for_kids: bool,
 }
 
+/// YouTube API limits
+const MAX_TITLE_LENGTH: usize = 100;
+const MAX_DESCRIPTION_LENGTH: usize = 5000;
+const MAX_TAG_LENGTH: usize = 500;
+const MAX_TOTAL_TAGS_LENGTH: usize = 500;
+
+impl VideoMetadata {
+    /// Validate metadata against YouTube API limits
+    pub fn validate(&self) -> Result<()> {
+        // Validate title
+        if self.title.is_empty() {
+            return Err(anyhow::anyhow!("Video title cannot be empty"));
+        }
+        if self.title.len() > MAX_TITLE_LENGTH {
+            return Err(anyhow::anyhow!(
+                "Video title exceeds {} characters (current: {})",
+                MAX_TITLE_LENGTH,
+                self.title.len()
+            ));
+        }
+
+        // Validate description
+        if self.description.len() > MAX_DESCRIPTION_LENGTH {
+            return Err(anyhow::anyhow!(
+                "Video description exceeds {} characters (current: {})",
+                MAX_DESCRIPTION_LENGTH,
+                self.description.len()
+            ));
+        }
+
+        // Validate individual tags
+        for tag in &self.tags {
+            if tag.len() > MAX_TAG_LENGTH {
+                return Err(anyhow::anyhow!(
+                    "Tag '{}...' exceeds {} characters",
+                    &tag[..20.min(tag.len())],
+                    MAX_TAG_LENGTH
+                ));
+            }
+        }
+
+        // Validate total tags length
+        let total_tags_len: usize = self.tags.iter().map(|t| t.len()).sum();
+        if total_tags_len > MAX_TOTAL_TAGS_LENGTH {
+            return Err(anyhow::anyhow!(
+                "Total tags length exceeds {} characters (current: {})",
+                MAX_TOTAL_TAGS_LENGTH,
+                total_tags_len
+            ));
+        }
+
+        Ok(())
+    }
+}
+
 /// YouTube video privacy status
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -115,6 +170,9 @@ impl YouTubeUploadClient {
         thumbnail_path: Option<&Path>,
     ) -> Result<YouTubeVideo> {
         info!("Starting YouTube video upload: {}", video_path.display());
+
+        // Validate metadata before upload
+        metadata.validate().context("Invalid video metadata")?;
 
         // Initialize progress
         self.update_progress(UploadProgress {
@@ -402,6 +460,9 @@ impl YouTubeUploadClient {
         thumbnail_path: Option<&Path>,
     ) -> Result<YouTubeVideo> {
         info!("Starting resumable YouTube upload: {}", video_path.display());
+
+        // Validate metadata before upload
+        metadata.validate().context("Invalid video metadata")?;
 
         // Get file size
         let file_metadata = tokio::fs::metadata(video_path)
