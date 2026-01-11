@@ -29,7 +29,7 @@ export function useAutoEditQuota() {
     } catch (err) {
       const errorMsg = getErrorMessage(err);
       setError(errorMsg);
-      console.error('Failed to fetch auto-edit quota:', err);
+      // Error is captured in state for UI display
       return null;
     } finally {
       setIsLoading(false);

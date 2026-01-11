@@ -27,8 +27,8 @@ export function useYouTube() {
     try {
       const status = await youtubeApi.getAuthStatus();
       setAuthStatus(status);
-    } catch (err) {
-      console.error('Failed to check auth status:', err);
+    } catch {
+      // Auth status check failure is non-critical - user not logged in
     }
   }, []);
 
@@ -41,8 +41,8 @@ export function useYouTube() {
     try {
       const history = await youtubeApi.getUploadHistory();
       setUploadHistory(history);
-    } catch (err) {
-      console.error('Failed to load history:', err);
+    } catch {
+      // History load failure is non-critical - will show empty list
     }
   };
 
@@ -50,8 +50,8 @@ export function useYouTube() {
     try {
       const quota = await youtubeApi.getQuotaInfo();
       return quota;
-    } catch (err) {
-      console.error('Failed to get quota info:', err);
+    } catch {
+      // Quota info failure is non-critical - returns null
       return null;
     }
   }, []);
@@ -140,8 +140,8 @@ export function useYouTube() {
     try {
       const progress = await youtubeApi.getUploadProgress();
       setUploadProgress(progress);
-    } catch (err) {
-      console.error('Failed to poll progress:', err);
+    } catch {
+      // Progress polling failure is non-critical - will retry next interval
     }
   }, []);
 
@@ -164,8 +164,8 @@ export function useYouTube() {
     try {
       await youtubeApi.addToHistory(video);
       await loadHistory();
-    } catch (err) {
-      console.error('Failed to add to history:', err);
+    } catch {
+      // History addition failure is non-critical
     }
   }, []);
 

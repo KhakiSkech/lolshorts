@@ -50,7 +50,6 @@ export function PaymentModal({ isOpen, onClose }: PaymentModalProps) {
 
       onClose();
     } catch (err) {
-      console.error("Failed to create subscription:", err);
       setError(getErrorMessage(err));
     } finally {
       setIsProcessing(false);

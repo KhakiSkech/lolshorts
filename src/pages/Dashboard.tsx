@@ -46,8 +46,7 @@ export function Dashboard() {
       const status = await lcuApi.getUnifiedGameStatus();
       setGameStatus(status);
       setLastUpdate(new Date());
-    } catch (error) {
-      console.error("Failed to get unified game status:", error);
+    } catch {
       // Reset game state on error (backend might be restarting)
       setGameStatus(prev => prev ? {
         ...prev,
@@ -67,8 +66,8 @@ export function Dashboard() {
       await lcuApi.connect();
       // After connect, immediately fetch status
       await updateGameStatus();
-    } catch (error) {
-      console.error("Failed to connect to LCU:", error);
+    } catch {
+      // LCU connection failure - will retry on next poll
     } finally {
       setIsConnecting(false);
     }
@@ -95,10 +94,9 @@ export function Dashboard() {
         if (!isMounted) return;
         setStats(statsResult);
 
-      } catch (error) {
+      } catch (err) {
         if (!isMounted) return;
-        console.error("Failed to initialize dashboard:", error);
-        setError(error instanceof Error ? error.message : t('dashboard.errors.initialization'));
+        setError(err instanceof Error ? err.message : t('dashboard.errors.initialization'));
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -139,16 +137,16 @@ export function Dashboard() {
   const handleStartRecording = async () => {
     try {
       await startRecording(); // Use store action
-    } catch (error) {
-      console.error("Failed to start recording:", error);
+    } catch {
+      // Error is handled in recording store
     }
   };
 
   const handleStopRecording = async () => {
     try {
       await stopRecording(); // Use store action
-    } catch (error) {
-      console.error("Failed to stop recording:", error);
+    } catch {
+      // Error is handled in recording store
     }
   };
 

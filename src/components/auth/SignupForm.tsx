@@ -27,9 +27,8 @@ export function SignupForm({ onSwitchToLogin, onSuccess }: SignupFormProps) {
         confirm_password: confirmPassword,
       });
       onSuccess?.();
-    } catch (error) {
+    } catch {
       // Error is already set in store
-      console.error("Signup failed:", error);
     }
   };
 
@@ -38,8 +37,8 @@ export function SignupForm({ onSwitchToLogin, onSuccess }: SignupFormProps) {
     try {
       await loginWithGoogle();
       // OAuth flow will redirect, so we don't call onSuccess here
-    } catch (error) {
-      console.error("Google login failed:", error);
+    } catch {
+      // Error is already set in store
     }
   };
 

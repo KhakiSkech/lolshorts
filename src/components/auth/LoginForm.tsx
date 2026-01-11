@@ -22,9 +22,8 @@ export function LoginForm({ onSwitchToSignup, onSuccess }: LoginFormProps) {
     try {
       await login({ email, password });
       onSuccess?.();
-    } catch (error) {
+    } catch {
       // Error is already set in store
-      console.error("Login failed:", error);
     }
   };
 
@@ -33,8 +32,8 @@ export function LoginForm({ onSwitchToSignup, onSuccess }: LoginFormProps) {
     try {
       await loginWithGoogle();
       // OAuth flow will redirect, so we don't call onSuccess here
-    } catch (error) {
-      console.error("Google login failed:", error);
+    } catch {
+      // Error is already set in store
     }
   };
 

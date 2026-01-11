@@ -65,8 +65,8 @@ export function RecordingControls() {
         video_quality: 'high', // Note: This mapping is lossy as backend doesn't have explicit 'quality' enum field in top level
         hardware_encoding: settings.video.encoder !== 'software'
       });
-    } catch (error) {
-      console.error('Failed to load settings:', error);
+    } catch {
+      // Settings load failure - will use defaults
     }
   };
 

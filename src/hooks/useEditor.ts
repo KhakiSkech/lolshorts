@@ -50,9 +50,9 @@ export function useEditor() {
     });
 
     return () => {
-      unlistenProgress.then(fn => fn());
-      unlistenComplete.then(fn => fn());
-      unlistenError.then(fn => fn());
+      unlistenProgress.then(fn => fn()).catch(() => {});
+      unlistenComplete.then(fn => fn()).catch(() => {});
+      unlistenError.then(fn => fn()).catch(() => {});
     };
   }, [setExportProgress, setExportStatus, setExportError, setExportOutputPath]);
 
@@ -92,7 +92,7 @@ export function useEditor() {
           return await videoApi.generateClipThumbnail(videoPath);
       }
     } catch (err) {
-      console.error('Failed to generate thumbnail:', err);
+      // Thumbnail generation failure is non-critical, just rethrow
       throw err;
     }
   }, []);

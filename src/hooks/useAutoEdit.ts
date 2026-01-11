@@ -142,8 +142,8 @@ export function useAutoEdit() {
       }
 
       return progress;
-    } catch (err) {
-      console.error('Failed to poll progress:', err);
+    } catch {
+      // Polling failure is non-critical - will retry next interval
       return null;
     }
   }, [setProgress]);

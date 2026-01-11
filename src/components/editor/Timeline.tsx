@@ -1,15 +1,17 @@
+import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { useEditorStore } from '@/stores/editorStore';
-import { TimelineClip } from './TimelineClip'; // Correctly import the component
-import { TimelineControls } from './TimelineControls'; // Re-add this import
+import { TimelineClip } from './TimelineClip';
+import { TimelineControls } from './TimelineControls';
 import { Film } from 'lucide-react';
 
 export function Timeline() {
   const { t } = useTranslation();
   const { timelineClips, reorderTimeline, zoom } = useEditorStore();
 
+  // Memoize sensors to prevent recreation on every render
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -18,11 +20,13 @@ export function Timeline() {
     })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  // Memoize clip IDs for SortableContext
+  const clipIds = useMemo(() => timelineClips.map(c => c.clip_id), [timelineClips]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      // Need to cast active.id and over.id to string if they come as UniqueIdentifier
       const oldIndex = timelineClips.findIndex(c => c.clip_id === active.id.toString());
       const newIndex = timelineClips.findIndex(c => c.clip_id === over.id.toString());
 
@@ -30,7 +34,7 @@ export function Timeline() {
         reorderTimeline(oldIndex, newIndex);
       }
     }
-  };
+  }, [timelineClips, reorderTimeline]);
 
   return (
     <div className="h-full flex flex-col">
@@ -56,7 +60,7 @@ export function Timeline() {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={timelineClips.map(c => c.clip_id)}
+              items={clipIds}
               strategy={horizontalListSortingStrategy}
             >
               <div className="flex gap-2 p-4 h-full items-center">

@@ -118,7 +118,6 @@ export const useRecordingStore = create<RecordingStore>((set, get) => ({
       await get().syncStatus();
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Failed to start recording';
-      console.error('Failed to start recording:', e);
       set({ error: errorMessage });
       throw e;
     }
@@ -132,7 +131,6 @@ export const useRecordingStore = create<RecordingStore>((set, get) => ({
       await get().syncStatus();
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'Failed to stop recording';
-      console.error('Failed to stop recording:', e);
       set({ error: errorMessage });
       throw e;
     }

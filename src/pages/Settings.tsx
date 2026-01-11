@@ -69,8 +69,8 @@ export function Settings() {
       // Use authApi
       const licenseData = await authApi.getUserLicense() as unknown as LicenseInfo; // Type casting for compatibility if needed
       setLicense(licenseData);
-    } catch (error) {
-      console.error("Failed to load license info:", error);
+    } catch {
+      // License info load failure - show free tier by default
     } finally {
       setIsLoadingLicense(false);
     }
@@ -82,8 +82,8 @@ export function Settings() {
       // Use settingsApi
       const settings = await settingsApi.getRecordingSettings();
       setRecordingSettings(settings);
-    } catch (error) {
-      console.error("Failed to load recording settings:", error);
+    } catch {
+      // Settings load failure - will use defaults
     } finally {
       setIsLoadingSettings(false);
     }
@@ -95,8 +95,8 @@ export function Settings() {
       // Use settingsApi
       await settingsApi.saveRecordingSettings(settings);
       setRecordingSettings(settings);
-    } catch (error) {
-      console.error("Failed to save recording settings:", error);
+    } catch {
+      // Save failure - settings remain unchanged
     } finally {
       setIsSavingSettings(false);
     }
@@ -109,8 +109,8 @@ export function Settings() {
       await settingsApi.resetToDefault();
       const defaultSettings = await settingsApi.getRecordingSettings();
       setRecordingSettings(defaultSettings);
-    } catch (error) {
-      console.error("Failed to reset settings:", error);
+    } catch {
+      // Reset failure - settings remain unchanged
     } finally {
       setIsSavingSettings(false);
     }
