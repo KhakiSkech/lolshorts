@@ -49,6 +49,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-
 
+      - name: Prepare pinned FFmpeg sidecars
+        shell: powershell
+        run: ./src-tauri/build_scripts/prepare_ffmpeg.ps1 -Source Download
+
       - name: Check formatting
         run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 
@@ -131,6 +135,10 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
+      - name: Prepare pinned FFmpeg sidecars
+        shell: powershell
+        run: ./src-tauri/build_scripts/prepare_ffmpeg.ps1 -Source Download
+
       - name: Build application
         run: npm run tauri build -- --debug
 
@@ -198,6 +206,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Prepare pinned FFmpeg sidecars
+        shell: powershell
+        run: ./src-tauri/build_scripts/prepare_ffmpeg.ps1 -Source Download
 
       - name: Build application (release mode)
         run: cargo tauri build --verbose
