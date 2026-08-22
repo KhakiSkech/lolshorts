@@ -2956,15 +2956,14 @@ mod capture_lifecycle_tests {
 
     #[tokio::test]
     async fn normal_child_exit_is_reported_as_graceful() {
-        let mut command = tokio::process::Command::new("powershell");
+        let mut command = tokio::process::Command::new("cmd.exe");
         command.args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            // PowerShell's Console.In handling differs between hosted Windows
-            // runners. Keep this test focused on the termination classification
-            // and let the production path remain responsible for writing q.
-            "Start-Sleep -Milliseconds 100; exit 0",
+            "/C",
+            // cmd.exe executes the command line without treating redirected
+            // stdin as a PowerShell command stream. Keep this test focused on
+            // termination classification; the production path remains
+            // responsible for writing q to FFmpeg.
+            "timeout /T 1 /NOBREAK > NUL & exit /B 0",
         ]);
         command
             .stdin(Stdio::piped())
