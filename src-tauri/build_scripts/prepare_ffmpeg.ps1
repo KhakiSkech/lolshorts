@@ -206,6 +206,10 @@ try {
 
     Install-Sidecars -FfmpegSource $downloadedFfmpeg.FullName -FfprobeSource $downloadedFfprobe.FullName
     Write-Host "Prepared FFmpeg sidecars from the pinned BtbN release."
+    # Keep the download path's process exit code explicit. Windows PowerShell
+    # can otherwise inherit a non-zero native-tool status from validation even
+    # after both sidecars were copied and verified successfully.
+    exit 0
 } finally {
     if (Test-Path -LiteralPath $TempRoot) {
         Remove-Item -LiteralPath $TempRoot -Recurse -Force
