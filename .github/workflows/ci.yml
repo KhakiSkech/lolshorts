@@ -230,9 +230,6 @@ jobs:
         # optional `cargo-tauri` subcommand, while npm ci provides the exact
         # @tauri-apps/cli version used by the application.
         run: npm run tauri build -- --verbose
-        env:
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
 
       - name: Verify installers created
         run: |

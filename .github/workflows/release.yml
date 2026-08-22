@@ -147,17 +147,21 @@ jobs:
           } else {
             'https://github.com/${{ github.repository }}/releases/download/updater-preview/latest.json'
           }
-          @{
-            bundle = @{ windows = @{ certificateThumbprint = '${{ steps.cert.outputs.thumbprint }}' } }
-            plugins = @{ updater = @{ endpoints = @($endpoint) } }
-          } | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath release-signing-config.json -Encoding utf8
+          $config = Get-Content -LiteralPath 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json
+          $config.bundle.createUpdaterArtifacts = $true
+          $config.bundle.windows.certificateThumbprint = '${{ steps.cert.outputs.thumbprint }}'
+          $config.plugins | Add-Member -MemberType NoteProperty -Name updater -Value ([pscustomobject]@{
+            pubkey = $env:TAURI_UPDATER_PUBKEY.Trim()
+            endpoints = @($endpoint)
+          }) -Force
+          $config | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath release-signing-config.json -Encoding utf8
           npx tauri build --bundles msi,nsis --config release-signing-config.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Validate signed installers and sidecars fail-closed
         shell: powershell
         run: |
-          ./scripts/verify-release-contract.ps1 -BundleDir src-tauri/target/release/bundle
+          ./scripts/verify-release-contract.ps1 -ConfigPath release-signing-config.json -BundleDir src-tauri/target/release/bundle
           $msi = Get-ChildItem src-tauri/target/release/bundle/msi -Filter *.msi | Select-Object -First 1
           $nsis = Get-ChildItem src-tauri/target/release/bundle/nsis -Filter *-setup.exe | Select-Object -First 1
           ./tests/installer/validate-installer.ps1 -InstallerPath $msi.FullName -InstallerType MSI -NonInteractive -RunSilentInstall -ReleaseChannel
