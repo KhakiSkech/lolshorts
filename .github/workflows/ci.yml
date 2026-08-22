@@ -49,9 +49,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-
 
-      - name: Prepare pinned FFmpeg sidecars
+      - name: Prepare compile-only FFmpeg resource fixtures
         shell: powershell
-        run: ./src-tauri/build_scripts/prepare_ffmpeg.ps1 -Source Download
+        run: |
+          # Cargo/Tauri validates externalBin paths while compiling tests, but
+          # this job never bundles or executes the media tools. Keep the large,
+          # checksum-pinned download in the installer/E2E jobs below.
+          New-Item -ItemType Directory -Path src-tauri/binaries -Force | Out-Null
+          New-Item -ItemType File -Path src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe -Force | Out-Null
+          New-Item -ItemType File -Path src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe -Force | Out-Null
 
       - name: Check formatting
         run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
