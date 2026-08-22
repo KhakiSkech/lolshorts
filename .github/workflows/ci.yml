@@ -9,8 +9,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  # Keep Tauri bundles under the same path used by the installer/QA scripts.
-  CARGO_TARGET_DIR: src-tauri/target
 
 jobs:
   # Backend tests (Rust)
@@ -154,6 +152,10 @@ jobs:
 
       - name: Build application
         run: npm run tauri build -- --debug
+        env:
+          # Tauri runs Cargo from src-tauri, so this resolves to
+          # src-tauri/target rather than src-tauri/src-tauri/target.
+          CARGO_TARGET_DIR: target
 
       - name: Run E2E tests
         run: npx playwright test
@@ -232,6 +234,8 @@ jobs:
         # optional `cargo-tauri` subcommand, while npm ci provides the exact
         # @tauri-apps/cli version used by the application.
         run: npm run tauri build -- --verbose
+        env:
+          CARGO_TARGET_DIR: target
 
       - name: Verify installers created
         run: |

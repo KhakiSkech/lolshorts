@@ -26,7 +26,6 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  CARGO_TARGET_DIR: src-tauri/target
 
 jobs:
   release-windows:
@@ -141,6 +140,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
           TAURI_UPDATER_PUBKEY: ${{ secrets.TAURI_UPDATER_PUBKEY }}
+          CARGO_TARGET_DIR: target
         run: |
           $channel = '${{ inputs.channel }}'
           $endpoint = if ($channel -eq 'stable') {
