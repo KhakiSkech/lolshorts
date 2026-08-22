@@ -35,10 +35,15 @@ pub async fn get_current_game(state: State<'_, AppState>) -> AppResult<Option<Ga
     let client = state.lcu_client.lock().await;
 
     if !client.is_connected() {
-        return Err(AppError::Lcu("LCU not connected. Call connect_lcu first.".to_string()));
+        return Err(AppError::Lcu(
+            "LCU not connected. Call connect_lcu first.".to_string(),
+        ));
     }
 
-    client.get_current_game().await.map_err(|e| AppError::Lcu(e.to_string()))
+    client
+        .get_current_game()
+        .await
+        .map_err(|e| AppError::Lcu(e.to_string()))
 }
 
 #[tauri::command]
@@ -50,7 +55,10 @@ pub async fn is_in_game(state: State<'_, AppState>) -> AppResult<bool> {
         return Ok(false);
     }
 
-    client.is_in_game().await.map_err(|e| AppError::Lcu(e.to_string()))
+    client
+        .is_in_game()
+        .await
+        .map_err(|e| AppError::Lcu(e.to_string()))
 }
 
 /// Get LCU performance metrics for monitoring
@@ -64,7 +72,10 @@ pub async fn get_lcu_metrics(state: State<'_, AppState>) -> AppResult<LcuMetrics
 #[tauri::command]
 pub async fn refresh_lcu_caches(state: State<'_, AppState>) -> AppResult<()> {
     let client = state.lcu_client.lock().await;
-    client.refresh_caches().await.map_err(|e| AppError::Lcu(e.to_string()))
+    client
+        .refresh_caches()
+        .await
+        .map_err(|e| AppError::Lcu(e.to_string()))
 }
 
 // ========================================================================
@@ -77,6 +88,11 @@ pub async fn list_match_history(
     begin_index: u32,
     end_index: u32,
 ) -> AppResult<Vec<MatchInfo>> {
+    if begin_index > end_index || end_index.saturating_sub(begin_index) > 100 {
+        return Err(AppError::Validation(
+            "Match-history range must be ordered and contain at most 100 matches".to_string(),
+        ));
+    }
     let client = state.lcu_client.lock().await;
     client
         .list_match_history(begin_index, end_index)
@@ -86,6 +102,7 @@ pub async fn list_match_history(
 
 #[tauri::command]
 pub async fn download_replay(state: State<'_, AppState>, game_id: i64) -> AppResult<()> {
+    validate_game_id(game_id)?;
     let client = state.lcu_client.lock().await;
     client
         .download_replay(game_id)
@@ -95,6 +112,7 @@ pub async fn download_replay(state: State<'_, AppState>, game_id: i64) -> AppRes
 
 #[tauri::command]
 pub async fn get_replay_status(state: State<'_, AppState>, game_id: i64) -> AppResult<String> {
+    validate_game_id(game_id)?;
     let client = state.lcu_client.lock().await;
     client
         .get_replay_status(game_id)
@@ -104,11 +122,21 @@ pub async fn get_replay_status(state: State<'_, AppState>, game_id: i64) -> AppR
 
 #[tauri::command]
 pub async fn launch_replay(state: State<'_, AppState>, game_id: i64) -> AppResult<()> {
+    validate_game_id(game_id)?;
     let client = state.lcu_client.lock().await;
     client
         .launch_replay(game_id)
         .await
         .map_err(|e| AppError::Lcu(e.to_string()))
+}
+
+fn validate_game_id(game_id: i64) -> AppResult<()> {
+    if game_id <= 0 {
+        return Err(AppError::Validation(
+            "Replay game_id must be a positive integer".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 #[tauri::command]

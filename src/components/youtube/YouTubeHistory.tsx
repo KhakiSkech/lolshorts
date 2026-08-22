@@ -1,13 +1,14 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useYouTube } from '@/hooks/useYouTube';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { History, ExternalLink, Eye } from 'lucide-react';
-import { UploadHistoryEntry } from '@/types/youtube';
-import { open } from '@tauri-apps/plugin-shell';
+import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { useYouTube } from "@/hooks/useYouTube";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { History, ExternalLink, Eye } from "lucide-react";
+import { UploadHistoryEntry } from "@/types/youtube";
+import { open } from "@tauri-apps/plugin-shell";
+import { logger } from "@/lib/logger";
 
 export function YouTubeHistory() {
   const { t } = useTranslation();
@@ -19,7 +20,7 @@ export function YouTubeHistory() {
       const data = await getUploadHistory();
       setHistory(data);
     } catch (err) {
-      console.error('Failed to load history:', err);
+      logger.error("Failed to load history:", err);
     }
   }, [getUploadHistory]);
 
@@ -31,15 +32,15 @@ export function YouTubeHistory() {
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
   const formatNumber = (num: number | null): string => {
-    if (num === null) return '0';
+    if (num === null) return "0";
     if (num >= 1_000_000) {
-      return (num / 1_000_000).toFixed(1) + 'M';
+      return (num / 1_000_000).toFixed(1) + "M";
     } else if (num >= 1_000) {
-      return (num / 1_000).toFixed(1) + 'K';
+      return (num / 1_000).toFixed(1) + "K";
     }
     return num.toString();
   };
@@ -50,44 +51,53 @@ export function YouTubeHistory() {
 
   if (!authStatus.authenticated) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('youtube.history.uploadHistory')}</CardTitle>
-          <CardDescription>
-            {t('youtube.history.connectAccountFirst')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="gaming-panel p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">
+            {t("youtube.history.uploadHistory")}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {t("youtube.history.connectAccountFirst")}
+          </p>
+        </div>
+        <div>
           <Alert>
             <AlertDescription>
-              {t('youtube.history.needToConnect')}
+              {t("youtube.history.needToConnect")}
             </AlertDescription>
           </Alert>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <div className="gaming-panel p-6">
+      <div className="mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <History className="h-6 w-6" />
             <div>
-              <CardTitle>{t('youtube.history.uploadHistory')}</CardTitle>
-              <CardDescription>
-                {t('youtube.history.recentVideos')}
-              </CardDescription>
+              <h3 className="text-lg font-semibold">
+                {t("youtube.history.uploadHistory")}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t("youtube.history.recentVideos")}
+              </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={loadHistory} disabled={isLoading}>
-            {t('youtube.history.refresh')}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadHistory}
+            disabled={isLoading}
+          >
+            {t("youtube.history.refresh")}
           </Button>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-4">
+      <div className="space-y-4">
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -96,14 +106,17 @@ export function YouTubeHistory() {
 
         {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">
-            {t('youtube.history.loadingHistory')}
+            {t("youtube.history.loadingHistory")}
           </div>
         ) : history.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>{t('youtube.history.noUploads')}</p>
-            <p className="text-sm">{t('youtube.history.uploadFirstVideo')}</p>
-          </div>
+          <EmptyState
+            title={t("youtube.history.noUploads")}
+            description={t(
+              "youtube.history.uploadFirstVideo",
+              "You haven't uploaded any videos yet. Start creating and sharing your highlights!",
+            )}
+            className="py-12"
+          />
         ) : (
           <div className="space-y-3">
             {history.map((entry) => (
@@ -143,7 +156,8 @@ export function YouTubeHistory() {
                       {formatNumber(entry.view_count)}
                     </span>
                     <span className="ml-auto">
-                      {t('youtube.history.uploaded')}: {formatDate(entry.uploaded_at)}
+                      {t("youtube.history.uploaded")}:{" "}
+                      {formatDate(entry.uploaded_at)}
                     </span>
                   </div>
 
@@ -154,7 +168,7 @@ export function YouTubeHistory() {
                       onClick={() => handleOpenVideo(entry.video_id)}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />
-                      {t('youtube.history.viewOnYouTube')}
+                      {t("youtube.history.viewOnYouTube")}
                     </Button>
                   </div>
                 </div>
@@ -162,7 +176,7 @@ export function YouTubeHistory() {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

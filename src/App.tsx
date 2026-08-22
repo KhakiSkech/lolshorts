@@ -1,37 +1,68 @@
-import { useEffect, lazy, Suspense } from "react";
-import { Router, Route, RootRoute, RouterProvider, Outlet } from "@tanstack/react-router";
+import { useEffect, lazy, Suspense, useState, type ReactNode } from "react";
+import {
+  Router,
+  Route,
+  RootRoute,
+  RouterProvider,
+  Outlet,
+  redirect,
+} from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-// Lazy load pages for better performance
-const Dashboard = lazy(() => import("@/pages/Dashboard").then(m => ({ default: m.Dashboard })));
-const Games = lazy(() => import("@/pages/Games").then(m => ({ default: m.Games })));
-const Editor = lazy(() => import("@/pages/Editor").then(m => ({ default: m.Editor })));
-const AutoEdit = lazy(() => import("@/pages/AutoEdit").then(m => ({ default: m.AutoEdit })));
-const Results = lazy(() => import("@/pages/Results").then(m => ({ default: m.Results })));
-const Replays = lazy(() => import("@/pages/Replays").then(m => ({ default: m.Replays }))); // Added Replays
-const YouTube = lazy(() => import("@/pages/YouTube").then(m => ({ default: m.YouTube })));
-const Settings = lazy(() => import("@/pages/Settings").then(m => ({ default: m.Settings })));
-const PaymentSuccess = lazy(() => import("@/pages/PaymentSuccess").then(m => ({ default: m.PaymentSuccess })));
-const PaymentFail = lazy(() => import("@/pages/PaymentFail").then(m => ({ default: m.PaymentFail })));
+import Overlay from "@/pages/Overlay";
+import { Home } from "@/pages/Home";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/lib/auth";
+import "./i18n"; // Initialize i18n with auto language detection
+import { ReplayTargetModal } from "@/components/overlay/ReplayTargetModal";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
+import { logger } from "@/lib/logger";
+import { settingsApi } from "@/api/settings";
+import { captureError, configureErrorTelemetry } from "@/lib/telemetry";
+import { AppUpdateDialog } from "@/components/updater/AppUpdateDialog";
+import { ProtectedFeature } from "@/components/auth/ProtectedFeature";
+
+// Lazy load secondary pages for better performance. The dashboard is eager-loaded
+// because it is the first route and must not leave the app in a blank Suspense state.
+const Editor = lazy(() =>
+  import("@/pages/Editor").then((m) => ({ default: m.Editor })),
+);
+const Results = lazy(() =>
+  import("@/pages/Results").then((m) => ({ default: m.Results })),
+);
+const Settings = lazy(() =>
+  import("@/pages/Settings").then((m) => ({ default: m.Settings })),
+);
+// Not in the sidebar, reached from 결과 — same pattern as /editor. It was briefly a
+// redirect, which cut the only path to `start_auto_edit` and left the app unable to
+// produce a highlight at all.
+const AutoEdit = lazy(() =>
+  import("@/pages/AutoEdit").then((m) => ({ default: m.AutoEdit })),
+);
+const PaymentSuccess = lazy(() =>
+  import("@/pages/PaymentSuccess").then((m) => ({ default: m.PaymentSuccess })),
+);
+const PaymentFail = lazy(() =>
+  import("@/pages/PaymentFail").then((m) => ({ default: m.PaymentFail })),
+);
 
 // Loading component for lazy loaded pages
 const LoadingSpinner = () => (
   <Card className="w-full h-96 flex items-center justify-center">
     <CardContent>
       <Loader2 className="h-8 w-8 animate-spin" />
-      <p className="mt-2 text-sm text-muted-foreground">Loading...</p>
+      <p className="mt-2 text-sm text-muted-foreground">로딩 중...</p>
     </CardContent>
   </Card>
 );
-import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/lib/auth";
-import "./i18n"; // Initialize i18n with auto language detection
-import { useState } from "react";
-import { ReplayTargetModal } from "@/components/overlay/ReplayTargetModal";
-import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
-import { lcuApi } from "@/api/lcu";
+
+const FeatureRoute = ({ children }: { children: ReactNode }) => (
+  <ErrorBoundary>
+    <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
+  </ErrorBoundary>
+);
 
 // Define root route
 const rootRoute = new RootRoute({
@@ -47,39 +78,40 @@ const indexRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/",
   component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
-      <Dashboard />
-    </Suspense>
+    <FeatureRoute>
+      <Home />
+    </FeatureRoute>
   ),
 });
 
+// Legacy top-level screens. They are no longer entry points of their own —
+// everything a user owns now lives on /results — but the paths stay alive so
+// old links, bookmarks and deep links land on the right tab instead of a 404.
 const gamesRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/games",
-  component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
-      <Games />
-    </Suspense>
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: "/results", search: { tab: "games" } });
+  },
 });
 
 const replaysRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/replays",
-  component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
-      <Replays />
-    </Suspense>
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: "/results", search: { tab: "replays" } });
+  },
 });
 
 const editorRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/editor",
   component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
-      <Editor />
-    </Suspense>
+    <FeatureRoute>
+      <ProtectedFeature requiresPro={false} featureName="Editor & export">
+        <Editor />
+      </ProtectedFeature>
+    </FeatureRoute>
   ),
 });
 
@@ -87,39 +119,47 @@ const autoEditRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/auto-edit",
   component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
+    <FeatureRoute>
       <AutoEdit />
-    </Suspense>
+    </FeatureRoute>
   ),
 });
+
+const RESULTS_TABS = ["clips", "highlights", "games", "replays"] as const;
+type ResultsTab = (typeof RESULTS_TABS)[number];
 
 const resultsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/results",
+  validateSearch: (search: Record<string, unknown>): { tab?: ResultsTab } => {
+    const tab = search.tab;
+    return typeof tab === "string" &&
+      (RESULTS_TABS as readonly string[]).includes(tab)
+      ? { tab: tab as ResultsTab }
+      : {};
+  },
   component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
+    <FeatureRoute>
       <Results />
-    </Suspense>
+    </FeatureRoute>
   ),
 });
 
 const youtubeRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/youtube",
-  component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
-      <YouTube />
-    </Suspense>
-  ),
+  beforeLoad: () => {
+    throw redirect({ to: "/results", search: { tab: "highlights" } });
+  },
 });
 
 const settingsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/settings",
   component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
+    <FeatureRoute>
       <Settings />
-    </Suspense>
+    </FeatureRoute>
   ),
 });
 
@@ -127,9 +167,9 @@ const paymentSuccessRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/payment/success",
   component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
+    <FeatureRoute>
       <PaymentSuccess />
-    </Suspense>
+    </FeatureRoute>
   ),
 });
 
@@ -137,9 +177,9 @@ const paymentFailRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/payment/fail",
   component: () => (
-    <Suspense fallback={<LoadingSpinner />}>
+    <FeatureRoute>
       <PaymentFail />
-    </Suspense>
+    </FeatureRoute>
   ),
 });
 
@@ -171,7 +211,23 @@ import { useRecordingStore } from "@/stores/recordingStore"; // Add import
 import { Toaster } from "@/components/ui/toaster";
 
 export default function App() {
-  const { checkAuth } = useAuthStore();
+  // Detect if this is the overlay window (loads /overlay URL without AppShell)
+  const isOverlay = window.location.pathname === "/overlay";
+  if (isOverlay) {
+    // The overlay window is `transparent: true`, but the global `body` rule paints
+    // an opaque dark background — which rendered the in-game REC badge as a black
+    // box sitting on top of the game. This class turns the window's background off
+    // (see the `.overlay-window` rule in styles/globals.css). Set synchronously
+    // rather than in an effect so the window never paints opaque for a frame.
+    document.documentElement.classList.add("overlay-window");
+    return <Overlay />;
+  }
+
+  return <MainApp />;
+}
+
+function MainApp() {
+  const { checkAuth, syncSession, syncSignedOut } = useAuthStore();
   const { startStatusPolling, stopStatusPolling } = useRecordingStore(); // Use hook
   const [isReplayModalOpen, setIsReplayModalOpen] = useState(false);
 
@@ -189,65 +245,38 @@ export default function App() {
     // Start polling recording status (sync frontend with backend)
     startStatusPolling();
 
-    // Listen for auth state changes (OAuth callbacks, logout, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Crash reporting is optional and follows the persisted user preference.
+    // A missing DSN or a disabled preference keeps the renderer fully local.
+    void settingsApi
+      .getRecordingSettings()
+      .then((settings) =>
+        configureErrorTelemetry(settings.crash_reporting_enabled),
+      )
+      .catch(() => configureErrorTelemetry(false));
+
+    // Keep Rust's command-authorization session aligned with Supabase JS. The
+    // callback stays synchronous to avoid blocking Supabase's auth event lock;
+    // network synchronization runs in a detached promise.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        // User signed in via OAuth or email/password
-        // Fetch or create user profile
-        const { error } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (error && error.code === 'PGRST116') {
-          // Profile doesn't exist, create it (for OAuth signups)
-          const { error: insertError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: session.user.id,
-              email: session.user.email!,
-              tier: 'FREE',
-            });
-
-          if (insertError) {
-            console.error('Failed to create profile:', insertError);
-          }
-        }
-
-        // Refresh auth state
-        if (isMounted) {
-          await checkAuth();
-        }
-      } else if (event === 'SIGNED_OUT') {
-        // User signed out
-        if (isMounted) {
-          await checkAuth();
-        }
+      if (
+        (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") &&
+        session
+      ) {
+        void syncSession(session).catch((error) => {
+          logger.error("Failed to synchronize refreshed auth session:", error);
+        });
+      } else if (event === "SIGNED_OUT") {
+        void syncSignedOut();
       }
     });
-
-    // Replay Detection Polling
-    const pollingInterval = setInterval(async () => {
-      if (!isMounted) return;
-      try {
-        const isConnected = await lcuApi.checkStatus();
-        if (isConnected) {
-          // Check if game started
-          // This logic needs refinement to differentiate Replay vs Live
-          // For MVP, we rely on manual trigger or assume if launch_replay was called recently
-        }
-      } catch {
-        // Ignore polling errors
-      }
-    }, 5000);
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
-      clearInterval(pollingInterval);
       stopStatusPolling();
     };
     // Note: These functions are stable from Zustand store, but we include them for eslint
@@ -257,10 +286,8 @@ export default function App() {
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
-        console.error('App-level error caught:', error, errorInfo);
-        if (import.meta.env.PROD) {
-          // sendToErrorTracking(error, errorInfo);
-        }
+        logger.error("App-level error caught:", error, errorInfo);
+        captureError(error, errorInfo.componentStack);
       }}
     >
       <RouterProvider router={router} />
@@ -269,6 +296,7 @@ export default function App() {
         onClose={() => setIsReplayModalOpen(false)}
       />
       <OnboardingModal />
+      <AppUpdateDialog />
       <Toaster />
     </ErrorBoundary>
   );

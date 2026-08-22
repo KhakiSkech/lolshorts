@@ -1,18 +1,48 @@
 pub mod auto_composer;
 pub mod commands;
-pub mod performance;
+pub mod media_job_executor;
+pub mod output_validation;
 pub mod processor;
 pub mod statistics;
 pub mod thumbnail;
 
 pub use auto_composer::{
-    AutoComposer, AutoEditConfig, AutoEditProgress, AutoEditResult, CanvasTemplate,
+    AutoComposer, AutoEditConfig, AutoEditJobReceipt, AutoEditPlan, AutoEditProgress,
+    AutoEditResult, CanvasTemplate,
+};
+pub use output_validation::{
+    OutputValidationIssue, OutputValidationReport, OutputValidationSeverity,
+    OutputValidationStatus, OutputValidator,
 };
 pub use processor::VideoProcessor;
 pub use statistics::get_global_stats;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tokio_util::sync::CancellationToken;
+
+tokio::task_local! {
+    static AUTO_EDIT_CANCELLATION: CancellationToken;
+    static AUTO_EDIT_JOB_ID: String;
+}
+
+/// Scope all nested FFmpeg calls and temporary artifacts to one auto-edit job.
+pub async fn with_auto_edit_context<F, T>(
+    job_id: String,
+    cancellation: CancellationToken,
+    future: F,
+) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    AUTO_EDIT_JOB_ID
+        .scope(job_id, AUTO_EDIT_CANCELLATION.scope(cancellation, future))
+        .await
+}
+
+pub(crate) fn current_auto_edit_job_id() -> Option<String> {
+    AUTO_EDIT_JOB_ID.try_with(Clone::clone).ok()
+}
 
 /// Video processing errors with user-friendly messages
 #[derive(Debug, Error)]
@@ -33,6 +63,9 @@ pub enum VideoError {
     // FFmpeg Errors
     #[error("FFmpeg is not installed or not found in system PATH\n\nPlease install FFmpeg from https://ffmpeg.org/download.html")]
     FfmpegNotFound,
+
+    #[error("FFprobe is not bundled or not found in system PATH\n\nVideo probing features need FFprobe beside FFmpeg.")]
+    FfprobeNotFound,
 
     #[error("FFmpeg process failed: {message}\n\nTechnical details: {stderr}")]
     FfmpegProcessError { message: String, stderr: String },
@@ -73,6 +106,9 @@ pub enum VideoError {
 
     #[error("Video processing timeout\n\nOperation took longer than {timeout_secs}s\n\nTry:\n- Processing fewer clips\n- Reducing video duration\n- Closing other applications")]
     Timeout { timeout_secs: u64 },
+
+    #[error("Auto-edit cancelled")]
+    Cancelled,
 
     // Generic fallback
     #[error("Video processing failed: {message}")]
@@ -139,6 +175,11 @@ impl VideoError {
                 "Add FFmpeg to your system PATH".to_string(),
                 "Restart the application after installing".to_string(),
             ],
+            Self::FfprobeNotFound => vec![
+                "Bundle FFprobe beside FFmpeg".to_string(),
+                "Run the FFmpeg preparation script before building installers".to_string(),
+                "Restart the application after installing FFprobe".to_string(),
+            ],
             Self::NoClipsFound => vec![
                 "Record more games to generate clips".to_string(),
                 "Check recording settings are enabled".to_string(),
@@ -182,44 +223,129 @@ fn extract_codec_from_stderr(stderr: &str) -> Option<String> {
 
 pub type Result<T> = std::result::Result<T, VideoError>;
 
+const FFMPEG_PROCESS_TIMEOUT_SECS: u64 = 30 * 60;
+
 /// Helper to execute FFmpeg command with proper error handling
 pub async fn execute_ffmpeg_command(command: &mut tokio::process::Command) -> Result<()> {
-    use tokio::io::AsyncReadExt;
+    use tokio::time::{timeout, Duration};
 
-    // Ensure stderr is piped
+    // Bound the number of concurrent offline FFmpeg processes. Held for the
+    // duration of this encode; released on drop. Realtime recording does not go
+    // through this path, so it is never throttled.
+    let mut pool_permit = crate::utils::ffmpeg_pool::global_ffmpeg_pool()
+        .acquire()
+        .await
+        .map_err(|e| VideoError::ProcessingError {
+            message: format!("FFmpeg pool acquire failed: {}", e),
+        })?;
+
     command.stderr(std::process::Stdio::piped());
     command.stdout(std::process::Stdio::null());
+    command.kill_on_drop(true);
 
-    let mut child = command.spawn().map_err(|e| {
+    let child = command.spawn().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             VideoError::FfmpegNotFound
         } else {
             VideoError::ProcessingError {
-                message: format!("Failed to spawn FFmpeg process: {}", e),
+                message: format!("Failed to execute FFmpeg process: {}", e),
             }
         }
     })?;
+    let pid = child.id();
+    pool_permit.register_process(&child).await;
+    let wait = timeout(
+        Duration::from_secs(FFMPEG_PROCESS_TIMEOUT_SECS),
+        child.wait_with_output(),
+    );
+    tokio::pin!(wait);
 
-    // Capture stderr for error messages
-    let mut stderr_output = String::new();
-    if let Some(mut stderr) = child.stderr.take() {
-        stderr.read_to_string(&mut stderr_output).await.ok();
+    let cancellation = AUTO_EDIT_CANCELLATION.try_with(Clone::clone).ok();
+    let wait_result = if let Some(token) = cancellation {
+        tokio::select! {
+            result = &mut wait => Some(result),
+            _ = token.cancelled() => {
+                if let Some(pid) = pid {
+                    terminate_process_tree(pid).await;
+                }
+                // A failed OS-level tree kill must not turn a user cancellation
+                // into a 30-minute wait. Dropping the still-running wait also
+                // triggers Tokio's kill_on_drop fallback for the direct child.
+                let _ = tokio::time::timeout(Duration::from_secs(5), &mut wait).await;
+                return Err(VideoError::Cancelled);
+            }
+        }
+    } else {
+        Some(wait.await)
+    };
+
+    let output = match wait_result {
+        Some(Ok(result)) => result,
+        Some(Err(_)) => {
+            if let Some(pid) = pid {
+                terminate_process_tree(pid).await;
+            }
+            return Err(VideoError::Timeout {
+                timeout_secs: FFMPEG_PROCESS_TIMEOUT_SECS,
+            });
+        }
+        None => unreachable!("cancellation branch returns immediately"),
     }
+    .map_err(|e| VideoError::ProcessingError {
+        message: format!("Failed to wait for FFmpeg process: {}", e),
+    })?;
 
-    // Wait for command to complete
-    let status = child
-        .wait()
-        .await
-        .map_err(|e| VideoError::ProcessingError {
-            message: format!("Failed to wait for FFmpeg process: {}", e),
-        })?;
-
-    // Check exit status
-    if !status.success() {
+    if !output.status.success() {
+        let stderr_output = String::from_utf8_lossy(&output.stderr);
         return Err(VideoError::from_ffmpeg_stderr(&stderr_output));
     }
 
     Ok(())
+}
+
+pub(crate) async fn terminate_process_tree(pid: u32) {
+    #[cfg(windows)]
+    {
+        let mut command = tokio::process::Command::new("taskkill");
+        command
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true);
+        match tokio::time::timeout(std::time::Duration::from_secs(5), command.status()).await {
+            Ok(Ok(status)) if status.success() => {}
+            Ok(Ok(status)) => tracing::warn!(
+                "taskkill returned {} while terminating FFmpeg process tree {}",
+                status,
+                pid
+            ),
+            Ok(Err(error)) => {
+                tracing::warn!("Failed to terminate FFmpeg process tree {}: {}", pid, error)
+            }
+            Err(_) => tracing::warn!("Timed out while terminating FFmpeg process tree {}", pid),
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let mut command = tokio::process::Command::new("kill");
+        command
+            .args(["-TERM", &pid.to_string()])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true);
+        match tokio::time::timeout(std::time::Duration::from_secs(5), command.status()).await {
+            Ok(Ok(status)) if status.success() => {}
+            Ok(Ok(status)) => tracing::warn!(
+                "kill returned {} while terminating FFmpeg process {}",
+                status,
+                pid
+            ),
+            Ok(Err(error)) => {
+                tracing::warn!("Failed to terminate FFmpeg process {}: {}", pid, error)
+            }
+            Err(_) => tracing::warn!("Timed out while terminating FFmpeg process {}", pid),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -234,6 +360,27 @@ pub struct ClipInfo {
     pub duration: Option<f64>,
     #[serde(default)]
     pub usage_count: u32, // Track usage for filtering
+    /// 하이라이트 점수(`recording::highlight_score`). 없으면 `priority` 로 되돌아간다.
+    ///
+    /// 이 값이 붙기 전에는 선택 순서가 `priority` (1~5) 뿐이었고, 그 눈금에서는
+    /// 퍼블·바론·게임종료가 전부 3점이라 어느 것이 먼저 나올지가 사실상 우연이었다.
+    #[serde(default)]
+    pub highlight_score: Option<f64>,
+    /// 이 클립 **안에서** 하이라이트가 일어나는 지점(초). `ClipMetadata` 와 같은 값.
+    ///
+    /// 저장 시점엔 알고 있는 값인데(`pre_duration`) 여기까지 오지 않아서, 하류가
+    /// 전부 "하이라이트 = 클립 중앙" 이라고 가정했다. 그 가정은 킬 클립(pre 10 /
+    /// post 3, 중앙 6.5초 ≈ 이벤트 10초)에서는 대충 맞지만 **게임 종료 클립
+    /// (pre 30 / post 10)에서는 20초를 빗나간다** — 40초를 12초로 줄이면 잘리는
+    /// 구간이 14~26초라 승리 순간(30초)이 통째로 빠졌다.
+    ///
+    /// 예전 클립에는 없다(`None`). 소비하는 쪽이 중앙으로 되돌아간다.
+    #[serde(default)]
+    pub event_offset_secs: Option<f64>,
+    /// 점수가 그렇게 나온 이유. 훅 자막의 둘째 줄이 되는 값이다
+    /// ("혼자서 · 1v3 · 체력 8%").
+    #[serde(default)]
+    pub score_reasons: Vec<crate::recording::highlight_score::ScoreReason>,
 }
 
 #[cfg(test)]

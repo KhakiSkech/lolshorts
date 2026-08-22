@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { paymentApi, SubscriptionDetails } from "@/api/payment";
 import {
   Dialog,
@@ -19,9 +19,10 @@ import {
   CheckCircle2,
   XCircle,
   Calendar,
-  Loader2
+  Loader2,
 } from "lucide-react";
 import { getErrorMessage } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 interface SubscriptionManagementProps {
   isOpen: boolean;
@@ -36,21 +37,23 @@ export function SubscriptionManagement({
   isOpen,
   onClose,
   currentTier,
-  expiresAt
+  expiresAt,
 }: SubscriptionManagementProps) {
   const { t } = useTranslation();
-  const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionDetails | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
   // Load subscription details when dialog opens
-  useState(() => {
+  useEffect(() => {
     if (isOpen && currentTier === "PRO") {
       loadSubscriptionDetails();
     }
-  });
+  }, [isOpen, currentTier]);
 
   const loadSubscriptionDetails = async () => {
     setIsLoading(true);
@@ -60,7 +63,7 @@ export function SubscriptionManagement({
       const details = await paymentApi.getSubscriptionDetails();
       setSubscription(details);
     } catch (err) {
-      console.error("Failed to load subscription:", err);
+      logger.error("Failed to load subscription:", err);
       setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
@@ -80,9 +83,9 @@ export function SubscriptionManagement({
       setShowCancelConfirm(false);
 
       // Show success message
-      alert(t('settings.account.cancelSuccess'));
+      alert(t("settings.account.cancelSuccess"));
     } catch (err) {
-      console.error("Failed to cancel subscription:", err);
+      logger.error("Failed to cancel subscription:", err);
       setError(getErrorMessage(err));
     } finally {
       setIsCancelling(false);
@@ -91,15 +94,12 @@ export function SubscriptionManagement({
 
   const formatDate = (dateStr: string): string => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("ko-KR", {
+    const locale = navigator.language || "ko-KR";
+    return date.toLocaleDateString(locale, {
       year: "numeric",
       month: "long",
-      day: "numeric"
+      day: "numeric",
     });
-  };
-
-  const getPeriodLabel = (period: string): string => {
-    return period === "MONTHLY" ? "Monthly" : "Yearly";
   };
 
   if (currentTier === "FREE") {
@@ -107,21 +107,19 @@ export function SubscriptionManagement({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>No Active Subscription</DialogTitle>
-            <DialogDescription>
-              You are currently on the FREE plan
-            </DialogDescription>
+            <DialogTitle>{t("subscription.noActive")}</DialogTitle>
+            <DialogDescription>{t("subscription.freePlan")}</DialogDescription>
           </DialogHeader>
 
           <div className="text-center py-6">
             <XCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <p className="text-sm text-muted-foreground">
-              Upgrade to PRO to access premium features and manage your subscription.
+              {t("subscription.upgradePrompt")}
             </p>
           </div>
 
           <DialogFooter>
-            <Button onClick={onClose}>Close</Button>
+            <Button onClick={onClose}>{t("common.close")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -135,10 +133,10 @@ export function SubscriptionManagement({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5" />
-              Subscription Management
+              {t("subscription.management")}
             </DialogTitle>
             <DialogDescription>
-              Manage your PRO subscription and billing details
+              {t("subscription.managementDesc")}
             </DialogDescription>
           </DialogHeader>
 
@@ -152,16 +150,37 @@ export function SubscriptionManagement({
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <span className="ml-2 text-sm text-muted-foreground">Loading subscription details...</span>
+              <span className="ml-2 text-sm text-muted-foreground">
+                {t("subscription.loadingDetails")}
+              </span>
             </div>
           ) : subscription ? (
             <div className="space-y-4">
+              {!subscription.payment_available && (
+                <Alert>
+                  <AlertCircle className="w-4 h-4" />
+                  <AlertDescription>
+                    {subscription.reason || subscription.payment_message}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Subscription Status */}
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Status</span>
-                <Badge variant={subscription.is_active ? "default" : "destructive"}>
-                  {subscription.is_active ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
-                  {subscription.is_active ? "ACTIVE" : "INACTIVE"}
+                <span className="text-sm text-muted-foreground">
+                  {t("subscription.status")}
+                </span>
+                <Badge
+                  variant={subscription.is_active ? "default" : "destructive"}
+                >
+                  {subscription.is_active ? (
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                  ) : (
+                    <XCircle className="w-3 h-3 mr-1" />
+                  )}
+                  {subscription.is_active
+                    ? t("subscription.active")
+                    : t("subscription.inactive")}
                 </Badge>
               </div>
 
@@ -170,17 +189,21 @@ export function SubscriptionManagement({
               {/* Plan Details */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Plan</span>
-                  <span className="font-medium">PRO - {getPeriodLabel(subscription.tier)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {t("subscription.plan")}
+                  </span>
+                  <span className="font-medium">{subscription.tier}</span>
                 </div>
 
                 {subscription.expires_at && !subscription.auto_renew && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      Access Until
+                      {t("subscription.accessUntil")}
                     </span>
-                    <span className="font-medium">{formatDate(subscription.expires_at)}</span>
+                    <span className="font-medium">
+                      {formatDate(subscription.expires_at)}
+                    </span>
                   </div>
                 )}
               </div>
@@ -192,13 +215,17 @@ export function SubscriptionManagement({
                 <Alert>
                   <AlertCircle className="w-4 h-4" />
                   <AlertDescription>
-                    Your subscription has been cancelled. You will retain PRO access until {expiresAt ? formatDate(expiresAt) : "expiry"}.
+                    {expiresAt
+                      ? t("subscription.cancelledNotice", {
+                          date: formatDate(expiresAt),
+                        })
+                      : t("subscription.cancelledNoticeNoDate")}
                   </AlertDescription>
                 </Alert>
               ) : (
                 <div className="text-sm text-muted-foreground space-y-2">
-                  <p>• Auto-renews on next billing date</p>
-                  <p>• Cancel anytime - keep access until end of billing period</p>
+                  <p>• {t("subscription.autoRenewInfo1")}</p>
+                  <p>• {t("subscription.autoRenewInfo2")}</p>
                 </div>
               )}
             </div>
@@ -206,14 +233,14 @@ export function SubscriptionManagement({
             <div className="text-center py-6">
               <AlertCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
               <p className="text-sm text-muted-foreground">
-                Failed to load subscription details. Please try again.
+                {t("subscription.loadFailed")}
               </p>
             </div>
           )}
 
           <DialogFooter className="flex gap-2">
             <Button variant="outline" onClick={onClose}>
-              Close
+              {t("common.close")}
             </Button>
 
             {subscription && subscription.auto_renew && (
@@ -221,7 +248,7 @@ export function SubscriptionManagement({
                 variant="destructive"
                 onClick={() => setShowCancelConfirm(true)}
               >
-                Cancel Subscription
+                {t("subscription.cancelSubscription")}
               </Button>
             )}
           </DialogFooter>
@@ -232,27 +259,29 @@ export function SubscriptionManagement({
       <Dialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-destructive">Cancel Subscription?</DialogTitle>
+            <DialogTitle className="text-destructive">
+              {t("subscription.cancelConfirmTitle")}
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel your PRO subscription?
+              {t("subscription.cancelConfirmDesc")}
             </DialogDescription>
           </DialogHeader>
 
           <Alert>
             <AlertCircle className="w-4 h-4" />
             <AlertDescription>
-              You will retain PRO access until the end of your billing period. After that, your account will be downgraded to FREE.
+              {t("subscription.cancelNotice")}
             </AlertDescription>
           </Alert>
 
           <div className="space-y-2 text-sm">
-            <p className="font-semibold">You will lose access to:</p>
+            <p className="font-semibold">{t("subscription.loseAccess")}</p>
             <ul className="list-disc list-inside text-muted-foreground space-y-1">
-              <li>Unlimited clips per game</li>
-              <li>Advanced video editor features</li>
-              <li>1080p60 export</li>
-              <li>Priority support</li>
-              <li>No watermarks</li>
+              <li>{t("subscription.loseUnlimitedClips")}</li>
+              <li>{t("subscription.loseAdvancedEditor")}</li>
+              <li>{t("subscription.lose1080p60")}</li>
+              <li>{t("subscription.losePrioritySupport")}</li>
+              <li>{t("subscription.loseNoWatermarks")}</li>
             </ul>
           </div>
 
@@ -262,7 +291,7 @@ export function SubscriptionManagement({
               onClick={() => setShowCancelConfirm(false)}
               disabled={isCancelling}
             >
-              Keep Subscription
+              {t("subscription.keepSubscription")}
             </Button>
 
             <Button
@@ -273,10 +302,10 @@ export function SubscriptionManagement({
               {isCancelling ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Cancelling...
+                  {t("subscription.cancelling")}
                 </>
               ) : (
-                "Yes, Cancel Subscription"
+                t("subscription.confirmCancel")
               )}
             </Button>
           </DialogFooter>

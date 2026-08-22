@@ -55,7 +55,7 @@ if [ ! -z "$RUST_STAGED" ]; then
 
     # Run clippy
     print_status $BLUE "Running Rust lints..."
-    if ! cargo clippy --all-targets --all-features -- -D warnings; then
+    if ! cargo clippy --all-targets -- -D warnings; then
         print_status $RED "❌ Rust code has linting errors."
         print_status $YELLOW "Fix the linting errors and try again."
         exit 1
@@ -123,16 +123,14 @@ fi
 # Check for security issues in Rust dependencies
 if [ ! -z "$RUST_STAGED" ]; then
     print_status $BLUE "🔒 Checking Rust security..."
-    cd src-tauri
 
-    if ! cargo audit --quiet; then
+    if ! cargo audit --file Cargo.lock --quiet; then
         print_status $RED "❌ Security vulnerabilities found in Rust dependencies."
-        print_status $YELLOW "Run 'cd src-tauri && cargo audit' for details."
+        print_status $YELLOW "Run 'cargo audit --file Cargo.lock' for details."
         print_status $YELLOW "Update vulnerable dependencies with 'cargo update'."
         exit 1
     fi
 
-    cd ..
     print_status $GREEN "✅ Security checks passed!"
 fi
 

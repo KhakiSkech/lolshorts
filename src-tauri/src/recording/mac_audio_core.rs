@@ -3,10 +3,12 @@
 //! Provides direct access to macOS audio hardware through Core Audio APIs
 //! when system_profiler is not available or insufficient
 
+use crate::utils::ffmpeg::get_ffmpeg_path;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_void};
+use std::path::PathBuf;
 
 // Core Audio imports (these would need to be bound properly)
 #[allow(dead_code)]
@@ -87,12 +89,18 @@ impl CoreAudioManager {
 
     /// Get input devices only
     pub fn get_input_devices(&self) -> Vec<&CoreAudioDevice> {
-        self.devices.iter().filter(|device| device.is_input).collect()
+        self.devices
+            .iter()
+            .filter(|device| device.is_input)
+            .collect()
     }
 
     /// Get output devices only
     pub fn get_output_devices(&self) -> Vec<&CoreAudioDevice> {
-        self.devices.iter().filter(|device| device.is_output).collect()
+        self.devices
+            .iter()
+            .filter(|device| device.is_output)
+            .collect()
     }
 
     /// Enumerate audio devices using available macOS APIs
@@ -163,20 +171,24 @@ impl CoreAudioManager {
         let device_id = self.generate_device_id(&name);
 
         let device_type = self.detect_device_type(json);
-        let channels = json.get("spdev_device_channel_count")
+        let channels = json
+            .get("spdev_device_channel_count")
             .and_then(|c| c.as_u64())
             .unwrap_or(2) as u32;
 
-        let sample_rate = json.get("spdev_device_nominal_samplerate")
+        let sample_rate = json
+            .get("spdev_device_nominal_samplerate")
             .and_then(|sr| sr.as_f64())
             .unwrap_or(44100.0);
 
-        let is_input = json.get("spdev_device_inputs")
+        let is_input = json
+            .get("spdev_device_inputs")
             .and_then(|i| i.as_u64())
             .map(|i| i > 0)
             .unwrap_or(false);
 
-        let is_output = json.get("spdev_device_outputs")
+        let is_output = json
+            .get("spdev_device_outputs")
             .and_then(|o| o.as_u64())
             .map(|o| o > 0)
             .unwrap_or(false);
@@ -257,7 +269,8 @@ impl CoreAudioManager {
 
     /// Get devices using FFmpeg
     fn get_ffmpeg_devices(&self) -> Result<Vec<CoreAudioDevice>> {
-        let ffmpeg_result = std::process::Command::new("ffmpeg")
+        let ffmpeg_path = get_ffmpeg_path().unwrap_or_else(|_| PathBuf::from("ffmpeg"));
+        let ffmpeg_result = std::process::Command::new(ffmpeg_path)
             .args(["-f", "avfoundation", "-list_devices", "true", "-i", ""])
             .output();
 
@@ -343,13 +356,12 @@ impl CoreAudioManager {
 
     /// Detect device type from JSON data
     fn detect_device_type(&self, json: &serde_json::Value) -> CoreAudioDeviceType {
-        let transport = json.get("spdev_device_transport_type")
+        let transport = json
+            .get("spdev_device_transport_type")
             .and_then(|t| t.as_str())
             .unwrap_or("");
 
-        let name = json.get("_name")
-            .and_then(|n| n.as_str())
-            .unwrap_or("");
+        let name = json.get("_name").and_then(|n| n.as_str()).unwrap_or("");
 
         if transport == "Bluetooth" || name.to_lowercase().contains("bluetooth") {
             CoreAudioDeviceType::Bluetooth

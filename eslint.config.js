@@ -61,8 +61,15 @@ export default tseslint.config(
       'node_modules/**',
       'dist/**',
       'build/**',
+      '.next/**',
+      'out/**',
       'target/**',
       'src-tauri/target/**',
+      // Local Rust test/build targets are generated artifacts too. Their names
+      // carry a suffix so parallel capture experiments can coexist.
+      '**/target-*/**',
+      '.turbo/**',
+      '*.generated.*',
       '**/*.config.js',
       '**/*.config.ts',
       'playwright.config.ts',

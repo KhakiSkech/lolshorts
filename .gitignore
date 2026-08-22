@@ -1,6 +1,6 @@
 # Rust
 /target
-Cargo.lock
+/target-*/
 *.rs.bk
 *.pdb
 
@@ -13,6 +13,7 @@ dist/
 
 # Tauri
 src-tauri/target/
+src-tauri/target-*/
 src-tauri/WixTools/
 .tauri/
 
@@ -28,6 +29,7 @@ src-tauri/WixTools/
 .env
 .env.local
 .env.*.local
+supabase/.temp/
 
 # Build outputs
 /dist
@@ -37,8 +39,13 @@ src-tauri/WixTools/
 coverage/
 .nyc_output/
 test-results/
+# `--output=` 로 따로 뽑는 경우(시각 검증 등)도 산출물이다.
+test-results-*/
 playwright-report/
-__mocks__/
+.playwright-mcp/
+output/
+qa-evidence/
+field-qa/
 
 # Legacy Archive
 LEGACY-ARCHIVE/
@@ -48,6 +55,8 @@ LEGACY-ARCHIVE.tar.gz
 AppData/
 storage/test/
 *.db
+*.db-shm
+*.db-wal
 
 # Logs
 *.log
@@ -66,6 +75,9 @@ claudedocs/
 # Temporary build artifacts
 *.tmp.*
 clippy_output.txt
+cargo_errors.txt
+test_output.txt
+src-tauri/test_ffmpeg.*
 
 # FFmpeg binaries (too large for GitHub - downloaded at build time)
 src-tauri/binaries/ffmpeg-master-latest-win64-gpl/

@@ -1,8 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { Games } from './Games';
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { Games } from "./Games";
+import { useEditorStore } from "@/stores/editorStore";
 
 // Mock i18n
-jest.mock('react-i18next', () => ({
+jest.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
@@ -11,7 +13,7 @@ jest.mock('react-i18next', () => ({
 // Mock router
 const mockNavigate = jest.fn();
 
-jest.mock('@tanstack/react-router', () => ({
+jest.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
@@ -21,7 +23,7 @@ const mockGetGameMetadata = jest.fn();
 const mockDeleteGame = jest.fn();
 const mockGetStorageStats = jest.fn();
 
-jest.mock('@/hooks/useStorage', () => ({
+jest.mock("@/hooks/useStorage", () => ({
   useStorage: () => ({
     listGames: mockListGames,
     getGameMetadata: mockGetGameMetadata,
@@ -33,32 +35,26 @@ jest.mock('@/hooks/useStorage', () => ({
 }));
 
 // Mock confirm dialog
-jest.mock('@/components/ui/confirm-dialog', () => ({
+jest.mock("@/components/ui/confirm-dialog", () => ({
   useConfirmDialog: () => ({
     confirm: jest.fn().mockResolvedValue(true),
     ConfirmDialog: () => null,
   }),
 }));
 
-// Mock feature access
-jest.mock('@/components/auth/ProtectedFeature', () => ({
-  useFeatureAccess: () => ({
-    isPro: false,
-  }),
-}));
-
 // Mock utils
-jest.mock('@/lib/utils', () => ({
-  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
-  formatDuration: (seconds: number) => `${Math.floor(seconds / 60)}:${seconds % 60}`,
+jest.mock("@/lib/utils", () => ({
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
+  formatDuration: (seconds: number) =>
+    `${Math.floor(seconds / 60)}:${seconds % 60}`,
   formatStorage: (bytes: number) => `${Math.round(bytes / 1024 / 1024)} MB`,
   pageStyles: {
-    container: 'container',
-    title: 'title',
+    container: "container",
+    title: "title",
   },
 }));
 
-describe('Games', () => {
+describe("Games", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockListGames.mockResolvedValue([]);
@@ -69,26 +65,26 @@ describe('Games', () => {
     });
   });
 
-  describe('Basic Rendering', () => {
-    it('should render games page title', async () => {
+  describe("Basic Rendering", () => {
+    it("should render games page title", async () => {
       render(<Games />);
 
       await waitFor(() => {
-        expect(screen.getByText('games.recordedGames')).toBeInTheDocument();
+        expect(screen.getByText("games.recordedGames")).toBeInTheDocument();
       });
     });
 
-    it('should render refresh button', async () => {
+    it("should render refresh button", async () => {
       render(<Games />);
 
       await waitFor(() => {
-        expect(screen.getByText('games.refresh')).toBeInTheDocument();
+        expect(screen.getByText("games.refresh")).toBeInTheDocument();
       });
     });
   });
 
-  describe('Statistics Display', () => {
-    it('should display storage stats', async () => {
+  describe("Statistics Display", () => {
+    it("should display storage stats", async () => {
       mockGetStorageStats.mockResolvedValue({
         total_games: 5,
         total_clips: 25,
@@ -98,14 +94,14 @@ describe('Games', () => {
       render(<Games />);
 
       await waitFor(() => {
-        expect(screen.getByText('5')).toBeInTheDocument();
-        expect(screen.getByText('25')).toBeInTheDocument();
-        expect(screen.getByText('games.stats.totalGames')).toBeInTheDocument();
-        expect(screen.getByText('games.stats.totalClips')).toBeInTheDocument();
+        expect(screen.getByText("5")).toBeInTheDocument();
+        expect(screen.getByText("25")).toBeInTheDocument();
+        expect(screen.getByText("games.stats.totalGames")).toBeInTheDocument();
+        expect(screen.getByText("games.stats.totalClips")).toBeInTheDocument();
       });
     });
 
-    it('should load stats on mount', async () => {
+    it("should load stats on mount", async () => {
       render(<Games />);
 
       await waitFor(() => {
@@ -114,30 +110,30 @@ describe('Games', () => {
     });
   });
 
-  describe('Empty State', () => {
-    it('should show empty state when no games', async () => {
+  describe("Empty State", () => {
+    it("should show empty state when no games", async () => {
       mockListGames.mockResolvedValue([]);
 
       render(<Games />);
 
       await waitFor(() => {
-        expect(screen.getByText('games.noGamesRecorded')).toBeInTheDocument();
+        expect(screen.getByText("games.noGamesRecorded")).toBeInTheDocument();
       });
     });
 
-    it('should show dashboard navigation in empty state', async () => {
+    it("should offer a way back home in empty state", async () => {
       mockListGames.mockResolvedValue([]);
 
       render(<Games />);
 
       await waitFor(() => {
-        expect(screen.getByText('games.goToDashboard')).toBeInTheDocument();
+        expect(screen.getByText("games.goHome")).toBeInTheDocument();
       });
     });
   });
 
-  describe('Games List', () => {
-    it('should load games on mount', async () => {
+  describe("Games List", () => {
+    it("should load games on mount", async () => {
       render(<Games />);
 
       await waitFor(() => {
@@ -145,26 +141,19 @@ describe('Games', () => {
       });
     });
 
-    it('should display game cards when games exist', async () => {
-      mockListGames.mockResolvedValue([
-        { game_id: 'game1' },
-        { game_id: 'game2' },
-      ]);
+    it("should display game cards when games exist", async () => {
+      mockListGames.mockResolvedValue(["game1", "game2"]);
 
       mockGetGameMetadata.mockImplementation((gameId: string) =>
         Promise.resolve({
           game_id: gameId,
-          champion: 'Yasuo',
-          game_mode: 'Ranked',
-          summoner_name: 'TestPlayer',
-          result: 'Win',
-          kills: 10,
-          deaths: 3,
-          assists: 7,
-          game_start_time: '2024-01-01T12:00:00Z',
-          game_duration: 1800,
-          created_at: '2024-01-01T12:30:00Z',
-        })
+          champion: "Yasuo",
+          game_mode: "Ranked",
+          start_time: "2024-01-01T12:00:00Z",
+          end_time: "2024-01-01T12:30:00Z",
+          result: "Win",
+          kda: { kills: 10, deaths: 3, assists: 7 },
+        }),
       );
 
       render(<Games />);
@@ -174,39 +163,85 @@ describe('Games', () => {
       });
     });
 
-    it('should display KDA for games', async () => {
-      mockListGames.mockResolvedValue([{ game_id: 'game1' }]);
+    it("should display KDA for games", async () => {
+      mockListGames.mockResolvedValue(["game1"]);
       mockGetGameMetadata.mockResolvedValue({
-        game_id: 'game1',
-        champion: 'Lux',
-        game_mode: 'ARAM',
-        summoner_name: 'Player',
-        result: 'Win',
-        kills: 15,
-        deaths: 2,
-        assists: 20,
-        game_start_time: '2024-01-01T12:00:00Z',
-        game_duration: 1200,
-        created_at: '2024-01-01T12:20:00Z',
+        game_id: "game1",
+        champion: "Lux",
+        game_mode: "ARAM",
+        start_time: "2024-01-01T12:00:00Z",
+        end_time: "2024-01-01T12:20:00Z",
+        result: "Win",
+        kda: { kills: 15, deaths: 2, assists: 20 },
       });
 
       render(<Games />);
 
       await waitFor(() => {
-        expect(screen.getByText('15 / 2 / 20')).toBeInTheDocument();
+        expect(screen.getByText("15 / 2 / 20")).toBeInTheDocument();
       });
+    });
+
+    it('opens a recorded game in the editor via "다듬기"', async () => {
+      mockListGames.mockResolvedValue(["game1"]);
+      mockGetGameMetadata.mockResolvedValue({
+        game_id: "game1",
+        champion: "Lux",
+        game_mode: "ARAM",
+        start_time: "2024-01-01T12:00:00Z",
+        end_time: "2024-01-01T12:20:00Z",
+        result: "Win",
+        kda: { kills: 15, deaths: 2, assists: 20 },
+      });
+
+      render(<Games />);
+
+      const polishButton = await screen.findByTestId("game-polish-game1");
+
+      expect(polishButton).toBeEnabled();
+
+      fireEvent.click(polishButton);
+
+      // The editor works off the selected game, so the selection has to be set
+      // as well — navigating alone would open an empty editor.
+      expect(useEditorStore.getState().selectedGameId).toBe("game1");
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/editor",
+        search: { gameId: "game1" },
+      });
+    });
+
+    it("no longer offers a manual auto-edit entry point", async () => {
+      mockListGames.mockResolvedValue(["game1"]);
+      mockGetGameMetadata.mockResolvedValue({
+        game_id: "game1",
+        champion: "Lux",
+        game_mode: "ARAM",
+        start_time: "2024-01-01T12:00:00Z",
+        end_time: "2024-01-01T12:20:00Z",
+        result: "Win",
+        kda: { kills: 15, deaths: 2, assists: 20 },
+      });
+
+      render(<Games />);
+
+      await screen.findByTestId("game-polish-game1");
+
+      expect(
+        screen.queryByRole("button", { name: "games.game.autoEdit" }),
+      ).not.toBeInTheDocument();
     });
   });
 
-  describe('Error Handling', () => {
-    it('should handle games list error gracefully', async () => {
-      mockListGames.mockRejectedValue(new Error('Network error'));
+  describe("Error Handling", () => {
+    it("should handle games list error gracefully", async () => {
+      mockListGames.mockRejectedValue(new Error("Network error"));
 
       render(<Games />);
 
       // Component should render without crashing
       await waitFor(() => {
-        expect(screen.getByText('games.recordedGames')).toBeInTheDocument();
+        expect(screen.getByText("games.recordedGames")).toBeInTheDocument();
       });
     });
   });

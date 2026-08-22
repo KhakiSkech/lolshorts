@@ -1,13 +1,16 @@
 pub mod auth;
+pub mod autostart;
 pub mod error;
-pub mod feature_gate;
 pub mod hotkey;
 pub mod lcu;
-pub mod payments;
+pub mod overlay;
+pub mod public_service_config;
 pub mod recording;
 pub mod settings;
 pub mod storage;
 pub mod supabase;
+pub mod tray;
+pub mod updater;
 pub mod utils;
 pub mod video;
 pub mod youtube;
@@ -23,7 +26,6 @@ pub use error::{AppError, AppResult};
 pub struct AppState {
     pub storage: Arc<storage::Storage>,
     pub auth: Arc<auth::AuthManager>,
-    pub feature_gate: Arc<feature_gate::FeatureGate>,
     pub recording_manager: Arc<RwLock<recording::RecordingManager>>,
     pub clip_manager: Arc<recording::auto_clip_manager::AutoClipManager>,
     pub game_monitor: Arc<recording::game_monitor::GameStateMonitor>,
@@ -35,4 +37,10 @@ pub struct AppState {
     pub video_processor: Arc<video::VideoProcessor>,
     pub youtube_manager: Arc<youtube::commands::YouTubeManager>,
     pub lcu_client: Arc<tokio::sync::Mutex<lcu::LcuClient>>,
+    pub startup_issues: Arc<RwLock<Vec<String>>>,
+    pub recording_disk_monitor: Arc<RwLock<Option<tokio::sync::watch::Sender<bool>>>>,
+    pub update_manager: Arc<updater::AppUpdateManager>,
+    pub media_job_executor: Arc<video::media_job_executor::MediaJobExecutor>,
+    pub public_service_status: public_service_config::PublicServiceStatus,
+    pub autostart_status: Arc<RwLock<autostart::AutostartStatus>>,
 }

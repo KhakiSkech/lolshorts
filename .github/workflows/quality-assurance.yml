@@ -1,13 +1,7 @@
-name: Quality Assurance
+name: Legacy Extended QA (Manual)
 
 on:
-  push:
-    branches: [main, master, develop]
-  pull_request:
-    branches: [main, master, develop]
-  schedule:
-    # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,11 +20,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "24.2.0"
+          cache: "npm"
+
+      - name: Pin npm
+        run: npm install --global npm@11.6.3
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.1
         with:
           components: rustfmt, clippy
 
@@ -41,13 +38,13 @@ jobs:
         run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 
       - name: Run Rust clippy
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
       - name: Run ESLint
         run: npm run lint
 
       - name: Check TypeScript types
-        run: npm run build || true # Fallback if type-check doesn't exist
+        run: npm run typecheck
 
       - name: Check Prettier formatting
         run: npx prettier --check "src/**/*.{ts,tsx,css}"
@@ -66,13 +63,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "24.2.0"
+          cache: "npm"
+
+      - name: Pin npm
+        run: npm install --global npm@11.6.3
 
       - name: Install dependencies
         run: npm ci
@@ -80,7 +80,7 @@ jobs:
       - name: Run backend benchmarks
         run: |
           cd src-tauri
-          cargo bench --all-features
+          cargo bench
 
       - name: Process benchmark results
         run: |
@@ -126,13 +126,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "24.2.0"
+          cache: "npm"
+
+      - name: Pin npm
+        run: npm install --global npm@11.6.3
 
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
@@ -148,32 +151,15 @@ jobs:
       - name: Run integration tests
         run: |
           cd src-tauri
-          cargo test --test integration --all-features -- --nocapture
+          cargo test --test integration -- --nocapture
 
-      - name: Test recording backend
+      - name: Document recording backend manual QA gap
         run: |
-          # Test recording functionality
-          echo "🎬 Testing recording backend..."
+          echo "::warning::Recording backend field QA still requires a live League Client session; automated coverage is provided by Rust unit and integration tests."
 
-          # Test LCU connection (mock)
-          echo "• Testing LCU client connectivity"
-
-          # Test video processing
-          echo "• Testing video processing pipeline"
-
-          # Test event detection
-          echo "• Testing game event detection"
-
-      - name: Test YouTube integration
+      - name: Document YouTube integration manual QA gap
         run: |
-          # Test YouTube API integration (with mock data)
-          echo "📺 Testing YouTube integration..."
-
-          # Test OAuth flow (mock)
-          echo "• Testing OAuth authentication flow"
-
-          # Test upload functionality (mock)
-          echo "• Testing video upload functionality"
+          echo "::warning::YouTube OAuth/upload field QA requires configured credentials and a test account; this workflow does not perform a real upload."
 
       - name: Upload test results
         if: always()
@@ -198,11 +184,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "24.2.0"
+          cache: "npm"
+
+      - name: Pin npm
+        run: npm install --global npm@11.6.3
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.1
 
       - name: Install dependencies
         run: npm ci
@@ -255,17 +244,20 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.94.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "24.2.0"
+
+      - name: Pin npm
+        run: npm install --global npm@11.6.3
 
       - name: Run Rust security audit
         run: |
-          cargo install cargo-audit
-          cargo audit --manifest-path src-tauri/Cargo.toml
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit --file Cargo.lock
 
       - name: Run cargo-deny security check
         uses: EmbarkStudios/cargo-deny-action@v1
@@ -276,12 +268,12 @@ jobs:
         run: npm ci
 
       - name: Run npm audit
-        run: npm audit --audit-level=moderate
+        run: npm audit --omit=dev --audit-level=moderate
 
       - name: Run CodeQL Analysis
         uses: github/codeql-action/init@v3
         with:
-          languages: 'javascript, typescript'
+          languages: "javascript, typescript"
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
@@ -309,7 +301,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "24.2.0"
+
+      - name: Pin npm
+        run: npm install --global npm@11.6.3
 
       - name: Install dependencies
         run: npm ci
@@ -353,7 +348,14 @@ jobs:
   quality-report:
     name: Quality Metrics Report
     runs-on: ubuntu-latest
-    needs: [code-quality, performance-benchmarks, integration-tests, security-scan, license-check]
+    needs:
+      [
+        code-quality,
+        performance-benchmarks,
+        integration-tests,
+        security-scan,
+        license-check,
+      ]
     if: always()
 
     steps:

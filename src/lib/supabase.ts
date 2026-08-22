@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
+import { resolveFrontendSupabaseConfig } from "./supabaseConfig";
 
 // Environment helpers - works in both Vite and Jest
 const getEnvVar = (key: string): string | undefined => {
@@ -15,7 +16,7 @@ const isProd = (): boolean => {
   try {
     return import.meta.env?.PROD ?? false;
   } catch {
-    return process.env.NODE_ENV === 'production';
+    return process.env.NODE_ENV === "production";
   }
 };
 
@@ -23,41 +24,41 @@ const isDev = (): boolean => {
   try {
     return import.meta.env?.DEV ?? false;
   } catch {
-    return process.env.NODE_ENV !== 'production';
+    return process.env.NODE_ENV !== "production";
   }
 };
 
 // Supabase configuration - requires environment variables
-const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
-
-// Validate configuration in production
-if (isProd()) {
-  if (!supabaseUrl) {
-    throw new Error('[Security] VITE_SUPABASE_URL is required in production');
-  }
-  if (!supabaseAnonKey) {
-    throw new Error('[Security] VITE_SUPABASE_ANON_KEY is required in production');
-  }
-}
-
-// Development fallback - only for local development
-const devSupabaseUrl = supabaseUrl || 'http://localhost:54321';
-const devSupabaseAnonKey = supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
+const supabaseUrl = getEnvVar("VITE_SUPABASE_URL");
+const supabaseAnonKey = getEnvVar("VITE_SUPABASE_ANON_KEY");
+const resolvedConfig = resolveFrontendSupabaseConfig(
+  supabaseUrl,
+  supabaseAnonKey,
+  isProd(),
+);
 
 // Log warning in development if using fallbacks
 if (isDev() && (!supabaseUrl || !supabaseAnonKey)) {
-  console.info('[Dev] Using local Supabase development server. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY for remote server.');
+  // eslint-disable-next-line no-console
+  console.info(
+    "[Dev] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY not set. Auth features will be unavailable without a valid anon key.",
+  );
 }
 
-export const supabase = createClient(devSupabaseUrl, devSupabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
+export const supabase = createClient(
+  resolvedConfig.url,
+  resolvedConfig.anonKey,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      // The desktop release intentionally exposes no browser OAuth/deep-link
+      // callback. Do not interpret arbitrary WebView URL fragments as sessions.
+      detectSessionInUrl: false,
+      flowType: "pkce",
+    },
   },
-});
+);
 
 export type Database = {
   public: {
@@ -68,9 +69,6 @@ export type Database = {
           email: string;
           display_name: string | null;
           avatar_url: string | null;
-          tier: 'FREE' | 'PRO';
-          subscription_status: 'active' | 'canceled' | 'expired' | 'trialing' | null;
-          subscription_expires_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -79,19 +77,26 @@ export type Database = {
           email: string;
           display_name?: string | null;
           avatar_url?: string | null;
-          tier?: 'FREE' | 'PRO';
-          subscription_status?: 'active' | 'canceled' | 'expired' | 'trialing' | null;
-          subscription_expires_at?: string | null;
         };
         Update: {
-          id?: string;
-          email?: string;
           display_name?: string | null;
           avatar_url?: string | null;
-          tier?: 'FREE' | 'PRO';
-          subscription_status?: 'active' | 'canceled' | 'expired' | 'trialing' | null;
-          subscription_expires_at?: string | null;
         };
+      };
+      user_licenses: {
+        Row: {
+          id: string;
+          user_id: string;
+          tier: "FREE" | "PRO";
+          status: "active" | "inactive" | "expired" | "cancelled" | "none";
+          started_at: string | null;
+          expires_at: string | null;
+          cancelled_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
       };
       games: {
         Row: {
@@ -101,7 +106,7 @@ export type Database = {
           game_end_time: string | null;
           champion_name: string | null;
           game_mode: string | null;
-          game_result: 'Victory' | 'Defeat' | 'Remake' | null;
+          game_result: "Victory" | "Defeat" | "Remake" | null;
           kills: number;
           deaths: number;
           assists: number;
@@ -116,7 +121,7 @@ export type Database = {
           game_end_time?: string | null;
           champion_name?: string | null;
           game_mode?: string | null;
-          game_result?: 'Victory' | 'Defeat' | 'Remake' | null;
+          game_result?: "Victory" | "Defeat" | "Remake" | null;
           kills?: number;
           deaths?: number;
           assists?: number;
@@ -129,7 +134,7 @@ export type Database = {
           game_end_time?: string | null;
           champion_name?: string | null;
           game_mode?: string | null;
-          game_result?: 'Victory' | 'Defeat' | 'Remake' | null;
+          game_result?: "Victory" | "Defeat" | "Remake" | null;
           kills?: number;
           deaths?: number;
           assists?: number;

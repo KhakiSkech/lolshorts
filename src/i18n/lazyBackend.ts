@@ -5,7 +5,8 @@
  * significantly reducing initial bundle size by only loading the active language.
  */
 
-import { BackendModule, ReadCallback } from 'i18next';
+import { BackendModule, ReadCallback } from "i18next";
+import { logger } from "@/lib/logger";
 
 interface LazyBackendOptions {
   loadPath: string;
@@ -17,18 +18,22 @@ interface LazyBackendOptions {
  * @param language - Language code (e.g., 'en', 'ko', 'zh-CN')
  * @returns Promise resolving to the translation object
  */
-async function loadTranslation(language: string): Promise<Record<string, unknown>> {
+async function loadTranslation(
+  language: string,
+): Promise<Record<string, unknown>> {
   try {
     // Normalize language code for file path (e.g., 'zh-CN' -> 'zh-CN')
     const normalizedLang = language;
 
     // Dynamic import based on language code
     // Vite will create separate chunks for each language file
-    const module = await import(`../locales/${normalizedLang}/translation.json`);
+    const module = await import(
+      `../locales/${normalizedLang}/translation.json`
+    );
 
     return module.default || module;
   } catch (error) {
-    console.error(`Failed to load translation for language: ${language}`, error);
+    logger.error(`Failed to load translation for language: ${language}`, error);
     throw new Error(`Translation file not found: ${language}`);
   }
 }
@@ -37,23 +42,19 @@ async function loadTranslation(language: string): Promise<Record<string, unknown
  * Custom backend plugin for i18next that loads translations lazily
  */
 export const LazyBackend: BackendModule<LazyBackendOptions> = {
-  type: 'backend',
+  type: "backend",
 
   init(
     _services: unknown,
     _backendOptions: LazyBackendOptions,
-    _i18nextOptions: unknown
+    _i18nextOptions: unknown,
   ) {
     // No initialization needed
   },
 
-  read(
-    language: string,
-    namespace: string,
-    callback: ReadCallback
-  ) {
+  read(language: string, namespace: string, callback: ReadCallback) {
     // Only support 'translation' namespace
-    if (namespace !== 'translation') {
+    if (namespace !== "translation") {
       callback(new Error(`Unsupported namespace: ${namespace}`), null);
       return;
     }

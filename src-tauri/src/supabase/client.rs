@@ -1,9 +1,5 @@
-use super::{
-    License, RefreshTokenRequest, Result, Session, SignInRequest, SignUpRequest, SupabaseError,
-    SupabaseErrorResponse, SupabaseUser,
-};
+use super::{License, Result, SupabaseError, SupabaseUser};
 use reqwest::Client;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{debug, error, info};
 
 #[derive(Debug, Clone)]
@@ -45,7 +41,9 @@ impl SupabaseClient {
         let client = Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .map_err(|e| SupabaseError::ConfigError(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| {
+                SupabaseError::ConfigError(format!("Failed to create HTTP client: {}", e))
+            })?;
 
         Ok(Self { client, config })
     }
@@ -53,151 +51,6 @@ impl SupabaseClient {
     pub fn from_env() -> Result<Self> {
         let config = SupabaseConfig::from_env()?;
         Self::new(config)
-    }
-
-    /// Sign up a new user with email and password
-    pub async fn sign_up(&self, email: &str, password: &str) -> Result<Session> {
-        info!("Attempting to sign up user: {}", email);
-
-        // Check if email confirmation should be disabled (for development)
-        let disable_email_confirm = std::env::var("SUPABASE_DISABLE_EMAIL_CONFIRM")
-            .unwrap_or_else(|_| "false".to_string())
-            .to_lowercase()
-            == "true";
-
-        let mut url = format!("{}/auth/v1/signup", self.config.project_url);
-
-        // Add autoconfirm parameter if email confirmation is disabled
-        if disable_email_confirm {
-            url.push_str("?autoconfirm=true");
-            info!("Email confirmation disabled for development");
-        }
-
-        let response = self
-            .client
-            .post(&url)
-            .header("apikey", &self.config.anon_key)
-            .header("Content-Type", "application/json")
-            .json(&SignUpRequest {
-                email: email.to_string(),
-                password: password.to_string(),
-            })
-            .send()
-            .await?;
-
-        if response.status().is_success() {
-            let session: Session = response.json().await.map_err(|e| {
-                error!("Failed to parse sign up response: {}", e);
-                SupabaseError::InvalidResponse(e.to_string())
-            })?;
-
-            info!("Sign up successful for user: {}", email);
-            Ok(session)
-        } else {
-            let error_response: SupabaseErrorResponse = response.json().await.map_err(|e| {
-                error!("Failed to parse error response: {}", e);
-                SupabaseError::InvalidResponse(e.to_string())
-            })?;
-
-            error!("Sign up failed for {}: {}", email, error_response.error);
-            Err(SupabaseError::AuthFailed(format!(
-                "{}: {}",
-                error_response.error,
-                error_response.error_description.unwrap_or_default()
-            )))
-        }
-    }
-
-    /// Sign in an existing user with email and password
-    pub async fn sign_in(&self, email: &str, password: &str) -> Result<Session> {
-        info!("Attempting to sign in user: {}", email);
-
-        let url = format!(
-            "{}/auth/v1/token?grant_type=password",
-            self.config.project_url
-        );
-
-        let response = self
-            .client
-            .post(&url)
-            .header("apikey", &self.config.anon_key)
-            .header("Content-Type", "application/json")
-            .json(&SignInRequest {
-                email: email.to_string(),
-                password: password.to_string(),
-            })
-            .send()
-            .await?;
-
-        if response.status().is_success() {
-            let session: Session = response.json().await.map_err(|e| {
-                error!("Failed to parse sign in response: {}", e);
-                SupabaseError::InvalidResponse(e.to_string())
-            })?;
-
-            info!("Sign in successful for user: {}", email);
-            Ok(session)
-        } else {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-
-            error!("Sign in failed for {}: {} - {}", email, status, error_text);
-
-            if status == reqwest::StatusCode::BAD_REQUEST {
-                Err(SupabaseError::AuthFailed(
-                    "Invalid email or password".to_string(),
-                ))
-            } else if status == reqwest::StatusCode::UNAUTHORIZED {
-                Err(SupabaseError::Unauthorized(
-                    "Unauthorized access".to_string(),
-                ))
-            } else {
-                Err(SupabaseError::ApiError(error_text))
-            }
-        }
-    }
-
-    /// Refresh an existing session using a refresh token
-    pub async fn refresh_token(&self, refresh_token: &str) -> Result<Session> {
-        debug!("Attempting to refresh session token");
-
-        let url = format!(
-            "{}/auth/v1/token?grant_type=refresh_token",
-            self.config.project_url
-        );
-
-        let response = self
-            .client
-            .post(&url)
-            .header("apikey", &self.config.anon_key)
-            .header("Content-Type", "application/json")
-            .json(&RefreshTokenRequest {
-                refresh_token: refresh_token.to_string(),
-            })
-            .send()
-            .await?;
-
-        if response.status().is_success() {
-            let session: Session = response.json().await.map_err(|e| {
-                error!("Failed to parse refresh token response: {}", e);
-                SupabaseError::InvalidResponse(e.to_string())
-            })?;
-
-            info!("Token refresh successful");
-            Ok(session)
-        } else {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-
-            error!("Token refresh failed: {} - {}", status, error_text);
-            Err(SupabaseError::AuthFailed(error_text))
-        }
     }
 
     /// Get user details using an access token
@@ -269,16 +122,6 @@ impl SupabaseClient {
         }
     }
 
-    /// Check if an access token is expired
-    pub fn is_token_expired(&self, session: &Session) -> bool {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs() as i64;
-
-        session.expires_at <= now
-    }
-
     /// Get the Supabase configuration
     pub fn config(&self) -> &SupabaseConfig {
         &self.config
@@ -294,13 +137,13 @@ impl SupabaseClient {
         &self.config.anon_key
     }
 
-    /// Get user's license from database
+    /// Get user's license from the authoritative Supabase user_licenses table.
     pub async fn get_user_license(
         &self,
         user_id: &str,
         access_token: &str,
     ) -> Result<Option<License>> {
-        let url = format!("{}/rest/v1/licenses", self.config.project_url);
+        let url = format!("{}/rest/v1/user_licenses", self.config.project_url);
 
         let response = self
             .client
@@ -310,6 +153,7 @@ impl SupabaseClient {
             .header("Content-Type", "application/json")
             .query(&[("user_id", format!("eq.{}", user_id))])
             .query(&[("select", "*")])
+            .query(&[("order", "created_at.desc")])
             .send()
             .await?;
 
@@ -318,7 +162,7 @@ impl SupabaseClient {
                 SupabaseError::InvalidResponse(format!("Failed to parse license: {}", e))
             })?;
 
-            Ok(licenses.into_iter().next())
+            Ok(select_current_license(licenses))
         } else {
             let status = response.status();
             let error_text = response
@@ -329,6 +173,63 @@ impl SupabaseClient {
             Err(SupabaseError::ApiError(format!(
                 "Failed to fetch license: {}",
                 status
+            )))
+        }
+    }
+
+    /// Invoke a Supabase Edge Function with the user's access token.
+    ///
+    /// Posts `body` as JSON to `{project_url}/functions/v1/{name}` with the
+    /// caller's bearer token so the function can verify the JWT (mirrors the
+    /// `apikey` + `Authorization` header convention used elsewhere in this
+    /// client). Uses a deliberately short per-request timeout: callers treat a
+    /// failure here as "server unreachable" and fall back to their local path,
+    /// so a slow function must not stall a user-facing action.
+    pub async fn call_edge_function<B: serde::Serialize>(
+        &self,
+        name: &str,
+        access_token: &str,
+        body: &B,
+    ) -> Result<serde_json::Value> {
+        let url = format!(
+            "{}/functions/v1/{}",
+            self.config.project_url.trim_end_matches('/'),
+            name
+        );
+
+        let response = self
+            .client
+            .post(&url)
+            .header("apikey", &self.config.anon_key)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .header("Content-Type", "application/json")
+            .timeout(std::time::Duration::from_secs(5))
+            .json(body)
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            response.json().await.map_err(|e| {
+                SupabaseError::InvalidResponse(format!(
+                    "Failed to parse edge function '{}' response: {}",
+                    name, e
+                ))
+            })
+        } else {
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            tracing::warn!(
+                "Edge function '{}' returned {}: {}",
+                name,
+                status,
+                error_text
+            );
+            Err(SupabaseError::ApiError(format!(
+                "Edge function '{}' failed: {} - {}",
+                name, status, error_text
             )))
         }
     }
@@ -438,144 +339,22 @@ impl SupabaseClient {
         }
     }
 
-    /// 사용자 라이센스를 PRO로 업그레이드
+    /// Client-side license upgrades are intentionally disabled.
     ///
-    /// TossPayments 결제 성공 후 라이센스를 PRO 티어로 업그레이드합니다.
-    ///
-    /// # Arguments
-    /// * `user_id` - 사용자 ID
-    /// * `access_token` - 액세스 토큰
-    /// * `order_id` - TossPayments 주문 ID
-    /// * `payment_key` - TossPayments 결제 키
-    /// * `amount` - 결제 금액
+    /// Live billing is deferred. When payment is enabled, a trusted server-side
+    /// payment approval/webhook path must update `payments`, `subscriptions`,
+    /// and `user_licenses`; the desktop client must not grant PRO directly.
     pub async fn upgrade_user_license(
         &self,
-        user_id: &str,
-        access_token: &str,
-        order_id: &str,
-        payment_key: &str,
-        amount: i64,
+        _user_id: &str,
+        _access_token: &str,
+        _order_id: &str,
+        _payment_key: &str,
+        _amount: i64,
     ) -> Result<()> {
-        info!("라이센스 업그레이드 시작: user_id={}", user_id);
-
-        // 1년 후 만료일 계산
-        let expires_at = chrono::Utc::now()
-            .checked_add_signed(chrono::Duration::days(365))
-            .map(|dt| dt.format("%Y-%m-%dT%H:%M:%SZ").to_string());
-
-        let update_data = serde_json::json!({
-            "tier": "PRO",
-            "status": "ACTIVE",
-            "expires_at": expires_at,
-            "metadata": {
-                "order_id": order_id,
-                "payment_key": payment_key,
-                "amount": amount,
-                "upgraded_at": chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
-            }
-        });
-
-        let url = format!("{}/rest/v1/licenses", self.config.project_url);
-
-        let response = self
-            .client
-            .patch(&url)
-            .header("apikey", &self.config.anon_key)
-            .header("Authorization", format!("Bearer {}", access_token))
-            .header("Content-Type", "application/json")
-            .header("Prefer", "return=representation")
-            .query(&[("user_id", format!("eq.{}", user_id))])
-            .json(&update_data)
-            .send()
-            .await?;
-
-        if response.status().is_success() {
-            let result: serde_json::Value = response.json().await.map_err(|e| {
-                error!("라이센스 업그레이드 응답 파싱 실패: {}", e);
-                SupabaseError::InvalidResponse(e.to_string())
-            })?;
-
-            // 업데이트된 레코드가 있는지 확인
-            if let Some(arr) = result.as_array() {
-                if arr.is_empty() {
-                    // 레코드가 없으면 새로 생성
-                    info!("기존 라이센스가 없음, 새 라이센스 생성");
-                    return self.create_pro_license(user_id, access_token, order_id, payment_key, amount).await;
-                }
-            }
-
-            info!("라이센스 업그레이드 완료: user_id={}", user_id);
-            Ok(())
-        } else {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-
-            error!("라이센스 업그레이드 실패: {} - {}", status, error_text);
-            Err(SupabaseError::ApiError(format!(
-                "라이센스 업그레이드 실패: {}",
-                error_text
-            )))
-        }
-    }
-
-    /// 새 PRO 라이센스 생성
-    async fn create_pro_license(
-        &self,
-        user_id: &str,
-        access_token: &str,
-        order_id: &str,
-        payment_key: &str,
-        amount: i64,
-    ) -> Result<()> {
-        let expires_at = chrono::Utc::now()
-            .checked_add_signed(chrono::Duration::days(365))
-            .map(|dt| dt.format("%Y-%m-%dT%H:%M:%SZ").to_string());
-
-        let insert_data = serde_json::json!({
-            "user_id": user_id,
-            "tier": "PRO",
-            "status": "ACTIVE",
-            "expires_at": expires_at,
-            "metadata": {
-                "order_id": order_id,
-                "payment_key": payment_key,
-                "amount": amount,
-                "created_at": chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
-            }
-        });
-
-        let url = format!("{}/rest/v1/licenses", self.config.project_url);
-
-        let response = self
-            .client
-            .post(&url)
-            .header("apikey", &self.config.anon_key)
-            .header("Authorization", format!("Bearer {}", access_token))
-            .header("Content-Type", "application/json")
-            .header("Prefer", "return=representation")
-            .json(&insert_data)
-            .send()
-            .await?;
-
-        if response.status().is_success() {
-            info!("새 PRO 라이센스 생성 완료: user_id={}", user_id);
-            Ok(())
-        } else {
-            let status = response.status();
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-
-            error!("PRO 라이센스 생성 실패: {} - {}", status, error_text);
-            Err(SupabaseError::ApiError(format!(
-                "라이센스 생성 실패: {}",
-                error_text
-            )))
-        }
+        Err(SupabaseError::ApiError(
+            "Client-side license upgrades are disabled while payment is deferred".to_string(),
+        ))
     }
 
     /// Generic database update method
@@ -637,9 +416,65 @@ impl SupabaseClient {
     }
 }
 
+fn select_current_license(licenses: Vec<License>) -> Option<License> {
+    licenses
+        .iter()
+        .find(|license| {
+            license.tier == "PRO"
+                && matches!(&license.status, super::LicenseStatus::Active)
+                && license_not_expired(license.expires_at.as_deref())
+        })
+        .cloned()
+        .or_else(|| {
+            licenses
+                .iter()
+                .find(|license| {
+                    matches!(&license.status, super::LicenseStatus::Active)
+                        && license_not_expired(license.expires_at.as_deref())
+                })
+                .cloned()
+        })
+        .or_else(|| licenses.into_iter().next())
+}
+
+fn license_not_expired(expires_at: Option<&str>) -> bool {
+    let Some(expires_at) = expires_at else {
+        return true;
+    };
+
+    chrono::DateTime::parse_from_rfc3339(expires_at)
+        .map(|expires_at| expires_at.with_timezone(&chrono::Utc) > chrono::Utc::now())
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                "Invalid license expires_at '{}'; failing closed to expired: {}",
+                expires_at,
+                e
+            );
+            false
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_license(
+        tier: &str,
+        status: super::super::LicenseStatus,
+        expires_at: Option<String>,
+    ) -> License {
+        License {
+            id: uuid::Uuid::new_v4().to_string(),
+            user_id: "user-id".to_string(),
+            tier: tier.to_string(),
+            status,
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+            expires_at,
+            stripe_subscription_id: None,
+            stripe_customer_id: None,
+            metadata: serde_json::json!({}),
+        }
+    }
 
     #[test]
     fn test_config_from_env_missing() {
@@ -663,48 +498,34 @@ mod tests {
     }
 
     #[test]
-    fn test_is_token_expired() {
-        let config = SupabaseConfig::new(
-            "https://example.supabase.co".to_string(),
-            "test-key".to_string(),
-        );
-        let client = SupabaseClient::new(config).expect("Test client should be created");
+    fn select_current_license_prefers_active_pro_license() {
+        let licenses = vec![
+            test_license("FREE", super::super::LicenseStatus::Active, None),
+            test_license("PRO", super::super::LicenseStatus::Active, None),
+        ];
 
-        let user = SupabaseUser {
-            id: "test-id".to_string(),
-            email: "test@example.com".to_string(),
-            email_confirmed_at: None,
-            created_at: "2024-01-01T00:00:00Z".to_string(),
-            updated_at: "2024-01-01T00:00:00Z".to_string(),
-            app_metadata: serde_json::json!({}),
-            user_metadata: serde_json::json!({}),
-        };
+        let selected = select_current_license(licenses).unwrap();
 
-        // Token expired 1 hour ago
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
+        assert_eq!(selected.tier, "PRO");
+        assert!(matches!(
+            selected.status,
+            super::super::LicenseStatus::Active
+        ));
+    }
+
+    #[test]
+    fn select_current_license_ignores_expired_active_pro_license() {
+        let expired_at = chrono::Utc::now()
+            .checked_sub_signed(chrono::Duration::days(1))
             .unwrap()
-            .as_secs() as i64;
+            .to_rfc3339();
+        let licenses = vec![
+            test_license("PRO", super::super::LicenseStatus::Active, Some(expired_at)),
+            test_license("FREE", super::super::LicenseStatus::Active, None),
+        ];
 
-        let expired_session = Session {
-            access_token: "test-token".to_string(),
-            refresh_token: "refresh-token".to_string(),
-            expires_in: 3600,
-            expires_at: now - 3600,
-            user: user.clone(),
-        };
+        let selected = select_current_license(licenses).unwrap();
 
-        assert!(client.is_token_expired(&expired_session));
-
-        // Token expires 1 hour from now
-        let valid_session = Session {
-            access_token: "test-token".to_string(),
-            refresh_token: "refresh-token".to_string(),
-            expires_in: 3600,
-            expires_at: now + 3600,
-            user,
-        };
-
-        assert!(!client.is_token_expired(&valid_session));
+        assert_eq!(selected.tier, "FREE");
     }
 }

@@ -1,6 +1,30 @@
 // Jest setup file for testing environment
 require('@testing-library/jest-dom');
 
+// Keep the suite honest: React act warnings and accidental application logging
+// are test failures. The logger contract suite deliberately exercises console
+// forwarding behind its own spies, so it is the sole scoped exception.
+let unexpectedConsoleError;
+let unexpectedConsoleWarn;
+beforeEach(() => {
+  unexpectedConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+  unexpectedConsoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+});
+afterEach(() => {
+  const testPath = expect.getState().testPath || '';
+  const isLoggerContract = testPath.endsWith('src\\lib\\__tests__\\logger.test.ts') ||
+    testPath.endsWith('src/lib/__tests__/logger.test.ts');
+  const errorCalls = unexpectedConsoleError.mock.calls;
+  const warnCalls = unexpectedConsoleWarn.mock.calls;
+  jest.restoreAllMocks();
+  if (!isLoggerContract && (errorCalls.length > 0 || warnCalls.length > 0)) {
+    const rendered = [...errorCalls, ...warnCalls]
+      .map((args) => args.map((value) => String(value)).join(' '))
+      .join('\n');
+    throw new Error(`Unexpected console error/warn:\n${rendered}`);
+  }
+});
+
 // Mock ResizeObserver (required by Radix UI components)
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
@@ -57,6 +81,16 @@ mockInvoke.mockImplementation(async (cmd, args) => {
         arch: 'x64',
         version: '1.2.0'
       };
+    case 'get_app_update_status':
+      return {
+        status: 'disabled',
+        current_version: '1.2.0',
+        available_version: null,
+        notes: null,
+        published_at: null,
+        progress_percentage: 0,
+        error_code: 'updater_disabled',
+      };
     default:
       return null;
   }
@@ -102,7 +136,14 @@ process.env = {
 // Mock react-i18next to prevent initialization warnings
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key) => key,
+    // Mirror i18next's `defaultValue` handling. Returning the key unconditionally
+    // made every `t(key, { defaultValue })` call site render the key in tests while
+    // the real app renders the fallback — a green test proving the opposite of what
+    // the user sees.
+    t: (key, opts) =>
+      opts && Object.prototype.hasOwnProperty.call(opts, 'defaultValue')
+        ? opts.defaultValue
+        : key,
     i18n: {
       language: 'en',
       changeLanguage: jest.fn(),

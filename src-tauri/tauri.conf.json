@@ -19,28 +19,45 @@
         "minHeight": 600,
         "resizable": true,
         "fullscreen": false,
-        "decorations": true,
+        "decorations": false,
         "transparent": false,
         "theme": "Dark"
+      },
+      {
+        "label": "overlay",
+        "title": "",
+        "url": "/overlay",
+        "width": 400,
+        "height": 200,
+        "x": 20,
+        "y": 20,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "shadow": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https:; media-src 'self' blob:; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://*.supabase.co wss://*.supabase.co"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https: asset: http://asset.localhost; media-src 'self' blob: asset: http://asset.localhost; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$DATA/lolshorts/**"]
+      }
     }
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["nsis", "msi"],
-    "resources": [
-      "resources/*"
-    ],
-    "externalBin": [
-      "binaries/ffmpeg"
-    ],
+    "resources": ["resources/*"],
+    "externalBin": ["binaries/ffmpeg", "binaries/ffprobe"],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
-      "timestampUrl": "",
+      "timestampUrl": "http://timestamp.digicert.com",
       "allowDowngrades": false,
       "wix": {
         "language": ["en-US"],
@@ -73,7 +90,7 @@
     "copyright": "Copyright © 2025 LoLShorts",
     "category": "Video",
     "shortDescription": "League of Legends Auto-Recording and Editing",
-    "longDescription": "Automatically record and edit your League of Legends gameplay into YouTube Shorts format. Features include automatic event detection (pentakills, quadrakills, baron steals), real-time replay buffer, hardware-accelerated encoding, and professional video editing tools. Production-ready with comprehensive error recovery and performance monitoring.",
+    "longDescription": "Automatically record and edit League of Legends gameplay into YouTube Shorts format. The first supported release target is Windows 11 x64 with NVIDIA NVENC; AMD, Intel, and CPU encoding remain experimental fallbacks. Public readiness requires completed Windows Field QA evidence; Toss/live billing and paid PRO sales are disabled.",
     "publisher": "LoLShorts Team",
     "homepage": "https://lolshorts.com",
     "licenseFile": "../LICENSE",
@@ -92,9 +109,7 @@
     "updater": {
       "endpoints": [
         "https://github.com/KhakiSkech/lolshorts/releases/latest/download/latest.json"
-      ],
-      "dialog": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IFRoaXMgaXMgYSBwbGFjZWhvbGRlciBrZXkuIFJ1biBzY3JpcHRzL3NldHVwLXVwZGF0ZXIta2V5cy5wczEgdG8gZ2VuZXJhdGUgcmVhbCBrZXlzLg=="
+      ]
     }
   }
 }

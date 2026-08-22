@@ -1,37 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "./supabase";
-import { authApi } from "@/api/auth";
-import { getErrorKey } from "./errorMapper";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { authApi, EntitlementInfo } from "@/api/auth";
+import { getErrorKey, isNetworkError } from "./errorMapper";
+import { logger } from "@/lib/logger";
+import type { User as SupabaseUser, Session } from "@supabase/supabase-js";
 
-// Safe development mode check for Jest compatibility
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const getIsDev = (): boolean => {
-  try {
-    // Check for test environment first (Jest)
-    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
-      return true;
-    }
-    // Check for Vite's import.meta.env (runtime check)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const meta = (globalThis as any).__vite_import_meta_env__ || {};
-    return meta.DEV === true;
-  } catch {
-    return false;
-  }
-};
-const isDev = getIsDev();
-
-// Types matching Supabase
 export interface UserProfile {
   id: string;
   email: string;
   display_name: string | null;
   avatar_url: string | null;
-  tier: "FREE" | "PRO";
-  subscription_status: "active" | "canceled" | "expired" | "trialing" | null;
-  subscription_expires_at: string | null;
 }
 
 export interface User {
@@ -53,39 +32,155 @@ export interface SignupCredentials {
   confirm_password: string;
 }
 
+export type SignupResult = "signed_in" | "confirmation_required";
+
 export interface LicenseInfo {
   tier: "FREE" | "PRO";
   expires_at?: string;
   features: string[];
 }
 
-// Token refresh interval reference (module-level for cleanup)
-let tokenRefreshInterval: ReturnType<typeof setInterval> | null = null;
-
-// Auth store with persistence
 interface AuthState {
   user: User | null;
+  entitlement: EntitlementInfo | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
 
-  // Actions
   login: (credentials: LoginCredentials) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  signup: (credentials: SignupCredentials) => Promise<void>;
+  signup: (credentials: SignupCredentials) => Promise<SignupResult>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
+  syncSession: (session: Session) => Promise<void>;
+  syncSignedOut: () => Promise<void>;
+  refreshEntitlement: () => Promise<EntitlementInfo | null>;
   checkAuth: () => Promise<void>;
   getLicenseInfo: () => Promise<LicenseInfo | null>;
   clearError: () => void;
-  startTokenRefresh: () => void;
-  stopTokenRefresh: () => void;
+}
+
+let backendLogoutInFlight: Promise<void> | null = null;
+
+function tierFromEntitlement(
+  entitlement: EntitlementInfo | null,
+): "FREE" | "PRO" {
+  return entitlement?.tier === "PRO" && entitlement.status === "active"
+    ? "PRO"
+    : "FREE";
+}
+
+function failClosedEntitlement(): EntitlementInfo {
+  return {
+    tier: "FREE",
+    status: "none",
+    expires_at: null,
+    source: "supabase",
+    checked_at: new Date().toISOString(),
+    payment_available: false,
+  };
+}
+
+function featuresForTier(tier: "FREE" | "PRO"): string[] {
+  return tier === "PRO"
+    ? [
+        "unlimited_clips",
+        "advanced_editor",
+        "priority_support",
+        "no_watermarks",
+      ]
+    : ["basic_clips", "basic_editor"];
+}
+
+function buildUser(
+  supabaseUser: SupabaseUser,
+  entitlement: EntitlementInfo | null,
+  profile: UserProfile | null,
+): User {
+  return {
+    id: supabaseUser.id,
+    email: supabaseUser.email!,
+    tier: tierFromEntitlement(entitlement),
+    profile,
+    supabaseUser,
+  };
+}
+
+async function fetchUserProfile(
+  user: SupabaseUser,
+): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("id,email,display_name,avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    logger.warn("[AuthStore] User profile lookup failed:", error);
+    return null;
+  }
+
+  return (data as UserProfile) || null;
+}
+
+async function ensureUserProfile(user: SupabaseUser): Promise<void> {
+  const { error } = await supabase.from("user_profiles").insert({
+    id: user.id,
+    email: user.email!,
+  });
+
+  if (error && error.code !== "23505") {
+    logger.warn("[AuthStore] User profile insert failed:", error);
+  }
+}
+
+async function fetchOrCreateUserProfile(
+  user: SupabaseUser,
+): Promise<UserProfile | null> {
+  const existing = await fetchUserProfile(user);
+  if (existing) return existing;
+
+  await ensureUserProfile(user);
+  return fetchUserProfile(user);
+}
+
+async function syncBackendSession(session: Session): Promise<EntitlementInfo> {
+  const retryDelaysMs = [0, 500, 1_500] as const;
+  let lastError: unknown;
+
+  for (const delayMs of retryDelaysMs) {
+    if (delayMs > 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+    }
+    try {
+      const response = await authApi.setSession(
+        session.access_token,
+        session.refresh_token,
+        session.user.id,
+        session.user.email || "",
+        session.expires_at ?? null,
+      );
+      return response.entitlement;
+    } catch (error) {
+      lastError = error;
+      if (!isNetworkError(error)) throw error;
+    }
+  }
+
+  throw lastError;
+}
+
+function requireSession(session: Session | null): Session {
+  if (!session) {
+    throw new Error("No authenticated Supabase session returned");
+  }
+  return session;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      entitlement: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -101,59 +196,18 @@ export const useAuthStore = create<AuthState>()(
           if (error) throw error;
           if (!data.user) throw new Error("No user returned");
 
-          // Sync with Backend
-          await authApi.setSession(
-            data.session?.access_token || "",
-            data.session?.refresh_token || "",
-            data.user.id,
-            data.user.email || ""
-          );
-
-          // Fetch user profile
-          const { data: profile } = await supabase
-            .from("user_profiles")
-            .select("*")
-            .eq("id", data.user.id)
-            .single();
-
-          const user: User = {
-            id: data.user.id,
-            email: data.user.email!,
-            tier: profile?.tier || "FREE",
-            profile: profile || null,
-            supabaseUser: data.user,
-          };
+          const session = requireSession(data.session);
+          const entitlement = await syncBackendSession(session);
+          const profile = await fetchOrCreateUserProfile(data.user);
+          const user = buildUser(data.user, entitlement, profile);
 
           set({
             user,
+            entitlement,
             isAuthenticated: true,
             isLoading: false,
             error: null,
           });
-        } catch (error: unknown) {
-          const errorKey = getErrorKey(error);
-          set({
-            error: errorKey,
-            isLoading: false,
-          });
-          throw new Error(errorKey);
-        }
-      },
-
-      loginWithGoogle: async () => {
-        set({ isLoading: true, error: null });
-        try {
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: {
-              redirectTo: window.location.origin,
-            },
-          });
-
-          if (error) throw error;
-
-          // OAuth flow continues in background
-          set({ isLoading: false });
         } catch (error: unknown) {
           const errorKey = getErrorKey(error);
           set({
@@ -181,46 +235,34 @@ export const useAuthStore = create<AuthState>()(
           if (error) throw error;
           if (!data.user) throw new Error("No user returned");
 
-          // Sync with Backend
-          await authApi.setSession(
-            data.session?.access_token || "",
-            data.session?.refresh_token || "",
-            data.user.id,
-            data.user.email || ""
-          );
-
-          // Create user profile
-          const { error: profileError } = await supabase
-            .from("user_profiles")
-            .insert({
-              id: data.user.id,
-              email: data.user.email!,
-              tier: "FREE",
+          // No session is Supabase's successful email-confirmation path. Do
+          // not attempt authenticated profile or entitlement calls until the
+          // user has confirmed the email address and signed in.
+          if (!data.session) {
+            set({
+              user: null,
+              entitlement: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
             });
+            return "confirmation_required";
+          }
 
-          if (profileError) throw profileError;
-
-          // Fetch created profile
-          const { data: profile } = await supabase
-            .from("user_profiles")
-            .select("*")
-            .eq("id", data.user.id)
-            .single();
-
-          const user: User = {
-            id: data.user.id,
-            email: data.user.email!,
-            tier: "FREE",
-            profile: profile || null,
-            supabaseUser: data.user,
-          };
+          const session = data.session;
+          await ensureUserProfile(data.user);
+          const entitlement = await syncBackendSession(session);
+          const profile = await fetchUserProfile(data.user);
+          const user = buildUser(data.user, entitlement, profile);
 
           set({
             user,
+            entitlement,
             isAuthenticated: true,
             isLoading: false,
             error: null,
           });
+          return "signed_in";
         } catch (error: unknown) {
           const errorKey = getErrorKey(error);
           set({
@@ -234,20 +276,9 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         set({ isLoading: true, error: null });
         try {
-          // Stop token refresh before logging out
-          get().stopTokenRefresh();
-
           const { error } = await supabase.auth.signOut();
-
-
           if (error) throw error;
-
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-          });
+          await get().syncSignedOut();
         } catch (error: unknown) {
           const errorKey = getErrorKey(error);
           set({
@@ -264,81 +295,134 @@ export const useAuthStore = create<AuthState>()(
           if (error) throw error;
 
           if (data.user && data.session) {
-            // Sync with Backend
-            await authApi.setSession(
-              data.session.access_token,
-              data.session.refresh_token,
-              data.user.id,
-              data.user.email || ""
-            );
-
-            const { data: profile } = await supabase
-              .from("user_profiles")
-              .select("*")
-              .eq("id", data.user.id)
-              .single();
-
-            const user: User = {
-              id: data.user.id,
-              email: data.user.email!,
-              tier: profile?.tier || "FREE",
-              profile: profile || null,
-              supabaseUser: data.user,
-            };
-
-            set({ user });
+            await get().syncSession(data.session);
           }
         } catch (error) {
-          // Log error with context for debugging
-          if (isDev) {
-            console.error("[AuthStore] Token refresh failed:", error);
-          }
+          logger.error("[AuthStore] Token refresh failed:", error);
           set({
             user: null,
+            entitlement: null,
             isAuthenticated: false,
             error: "errors.sessionExpired",
           });
         }
       },
 
+      // Supabase JS owns refresh scheduling. Every refreshed session must also
+      // replace the Rust-side access/refresh tokens used by entitlement, quota,
+      // and YouTube command authorization during long-running app sessions.
+      syncSession: async (session) => {
+        try {
+          const entitlement = await syncBackendSession(session);
+          const profile = await fetchOrCreateUserProfile(session.user);
+          const user = buildUser(session.user, entitlement, profile);
+
+          set({
+            user,
+            entitlement,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+        } catch (error: unknown) {
+          const errorKey = getErrorKey(error);
+          set({ error: errorKey, isLoading: false });
+          throw new Error(errorKey);
+        }
+      },
+
+      // A SIGNED_OUT event can be raised by an explicit logout, a revoked
+      // refresh token, or another device. Clear local authorization first and
+      // coalesce the Rust-side logout so explicit and event-driven paths cannot
+      // race or leave stale command authorization behind.
+      syncSignedOut: async () => {
+        const hadAuthenticatedSession =
+          get().isAuthenticated || get().user !== null;
+
+        set({
+          user: null,
+          entitlement: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: null,
+        });
+
+        if (!backendLogoutInFlight && hadAuthenticatedSession) {
+          backendLogoutInFlight = authApi.logout().finally(() => {
+            backendLogoutInFlight = null;
+          });
+        }
+
+        if (backendLogoutInFlight) {
+          try {
+            await backendLogoutInFlight;
+          } catch (error) {
+            // Local state remains signed out (fail closed). The backend session
+            // is in-memory only and is also discarded when the app exits.
+            logger.warn(
+              "[AuthStore] Backend logout synchronization failed:",
+              error,
+            );
+          }
+        }
+      },
+
+      refreshEntitlement: async () => {
+        try {
+          const { user } = get();
+          if (!user) return null;
+
+          const entitlement = await authApi.getCurrentEntitlement(true);
+          set({
+            entitlement,
+            user: {
+              ...user,
+              tier: tierFromEntitlement(entitlement),
+            },
+          });
+          return entitlement;
+        } catch (error) {
+          logger.error("[AuthStore] Failed to refresh entitlement:", error);
+          const { user } = get();
+          const entitlement = failClosedEntitlement();
+          set({
+            entitlement,
+            user: user
+              ? {
+                  ...user,
+                  tier: "FREE",
+                }
+              : null,
+          });
+          return entitlement;
+        }
+      },
+
       checkAuth: async () => {
         set({ isLoading: true, error: null });
         try {
-          const { data: { session }, error } = await supabase.auth.getSession();
+          const {
+            data: { session },
+            error,
+          } = await supabase.auth.getSession();
 
           if (error) throw error;
 
           if (session?.user) {
-            // Sync with Backend
-            await authApi.setSession(
-              session.access_token,
-              session.refresh_token,
-              session.user.id,
-              session.user.email || ""
-            );
-
-            const { data: profile } = await supabase
-              .from("user_profiles")
-              .select("*")
-              .eq("id", session.user.id)
-              .single();
-
-            const user: User = {
-              id: session.user.id,
-              email: session.user.email!,
-              tier: profile?.tier || "FREE",
-              profile: profile || null,
-              supabaseUser: session.user,
-            };
+            const entitlement = await syncBackendSession(session);
+            const profile = await fetchOrCreateUserProfile(session.user);
+            const user = buildUser(session.user, entitlement, profile);
 
             set({
               user,
+              entitlement,
               isAuthenticated: true,
               isLoading: false,
             });
           } else {
             set({
               user: null,
+              entitlement: null,
               isAuthenticated: false,
               isLoading: false,
             });
@@ -348,6 +432,7 @@ export const useAuthStore = create<AuthState>()(
             error: getErrorKey(error),
             isLoading: false,
             user: null,
+            entitlement: null,
             isAuthenticated: false,
           });
         }
@@ -355,110 +440,26 @@ export const useAuthStore = create<AuthState>()(
 
       getLicenseInfo: async () => {
         try {
-          const { user } = get();
-          if (!user?.profile) return null;
+          const entitlement = await get().refreshEntitlement();
+          if (!entitlement) return null;
 
-          const license: LicenseInfo = {
-            tier: user.profile.tier,
-            expires_at: user.profile.subscription_expires_at || undefined,
-            features: user.profile.tier === "PRO"
-              ? ["unlimited_clips", "advanced_editor", "priority_support", "no_watermarks"]
-              : ["basic_clips", "basic_editor"],
+          const tier = tierFromEntitlement(entitlement);
+          return {
+            tier,
+            expires_at: entitlement.expires_at || undefined,
+            features: featuresForTier(tier),
           };
-
-          return license;
         } catch (error) {
-          // Log error with context for debugging
-          if (isDev) {
-            console.error("[AuthStore] Failed to get license info:", error);
-          }
+          logger.error("[AuthStore] Failed to get license info:", error);
           return null;
         }
       },
 
       clearError: () => set({ error: null }),
-
-      startTokenRefresh: () => {
-        // Clear any existing interval first
-        if (tokenRefreshInterval) {
-          clearInterval(tokenRefreshInterval);
-        }
-
-        // Get session info to calculate dynamic refresh interval
-        const calculateRefreshInterval = (): number => {
-          const user = get().user;
-          if (!user || !user.supabaseUser) {
-            return 30 * 60 * 1000; // Default 30 minutes
-          }
-
-          // Extract session expiration from Supabase user
-          interface SessionExpiration {
-            expires_at?: number;
-            expires_in?: number;
-          }
-          const session = user.supabaseUser as unknown as SessionExpiration;
-          const expiresAt = session?.expires_at;
-          const expiresInSeconds = session?.expires_in;
-
-          if (expiresAt) {
-            const now = Math.floor(Date.now() / 1000);
-            const timeUntilExpiry = expiresAt - now;
-            // Refresh 5 minutes before expiry
-            const refreshInterval = Math.max(timeUntilExpiry - 300, 60) * 1000;
-            // Log in development only
-            if (isDev) {
-              console.log(`[AuthStore] Session expires in ${timeUntilExpiry}s, refreshing in ${refreshInterval / 1000}s`);
-            }
-            return refreshInterval;
-          } else if (expiresInSeconds) {
-            // Fallback to expires_in if expires_at is not available
-            const refreshInterval = Math.max(expiresInSeconds - 300, 60) * 1000;
-            // Log in development only
-            if (isDev) {
-              console.log(`[AuthStore] Session expires in ${expiresInSeconds}s, refreshing in ${refreshInterval / 1000}s`);
-            }
-            return refreshInterval;
-          }
-
-          // Default to 30 minutes if no session info available
-          return 30 * 60 * 1000;
-        };
-
-        const refreshInterval = calculateRefreshInterval();
-
-        // Auto-refresh token at calculated interval
-        tokenRefreshInterval = setInterval(() => {
-          const { user, refreshToken } = get();
-          if (user) {
-            refreshToken().catch((err) => {
-              // Log error with context for debugging
-              if (isDev) {
-                console.error("[AuthStore] Token refresh failed:", err);
-              }
-            });
-          }
-        }, refreshInterval);
-      },
-
-      stopTokenRefresh: () => {
-        if (tokenRefreshInterval) {
-          clearInterval(tokenRefreshInterval);
-          tokenRefreshInterval = null;
-        }
-      },
     }),
     {
       name: "lolshorts-auth",
-      partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-      }),
-    }
-  )
+      partialize: () => ({}),
+    },
+  ),
 );
-
-// Start token refresh on module load (will be stopped on logout)
-// This is called once when the module is first imported
-if (typeof window !== 'undefined') {
-  useAuthStore.getState().startTokenRefresh();
-}

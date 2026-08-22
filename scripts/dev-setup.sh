@@ -119,7 +119,8 @@ install_rust() {
 
     # Install useful Rust tools
     log_command "Installing Rust development tools..."
-    cargo install cargo-audit cargo-outdated cargo-deny cargo-watch
+    cargo install cargo-audit --version 0.22.2 --locked
+    cargo install cargo-outdated cargo-deny cargo-watch
 
     # Add platform-specific targets
     case $PLATFORM in

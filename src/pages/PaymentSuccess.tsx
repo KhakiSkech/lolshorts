@@ -1,180 +1,141 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { paymentApi } from "@/api/payment";
-import { useAuthStore } from "@/lib/auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import { getErrorMessage } from "@/lib/utils";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { paymentApi } from "@/api/payment";
+import { useAuthStore } from "@/lib/auth";
+
+interface PaymentSuccessSearchParams {
+  paymentKey?: string;
+  orderId?: string;
+  amount?: string;
+}
 
 export function PaymentSuccess() {
-  const searchParams = useSearch({ from: "/payment/success" }) as Record<string, string>;
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { checkAuth } = useAuthStore();
+  const searchParams = useSearch({
+    from: "/payment/success",
+  }) as PaymentSuccessSearchParams;
+  const refreshEntitlement = useAuthStore((state) => state.refreshEntitlement);
+  const [status, setStatus] = useState<
+    "confirming" | "confirmed" | "missing" | "failed"
+  >("confirming");
+  const [message, setMessage] = useState(
+    "Confirming payment with the billing server.",
+  );
 
-  const [status, setStatus] = useState<"processing" | "success" | "error">("processing");
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const amount = useMemo(
+    () => Number(searchParams.amount),
+    [searchParams.amount],
+  );
 
   useEffect(() => {
-    confirmPayment();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let cancelled = false;
 
-  const confirmPayment = async () => {
-    try {
-      // Get payment details from URL params
-      const paymentKey = searchParams.paymentKey;
-      const orderId = searchParams.orderId;
-      const amount = searchParams.amount;
-
-      if (!paymentKey || !orderId || !amount) {
-        throw new Error("Missing payment information in URL");
+    const confirm = async () => {
+      if (
+        !searchParams.paymentKey ||
+        !searchParams.orderId ||
+        !Number.isFinite(amount) ||
+        amount <= 0
+      ) {
+        setStatus("missing");
+        setMessage(
+          "Payment redirect did not include the required Toss confirmation parameters.",
+        );
+        return;
       }
 
-      // Verify with stored order info
-      const pendingOrderId = sessionStorage.getItem("pending_order_id");
-      const pendingAmount = sessionStorage.getItem("pending_amount");
+      setStatus("confirming");
+      setMessage("Confirming payment with the billing server.");
 
-      if (orderId !== pendingOrderId) {
-        throw new Error("Order ID mismatch");
+      try {
+        await paymentApi.confirmPayment(
+          searchParams.paymentKey,
+          searchParams.orderId,
+          amount,
+        );
+        if (typeof refreshEntitlement === "function") {
+          await refreshEntitlement();
+        }
+        if (!cancelled) {
+          setStatus("confirmed");
+          setMessage(
+            "Payment was confirmed by the server. PRO status will appear only after Supabase user_licenses is active.",
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setStatus("failed");
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Payment confirmation failed.",
+          );
+        }
       }
+    };
 
-      if (amount !== pendingAmount) {
-        throw new Error("Payment amount mismatch");
-      }
+    void confirm();
 
-      // Confirm payment with backend using API
-      await paymentApi.confirmPayment(paymentKey, orderId, parseInt(amount));
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    amount,
+    refreshEntitlement,
+    searchParams.orderId,
+    searchParams.paymentKey,
+  ]);
 
-      // Clear stored order info
-      sessionStorage.removeItem("pending_order_id");
-      sessionStorage.removeItem("pending_amount");
-
-      // Refresh auth to update license tier
-      await checkAuth();
-
-      setStatus("success");
-    } catch (error) {
-      console.error("Payment confirmation failed:", error);
-      setErrorMessage(getErrorMessage(error));
-      setStatus("error");
-    }
-  };
-
-  if (status === "processing") {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center">Processing Payment</CardTitle>
-            <CardDescription className="text-center">
-              Please wait while we confirm your subscription
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center space-y-4">
-            <Loader2 className="w-16 h-16 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground text-center">
-              Do not close this window
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (status === "error") {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="w-6 h-6" />
-              Payment Confirmation Failed
-            </CardTitle>
-            <CardDescription>
-              We couldn&apos;t verify your payment
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert variant="destructive">
-              <AlertCircle className="w-4 h-4" />
-              <AlertDescription>{errorMessage}</AlertDescription>
-            </Alert>
-            <p className="text-sm text-muted-foreground">
-              If you were charged, please contact support with your order information.
-              We&apos;ll resolve this as soon as possible.
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => navigate({ to: "/settings" })}
-                className="flex-1"
-              >
-                Go to Settings
-              </Button>
-              <Button
-                onClick={() => window.location.reload()}
-                className="flex-1"
-              >
-                Try Again
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const isConfirmed = status === "confirmed";
+  const isConfirming = status === "confirming";
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
-            <CheckCircle2 className="w-6 h-6" />
-            Payment Successful!
-          </CardTitle>
-          <CardDescription>
-            Welcome to LoLShorts PRO
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-            <p className="font-semibold text-green-600 dark:text-green-400 mb-2">
-              🎉 Subscription Activated
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Your PRO subscription is now active. Enjoy unlimited clips, advanced editing features, and priority support!
-            </p>
-          </div>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[hsl(240,18%,9%)]">
+      <div className="gaming-panel p-6 w-full max-w-md">
+        <div className="flex items-center gap-2 mb-1">
+          {isConfirming ? (
+            <Loader2 className="w-6 h-6 animate-spin text-gaming-magenta" />
+          ) : isConfirmed ? (
+            <CheckCircle2 className="w-6 h-6 text-green-500" />
+          ) : (
+            <AlertCircle className="w-6 h-6 text-gaming-magenta" />
+          )}
+          <h2 className="text-lg font-semibold text-gaming-magenta">
+            {isConfirming
+              ? "Confirming payment"
+              : isConfirmed
+                ? "Payment confirmed"
+                : "Payment not activated"}
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-6">{message}</p>
 
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Order ID:</span>
-              <span className="font-mono text-xs">{searchParams.orderId}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Amount Paid:</span>
-              <span className="font-medium">
-                ₩{parseInt(searchParams.amount || "0").toLocaleString("ko-KR")}
-              </span>
-            </div>
-          </div>
+        <div className="space-y-4">
+          <Alert variant={isConfirmed ? "default" : "destructive"}>
+            <AlertCircle className="w-4 h-4" />
+            <AlertDescription>
+              The app never grants PRO from redirect parameters alone. Access is
+              refreshed from Supabase user_licenses after server-side Toss
+              confirmation.
+            </AlertDescription>
+          </Alert>
 
-          <div className="pt-4">
+          <div className="pt-2">
             <Button
               onClick={() => navigate({ to: "/settings" })}
+              disabled={isConfirming}
               className="w-full"
             >
-              Go to Settings
+              {t("paymentSuccess.error.goToSettings")}
             </Button>
           </div>
-
-          <p className="text-xs text-center text-muted-foreground">
-            A confirmation email has been sent to your registered email address
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
