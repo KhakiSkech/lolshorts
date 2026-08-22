@@ -58,6 +58,8 @@ jobs:
           New-Item -ItemType Directory -Path src-tauri/binaries -Force | Out-Null
           New-Item -ItemType File -Path src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe -Force | Out-Null
           New-Item -ItemType File -Path src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe -Force | Out-Null
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Set-Content -LiteralPath dist/index.html -Value '<!doctype html><html><body>compile-only fixture</body></html>' -NoNewline
 
       - name: Check formatting
         run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
@@ -138,6 +140,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build frontend for Tauri
+        run: npm run build
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
@@ -212,6 +217,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Build frontend for Tauri
+        run: npm run build
 
       - name: Prepare pinned FFmpeg sidecars
         shell: powershell
