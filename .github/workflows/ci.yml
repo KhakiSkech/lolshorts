@@ -226,7 +226,10 @@ jobs:
         run: ./src-tauri/build_scripts/prepare_ffmpeg.ps1 -Source Download
 
       - name: Build application (release mode)
-        run: cargo tauri build --verbose
+        # Use the pinned project-local CLI. The runner does not install the
+        # optional `cargo-tauri` subcommand, while npm ci provides the exact
+        # @tauri-apps/cli version used by the application.
+        run: npm run tauri build -- --verbose
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
