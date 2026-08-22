@@ -9,6 +9,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  # Keep Tauri bundles under the same path used by the installer/QA scripts.
+  CARGO_TARGET_DIR: src-tauri/target
 
 jobs:
   # Backend tests (Rust)

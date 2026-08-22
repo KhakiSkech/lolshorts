@@ -12,6 +12,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  CARGO_TARGET_DIR: src-tauri/target
   VITE_SUPABASE_URL: https://fixture.supabase.co
   VITE_SUPABASE_ANON_KEY: release-readiness-public-anon-fixture
   SUPABASE_URL: https://fixture.supabase.co
